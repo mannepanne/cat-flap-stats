@@ -23,6 +23,52 @@ class ProductionCatFlapExtractor:
         self.state_issues = []
         self.confidence_issues = []
     
+    def parse_report_date(self, report_date_str: str) -> Optional[datetime]:
+        """Parse report date string into datetime object"""
+        if not report_date_str:
+            return None
+        
+        try:
+            # Handle formats like "1 September 2024" or "15 June 2025"
+            return datetime.strptime(report_date_str, "%d %B %Y")
+        except:
+            try:
+                # Handle other common formats
+                return datetime.strptime(report_date_str, "%d %b %Y")
+            except:
+                return None
+    
+    def convert_date_str_to_full_date(self, date_str: str, report_year: int) -> Optional[str]:
+        """Convert date_str like 'Mon 26 Aug' to YYYY-MM-DD format"""
+        if not date_str or not report_year:
+            return None
+        
+        try:
+            # Parse date_str format like "Mon 26 Aug" or "Tue 31 Dec"
+            # Extract day and month from the string
+            parts = date_str.strip().split()
+            if len(parts) >= 3:
+                day = parts[1]
+                month_abbr = parts[2]
+                
+                # Create date string with year
+                date_with_year = f"{day} {month_abbr} {report_year}"
+                
+                try:
+                    parsed_date = datetime.strptime(date_with_year, "%d %b %Y")
+                    return parsed_date.strftime("%Y-%m-%d")
+                except:
+                    # Try different month format
+                    try:
+                        parsed_date = datetime.strptime(date_with_year, "%d %B %Y")
+                        return parsed_date.strftime("%Y-%m-%d")
+                    except:
+                        pass
+            
+            return None
+        except Exception:
+            return None
+    
     def extract_report_info(self, pdf_path: str) -> Dict:
         """Extract basic report information from PDF"""
         try:
@@ -33,6 +79,8 @@ class ProductionCatFlapExtractor:
                 info = {
                     'filename': os.path.basename(pdf_path),
                     'report_date': None,
+                    'report_date_range': None,
+                    'report_year': None,
                     'pet_name': None,
                     'age': None,
                     'weight': None
@@ -43,6 +91,10 @@ class ProductionCatFlapExtractor:
                 for line in lines[:10]:
                     if re.match(r'\d{1,2}\s+\w+\s+\d{4}', line.strip()):
                         info['report_date'] = line.strip()
+                        # Parse year from report date
+                        parsed_date = self.parse_report_date(line.strip())
+                        if parsed_date:
+                            info['report_year'] = parsed_date.year
                         break
                 
                 # Extract pet info
@@ -449,12 +501,32 @@ class ProductionCatFlapExtractor:
             self.warnings.append(f"No time data found in {pdf_path}")
             return None
         
+        # Calculate date range for this report
+        date_keys = list(daily_data.keys())
+        if date_keys and report_info.get('report_year'):
+            first_date_str = date_keys[0]
+            last_date_str = date_keys[-1]
+            
+            first_full_date = self.convert_date_str_to_full_date(first_date_str, report_info['report_year'])
+            last_full_date = self.convert_date_str_to_full_date(last_date_str, report_info['report_year'])
+            
+            if first_full_date and last_full_date:
+                report_info['report_date_range'] = f"{first_full_date} to {last_full_date}"
+        
         # Build sessions with enhanced validation
         session_data = self.build_sessions_with_enhanced_validation(daily_data, os.path.basename(pdf_path))
         
         if not session_data:
             self.warnings.append(f"No sessions built from {pdf_path}")
             return None
+        
+        # Add date_full to each session
+        for session in session_data:
+            if report_info.get('report_year'):
+                session['date_full'] = self.convert_date_str_to_full_date(
+                    session['date_str'], 
+                    report_info['report_year']
+                )
         
         result = {
             'report_info': report_info,
@@ -490,7 +562,30 @@ class ProductionCatFlapExtractor:
             if result:
                 results.append(result)
         
+        # Sort results chronologically by report date range start
+        results = self.sort_results_chronologically(results)
+        
         return results
+    
+    def sort_results_chronologically(self, results: List[Dict]) -> List[Dict]:
+        """Sort results chronologically by report date range"""
+        def get_sort_key(result):
+            report_info = result.get('report_info', {})
+            date_range = report_info.get('report_date_range', '')
+            
+            if date_range and ' to ' in date_range:
+                # Extract start date from "YYYY-MM-DD to YYYY-MM-DD"
+                start_date_str = date_range.split(' to ')[0]
+                try:
+                    return datetime.strptime(start_date_str, "%Y-%m-%d")
+                except:
+                    pass
+            
+            # Fallback to filename-based sorting
+            filename = report_info.get('filename', '')
+            return filename
+        
+        return sorted(results, key=get_sort_key)
     
     def detect_potential_gaps(self, pdf_files: List[Path]):
         """Enhanced gap detection with better date parsing"""
@@ -546,10 +641,13 @@ class ProductionCatFlapExtractor:
                 flat_record = {
                     'filename': report_info['filename'],
                     'report_date': report_info['report_date'],
+                    'report_date_range': report_info.get('report_date_range'),
+                    'report_year': report_info.get('report_year'),
                     'pet_name': report_info['pet_name'],
                     'age': report_info['age'],
                     'weight': report_info['weight'],
                     'date_str': session['date_str'],
+                    'date_full': session.get('date_full'),
                     'session_number': session['session_number'],
                     'exit_time': session['exit_time'],
                     'entry_time': session['entry_time'],
