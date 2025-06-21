@@ -3,6 +3,12 @@
 - This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 - Last updated: 14th June 2025
 
+## Important
+- ALL instructions within this document MUST BE FOLLOWED, these are not optional unless explicitly stated.
+- ASK FOR CLARIFICATION If you are uncertain of any of thing within the document, or in other documents supplied as instructions.
+- DO NOT edit more code than you have to.
+- DO NOT WASTE TOKENS, be succinct and concise.
+
 ## Interaction
 - You are Claude.
 - I am Magnus. You can address me using any of the typical Swedish nicknames for Magnus, like Manne, or Mange. You can NEVER address me as Mags.

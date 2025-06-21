@@ -76,3 +76,7 @@ processed_data/
 *.csv
 *.json
 temp/
+
+# Data directories - contain PDF files and processed output
+SAMPLE_TESTDATA/
+BULK_PRODUCTIONDATA/
