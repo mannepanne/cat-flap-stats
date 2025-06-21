@@ -73,8 +73,25 @@ Not applicable - personal tool
 - Design modular architecture to accommodate future format changes
 - Validate against known good data samples
 
-## How: What is the experiment plan?
-Start with sample PDF analysis from SAMPLEDATA folder (mix of summer/winter weeks), focus on extracting the main data table with Date/weekday/time columns that appears last in each PDF, test on golden weeks for validation, then process full dataset of ~50 PDFs. Output both CSV and JSON formats based on user preference.
+## How: What is the experiment plan? ✅ COMPLETED
+✅ **Phase 1 Complete:** Sample PDF analysis completed - 5 PDFs analyzed from different seasons
+✅ **Data structure confirmed:** Main data table "Last 7 days" on page 2 with consistent structure:
+- Date header row with weekdays and dates
+- "Left - Entered" row with entry/exit times (format: "HH:MM - HH:MM" or single "HH:MM")
+- "Duration" row with time spent outside per day
+- "Total Entries" row with visit counts per day  
+- "Time Outside" row with daily totals
+
+**Next phases:**
+✅ **Tool Complete:** Built `cat_flap_extractor.py` using pdfplumber to parse the 7-day table
+✅ **Successfully extracts:** Entry/exit times, durations, visit counts, total daily outdoor time, pet info
+✅ **Output formats:** Both CSV and JSON supported with command-line options
+✅ **Tested:** All 5 sample PDFs processed successfully (35 daily records extracted)
+
+**Remaining phases:**
+- Test on golden weeks for validation
+- Process full dataset of ~50 PDFs
+- Analyze consolidated data for patterns
 
 ## When: When does it ship and what are the milestones?
 No deadline pressure - evening and weekend development schedule.
@@ -100,12 +117,13 @@ Solo developer effort (Claude) with Magnus providing feedback, testing, and syst
 ## Recommendation: Where do we go next?
 Complete PRD documentation, then proceed to set up PDF reading tools and begin data structure analysis using sample PDFs.
 
-## Questions: Any known unknowns?
-- What specific Python PDF libraries work best for this format?
-- What's the exact structure of the data tables?
-- Are there any summary statistics in the PDFs worth extracting beyond the daily entry/exit times?
-- Python PDF library selection and installation requirements
-- System environment setup for PDF processing tools
+## Questions: Any known unknowns? ✅ ANSWERED
+- ✅ **PDF library choice:** pdfplumber works excellently for extracting structured tables and text
+- ✅ **Data structure:** Very consistent 2-3 page format with main data table on page 2 titled "Last 7 days"
+- ✅ **Table structure:** 7-day table with Date header row, Left-Entered times, Duration, Total Entries, and Time Outside rows
+- ✅ **Additional extractable data:** Report date, pet info (age/weight changes), monthly summaries, averages
+- ✅ **Environment:** Python 3.13 virtual environment with pdfplumber, PyPDF2, pandas, tabula-py installed
+- ✅ **Sample analysis:** 5 PDF samples analyzed showing consistent format across different seasons
 
 ## User story narrative
 
