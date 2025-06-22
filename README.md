@@ -89,6 +89,7 @@ cat-flap-stats/
 - **💾 Version-controlled datasets**: All changes tracked in Git with automatic backups
 - **📧 Processing notifications**: Detailed email reports with statistics and results
 - **🛡️ Data integrity**: Automatic backups before every update
+- **🔧 Edge case handling**: Gracefully processes PDFs with no cat flap usage data
 
 ### Advanced PDF Processing
 - **📑 Multi-page PDF processing**: Handles complex layouts with table spans across pages
@@ -97,6 +98,7 @@ cat-flap-stats/
 - **✅ Robust validation**: 100% accuracy against manually corrected reference data
 - **📊 Multiple output formats**: CSV and JSON maintained simultaneously
 - **🧪 Comprehensive testing**: 21 tests covering unit, integration, and end-to-end scenarios
+- **📭 Empty period handling**: Processes PDFs with no usage data (inactive weeks/periods)
 
 ### Serverless Architecture
 - **☁️ CloudFlare Workers**: Fast, global web interface with KV storage
