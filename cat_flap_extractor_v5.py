@@ -205,131 +205,195 @@ class ProductionCatFlapExtractor:
             pass
         return False
     
+    def reconstruct_complete_table(self, pdf_path: str) -> Optional[List[List]]:
+        """Reconstruct the complete activity table by merging fragments across pages"""
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                complete_table = []
+                dates_header = None
+                
+                for page_num in range(len(pdf.pages)):
+                    page = pdf.pages[page_num]
+                    text = page.extract_text()
+                    tables = page.extract_tables()
+                    
+                    if not tables:
+                        continue
+                    
+                    for table in tables:
+                        if not table:
+                            continue
+                        
+                        # Check if this table contains activity data
+                        has_activity_data = False
+                        for row in table:
+                            if row and any(cell for cell in row if cell and (':' in str(cell) or ' - ' in str(cell) or 'Date' in str(cell) or 'Left - Entered' in str(cell))):
+                                has_activity_data = True
+                                break
+                        
+                        if not has_activity_data:
+                            continue
+                        
+                        # Process each row in this table fragment
+                        for row in table:
+                            if not row or not any(cell for cell in row if cell and cell.strip()):
+                                continue
+                            
+                            # Check if this is the dates header row
+                            if row[0] and 'Date' in row[0]:
+                                if not dates_header:
+                                    dates_header = row
+                                    complete_table.append(row)
+                                continue
+                            
+                            # Check if this is a continuation of the main table
+                            # (has data in the date columns but no row label)
+                            if not row[0] or row[0].strip() == '':
+                                # This is likely a continuation row
+                                complete_table.append(row)
+                                continue
+                            
+                            # Check if this is a labeled row (Left - Entered, Duration, etc.)
+                            if row[0] and any(keyword in row[0] for keyword in ['Left - Entered', 'Duration', 'Total Entries', 'Time Outside']):
+                                complete_table.append(row)
+                                continue
+                            
+                            # Skip other types of rows
+                
+                return complete_table if complete_table else None
+                
+        except Exception as e:
+            self.errors.append(f"Error reconstructing table from {pdf_path}: {e}")
+            return None
+
     def extract_time_duration_pairs_by_day(self, pdf_path: str) -> Dict:
-        """Extract time-duration pairs for each day using proper table structure"""
+        """Extract time-duration pairs for each day using robust cross-page table reconstruction"""
         try:
             # Check for no-data periods first
             if self.detect_no_data_period(pdf_path):
                 self.warnings.append(f"{os.path.basename(pdf_path)}: No activity period detected")
                 return {}
             
-            with pdfplumber.open(pdf_path) as pdf:
-                for page_num in range(len(pdf.pages)):
-                    page = pdf.pages[page_num]
-                    text = page.extract_text()
-                    
-                    if 'Last 7 days' in text:
-                        tables = page.extract_tables()
-                        if not tables:
-                            continue
-                            
-                        table = tables[0]  # Main activity table
-                        if not table or len(table) < 2:
-                            continue
-                        
-                        # Find date header row
-                        header_row = None
-                        for row in table:
-                            if row and row[0] and 'Date' in row[0]:
-                                header_row = row
-                                break
-                        
-                        if not header_row:
-                            continue
-                        
-                        # Extract date strings
-                        dates = [cell.strip() for cell in header_row[1:] if cell and cell.strip()]
-                        
-                        # Extract time-duration pairs for each day
-                        daily_data = {}
-                        
-                        # Go through table rows in pairs (time row, then duration row)
-                        i = 1  # Start after header row
-                        while i < len(table) - 1:
-                            time_row = table[i]
-                            duration_row = table[i + 1]
-                            
-                            # Skip if this is a summary row
-                            if (time_row and time_row[0] and 
-                                any(keyword in time_row[0].lower() for keyword in ['total entries', 'time outside'])):
-                                break
-                            
-                            # Process each day for this time/duration pair
-                            for day_idx, date_str in enumerate(dates):
-                                col_idx = day_idx + 1
-                                
-                                if date_str not in daily_data:
-                                    daily_data[date_str] = {
-                                        'time_duration_pairs': [],
-                                        'daily_visits': None,
-                                        'daily_total_time': None
-                                    }
-                                
-                                # Get time and duration data for this day
-                                time_cell = time_row[col_idx] if col_idx < len(time_row) else None
-                                duration_cell = duration_row[col_idx] if col_idx < len(duration_row) else None
-                                
-                                if time_cell and time_cell.strip():
-                                    time_str = time_cell.strip()
-                                    duration_str = duration_cell.strip() if duration_cell else None
-                                    
-                                    # Parse the time entry
-                                    if ' - ' in time_str:
-                                        # Range format "HH:MM - HH:MM"
-                                        parts = time_str.split(' - ')
-                                        if len(parts) == 2:
-                                            daily_data[date_str]['time_duration_pairs'].append({
-                                                'exit_time': parts[0].strip(),
-                                                'entry_time': parts[1].strip(),
-                                                'duration': duration_str,
-                                                'type': 'complete_session'
-                                            })
-                                    else:
-                                        # Single timestamp
-                                        daily_data[date_str]['time_duration_pairs'].append({
-                                            'timestamp': time_str,
-                                            'duration': duration_str,
-                                            'type': 'single_timestamp'
-                                        })
-                            
-                            i += 2  # Skip to next time/duration pair
-                            
-                        # Extract daily totals (need to look for summary rows after the main table)
-                        daily_totals = {}
-                        
-                        # Look through the full table for summary rows
-                        for row in table:
-                            if row and row[0]:
-                                if 'total entries' in row[0].lower():
-                                    for day_idx, date_str in enumerate(dates):
-                                        col_idx = day_idx + 1
-                                        if col_idx < len(row) and row[col_idx]:
-                                            visit_data = row[col_idx]
-                                            match = re.search(r'(\d+)', visit_data)
-                                            if match:
-                                                if date_str not in daily_totals:
-                                                    daily_totals[date_str] = {}
-                                                daily_totals[date_str]['visits'] = int(match.group(1))
-                                
-                                elif 'time outside' in row[0].lower():
-                                    for day_idx, date_str in enumerate(dates):
-                                        col_idx = day_idx + 1
-                                        if col_idx < len(row) and row[col_idx]:
-                                            time_data = row[col_idx].strip()
-                                            if time_data:
-                                                if date_str not in daily_totals:
-                                                    daily_totals[date_str] = {}
-                                                daily_totals[date_str]['total_time'] = time_data
-                        
-                        # Update daily_data with totals
-                        for date_str in daily_data:
-                            totals = daily_totals.get(date_str, {})
-                            daily_data[date_str]['daily_visits'] = totals.get('visits')
-                            daily_data[date_str]['daily_total_time'] = totals.get('total_time')
-                        
-                        return daily_data
-                
+            # Reconstruct the complete table from all pages
+            complete_table = self.reconstruct_complete_table(pdf_path)
+            if not complete_table:
                 return {}
+            
+            # Find dates header row
+            dates_header = None
+            header_idx = None
+            for i, row in enumerate(complete_table):
+                if row and row[0] and 'Date' in row[0]:
+                    dates_header = row
+                    header_idx = i
+                    break
+            
+            if not dates_header:
+                return {}
+            
+            # Extract date strings
+            dates = [cell.strip() for cell in dates_header[1:] if cell and cell.strip()]
+            
+            # Initialize daily_data structure
+            daily_data = {}
+            for date_str in dates:
+                daily_data[date_str] = {
+                    'time_duration_pairs': [],
+                    'daily_visits': None,
+                    'daily_total_time': None
+                }
+            
+            # Process the reconstructed table in time/duration pairs
+            i = header_idx + 1  # Start after header
+            while i < len(complete_table) - 1:
+                current_row = complete_table[i]
+                next_row = complete_table[i + 1] if i + 1 < len(complete_table) else None
+                
+                # Skip if this is a summary row
+                if (current_row and current_row[0] and 
+                    any(keyword in current_row[0].lower() for keyword in ['total entries', 'time outside'])):
+                    # Process summary data
+                    if 'total entries' in current_row[0].lower():
+                        for day_idx, date_str in enumerate(dates):
+                            col_idx = day_idx + 1
+                            if col_idx < len(current_row) and current_row[col_idx]:
+                                visit_data = current_row[col_idx]
+                                match = re.search(r'(\d+)', visit_data)
+                                if match:
+                                    daily_data[date_str]['daily_visits'] = int(match.group(1))
+                    
+                    elif 'time outside' in current_row[0].lower():
+                        for day_idx, date_str in enumerate(dates):
+                            col_idx = day_idx + 1
+                            if col_idx < len(current_row) and current_row[col_idx]:
+                                time_data = current_row[col_idx].strip()
+                                if time_data:
+                                    daily_data[date_str]['daily_total_time'] = time_data
+                    i += 1
+                    continue
+                
+                # Check if we have a time/duration pair
+                is_time_row = False
+                is_duration_row = False
+                
+                # Check current row for time data
+                if current_row:
+                    for col_idx in range(1, min(len(current_row), len(dates) + 1)):
+                        cell = current_row[col_idx]
+                        if cell and cell.strip() and (':' in cell or ' - ' in cell):
+                            is_time_row = True
+                            break
+                
+                # Check next row for duration data  
+                if next_row:
+                    for col_idx in range(1, min(len(next_row), len(dates) + 1)):
+                        cell = next_row[col_idx]
+                        if cell and cell.strip() and any(unit in cell.lower() for unit in ['h', 'mins', 'min', 's']):
+                            is_duration_row = True
+                            break
+                
+                # Process time/duration pair
+                if is_time_row:
+                    time_row = current_row
+                    duration_row = next_row if is_duration_row else None
+                    
+                    # Process each day
+                    for day_idx, date_str in enumerate(dates):
+                        col_idx = day_idx + 1
+                        
+                        # Get time data
+                        time_cell = time_row[col_idx] if col_idx < len(time_row) else None
+                        duration_cell = duration_row[col_idx] if duration_row and col_idx < len(duration_row) else None
+                        
+                        if time_cell and time_cell.strip():
+                            time_str = time_cell.strip()
+                            duration_str = duration_cell.strip() if duration_cell else None
+                            
+                            # Parse the time entry
+                            if ' - ' in time_str:
+                                # Range format "HH:MM - HH:MM"
+                                parts = time_str.split(' - ')
+                                if len(parts) == 2:
+                                    daily_data[date_str]['time_duration_pairs'].append({
+                                        'exit_time': parts[0].strip(),
+                                        'entry_time': parts[1].strip(),
+                                        'duration': duration_str,
+                                        'type': 'complete_session'
+                                    })
+                            else:
+                                # Single timestamp
+                                daily_data[date_str]['time_duration_pairs'].append({
+                                    'timestamp': time_str,
+                                    'duration': duration_str,
+                                    'type': 'single_timestamp'
+                                })
+                    
+                    # Skip both time and duration rows if they're paired
+                    i += 2 if is_duration_row else 1
+                else:
+                    i += 1
+            
+            return daily_data
                 
         except Exception as e:
             self.errors.append(f"Error extracting times from {pdf_path}: {e}")
