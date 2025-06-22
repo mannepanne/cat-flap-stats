@@ -10,7 +10,39 @@ from datetime import datetime
 
 def create_session_key(df):
     """Create composite key for duplicate detection using date + session + times"""
-    return df['date'].astype(str) + '_' + df['session_number'].astype(str) + '_' + df['exit_time'].astype(str) + '_' + df['entry_time'].astype(str)
+    # Find the date column (might be named differently)
+    date_col = None
+    for col in ['date', 'Date', 'DATE', 'day', 'Day']:
+        if col in df.columns:
+            date_col = col
+            break
+    
+    if date_col is None:
+        print(f"Available columns: {list(df.columns)}")
+        raise KeyError("No date column found in dataset")
+    
+    # Find other required columns
+    session_col = None
+    for col in ['session_number', 'session', 'Session', 'session_num']:
+        if col in df.columns:
+            session_col = col
+            break
+    
+    exit_col = None
+    for col in ['exit_time', 'Exit_Time', 'exit', 'Exit']:
+        if col in df.columns:
+            exit_col = col
+            break
+    
+    entry_col = None
+    for col in ['entry_time', 'Entry_Time', 'entry', 'Entry']:
+        if col in df.columns:
+            entry_col = col
+            break
+    
+    print(f"Using columns: date='{date_col}', session='{session_col}', exit='{exit_col}', entry='{entry_col}'")
+    
+    return df[date_col].astype(str) + '_' + df[session_col].astype(str) + '_' + df[exit_col].astype(str) + '_' + df[entry_col].astype(str)
 
 def main():
     print('=== Dataset Merge with Duplicate Detection ===')
@@ -28,6 +60,9 @@ def main():
     try:
         new_df = pd.read_csv('processed_data.csv')
         print(f'New data has {len(new_df)} sessions')
+        print(f'CSV columns: {list(new_df.columns)}')
+        print(f'First few rows:')
+        print(new_df.head())
     except FileNotFoundError:
         print('ERROR: No processed_data.csv found')
         sys.exit(1)
@@ -88,8 +123,21 @@ def main():
         f.write(f'Total sessions in dataset: {len(final_df)}\n')
         
         if len(final_df) > 0:
-            dates = pd.to_datetime(final_df['date'])
-            f.write(f'Dataset date range: {dates.min().strftime("%Y-%m-%d")} to {dates.max().strftime("%Y-%m-%d")}\n')
+            # Find the date column
+            date_col = None
+            for col in ['date', 'Date', 'DATE', 'day', 'Day']:
+                if col in final_df.columns:
+                    date_col = col
+                    break
+            
+            if date_col:
+                try:
+                    dates = pd.to_datetime(final_df[date_col])
+                    f.write(f'Dataset date range: {dates.min().strftime("%Y-%m-%d")} to {dates.max().strftime("%Y-%m-%d")}\n')
+                except Exception as e:
+                    f.write(f'Could not determine date range: {e}\n')
+            else:
+                f.write(f'Available columns: {list(final_df.columns)}\n')
     
     # Handle JSON dataset merging
     print('Processing JSON dataset...')
