@@ -79,7 +79,7 @@ Not applicable - personal tool
 - Date header row with weekdays and dates
 - "Left - Entered" row with entry/exit times (format: "HH:MM - HH:MM" or single "HH:MM")
 - "Duration" row with time spent outside per day
-- "Total Entries" row with visit counts per day  
+- "Total Entries" row with visit counts per day
 - "Time Outside" row with daily totals
 
 ✅ **PRODUCTION EXTRACTOR COMPLETE:** Built `cat_flap_extractor_v5.py` with comprehensive robustness features:
@@ -191,12 +191,14 @@ python -m pytest test_cat_flap_extractor.py::TestIntegrationWithValidationData -
 **Extraction Features:**
 - **Cross-page table reconstruction**: Handles PDF tables split across multiple pages
 - **Arbitrary page break support**: Works regardless of where page breaks occur within data
-- **Perfect time-duration pairing**: Maintains alignment even when split by page breaks  
+- **Perfect time-duration pairing**: Maintains alignment even when split by page breaks
 - **100% validation accuracy**: Tested against manually corrected reference data
 - **Universal PDF compatibility**: Single-page and multi-page PDFs handled seamlessly
 
 ## Recommendation: Where do we go next?
-Complete PRD documentation, then proceed to set up PDF reading tools and begin data structure analysis using sample PDFs.
+With a robust PDF file data extractor in place, the next step is to move on to how to incrementally update the dataset every week when a new PDF file is available.
+
+Following that, we should move on to analysis and visualisation.
 
 ## Questions: Any known unknowns? ✅ ANSWERED
 - ✅ **PDF library choice:** pdfplumber works excellently for extracting structured tables and text
@@ -209,7 +211,7 @@ Complete PRD documentation, then proceed to set up PDF reading tools and begin d
 ## User story narrative
 
 **< user_story >** ✅ COMPLETE
-- ID: US-001  
+- ID: US-001
 - Title: Extract individual session data from PDF
 - Description: As a user, I want to extract every individual entry/exit session from a PDF (not just daily summaries) so that I can analyze detailed timing patterns and behavior
 - Acceptance criteria: Script extracts each session with exit time, entry time, duration, session number within day, handles single PDFs and directories, outputs detailed CSV/JSON
@@ -308,7 +310,7 @@ The following mathematically precise rules were developed to correctly determine
 
 Each outdoor session has:
 - **Exit time**: When the cat goes outside through the flap
-- **Entry time**: When the cat comes back inside through the flap  
+- **Entry time**: When the cat comes back inside through the flap
 - **Duration**: Time spent outside during that session
 
 ### Rule 1: Complete Sessions (Two Timestamps)
@@ -332,14 +334,14 @@ Example: `00:21` with duration `21:40 mins`
 - Duration = 21 minutes 40 seconds
 - Since duration ≈ time since midnight → **ENTRY** (cat was outside overnight, came in at 00:21)
 
-### Rule 4: Afternoon/Evening Single Timestamp (After 12:00)  
+### Rule 4: Afternoon/Evening Single Timestamp (After 12:00)
 If timestamp is after 12:00 (midday) AND duration < 12 hours:
 - **If duration ≈ time until midnight → EXIT**
 - **Otherwise → ENTRY**
 
 Example: `22:24` with duration `01:35 h`
 - 22:24 = 96 minutes until midnight
-- Duration = 1h 35min = 95 minutes  
+- Duration = 1h 35min = 95 minutes
 - Since duration ≈ time until midnight → **EXIT** (cat went out and stayed out until midnight)
 
 ### Rule 5: Cross-Midnight Session Detection
@@ -347,7 +349,7 @@ When consecutive days have single timestamps that form overnight sessions:
 - **Last timestamp of day + duration ≈ time to midnight = EXIT**
 - **First timestamp of next day + duration ≈ time from midnight = ENTRY**
 
-Example: 
+Example:
 - Monday: `22:24` (1h 35min) → EXIT (stays out 1h 35min until midnight)
 - Tuesday: `00:21` (21min 40s) → ENTRY (was outside for 21min 40s since midnight)
 - **Result**: One cross-midnight session from Monday 22:24 (EXIT) to Tuesday 00:21 (ENTRY)
@@ -368,7 +370,7 @@ Rationale: Morning entries (cat was let out via door, returns via flap) and even
 ### Rule 8: Validation Checks
 After extraction:
 - **Duration validation**: Sum of session durations should be within ±10 minutes of daily total
-- **Session count validation**: Number of complete sessions should be within ±1 of reported daily visits  
+- **Session count validation**: Number of complete sessions should be within ±1 of reported daily visits
 - **State consistency**: Exit/entry balance should be maintained across days
 
 ### Implementation Notes
