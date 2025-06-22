@@ -61,6 +61,45 @@ def main():
         new_df = pd.read_csv('processed_data.csv')
         print(f'New data has {len(new_df)} sessions')
         print(f'CSV columns: {list(new_df.columns)}')
+        
+        # Check if the new data is empty (only headers)
+        if len(new_df) == 0:
+            print('New PDF contains no cat flap usage data - no sessions to add')
+            print('Creating processing report for empty PDF...')
+            
+            # Create processing summary report for empty file
+            with open('duplicate_report.txt', 'w') as f:
+                f.write(f'Duplicate Detection Report\n')
+                f.write(f'========================\n')
+                f.write(f'New sessions processed: 0\n')
+                f.write(f'Duplicate sessions found: 0\n')
+                f.write(f'Unique new sessions added: 0\n')
+                
+                # Get current dataset count
+                if len(master_df) > 0:
+                    f.write(f'Total sessions in dataset: {len(master_df)}\n')
+                    
+                    # Find the date column for range
+                    date_col = None
+                    for col in ['date_full', 'date', 'Date', 'DATE', 'day', 'Day', 'date_str']:
+                        if col in master_df.columns:
+                            date_col = col
+                            break
+                    
+                    if date_col:
+                        try:
+                            dates = pd.to_datetime(master_df[date_col])
+                            f.write(f'Dataset date range: {dates.min().strftime("%Y-%m-%d")} to {dates.max().strftime("%Y-%m-%d")}\n')
+                        except Exception as e:
+                            f.write(f'Could not determine date range: {e}\n')
+                else:
+                    f.write(f'Total sessions in dataset: 0\n')
+                
+                f.write(f'Note: PDF contained no cat flap usage data\n')
+            
+            print('Empty PDF processing completed successfully')
+            return 0
+        
         print(f'First few rows:')
         print(new_df.head())
     except FileNotFoundError:

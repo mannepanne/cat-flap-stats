@@ -93,23 +93,53 @@ jobs:
         ls -la temp_upload.pdf
         echo "Starting extraction..."
         
-        # Run the extractor on the downloaded PDF
-        python3 cat_flap_extractor_v5.py temp_upload.pdf --format both --output processed_data
+        # Run the extractor on the downloaded PDF and capture output
+        EXTRACTOR_OUTPUT=$(python3 cat_flap_extractor_v5.py temp_upload.pdf --format both --output processed_data 2>&1)
+        EXTRACTOR_EXIT_CODE=$?
         
-        echo "Extractor completed. Checking output files..."
+        echo "Extractor output:"
+        echo "$EXTRACTOR_OUTPUT"
+        echo "Extractor exit code: $EXTRACTOR_EXIT_CODE"
+        
+        echo "Checking output files..."
         ls -la processed_data* || echo "No processed_data files found"
         
-        # Check if processing succeeded
-        if [ ! -f "processed_data.csv" ] || [ ! -f "processed_data.json" ]; then
-          echo "PDF processing failed - output files not found"
+        # Check if extractor reported no data
+        if echo "$EXTRACTOR_OUTPUT" | grep -q "No data extracted"; then
+          echo "PDF contains no cat flap usage data - creating empty output files"
+          
+          # Create empty CSV with headers
+          echo "filename,report_date,report_date_range,report_year,pet_name,age,weight,date_str,date_full,session_number,exit_time,entry_time,duration,daily_total_visits_PDF,daily_total_time_outside_PDF,daily_total_visits_calculated,daily_total_time_outside_calculated,extracted_at" > processed_data.csv
+          
+          # Create empty JSON with metadata
+          cat > processed_data.json << 'EOF'
+{
+  "metadata": {
+    "filename": "temp_upload.pdf",
+    "extraction_status": "no_data",
+    "extraction_note": "PDF contains no cat flap usage data",
+    "total_sessions": 0,
+    "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ)"
+  },
+  "sessions": []
+}
+EOF
+          
+          echo "Empty output files created for PDF with no data"
+        elif [ ! -f "processed_data.csv" ] || [ ! -f "processed_data.json" ]; then
+          echo "PDF processing failed - output files not found and no 'No data extracted' message"
           echo "Contents of directory after processing:"
           ls -la
           exit 1
         fi
         
-        echo "PDF processing completed successfully"
-        echo "CSV file size: $(wc -c < processed_data.csv) bytes"
-        echo "JSON file size: $(wc -c < processed_data.json) bytes"
+        echo "PDF processing completed"
+        if [ -f "processed_data.csv" ]; then
+          echo "CSV file size: $(wc -c < processed_data.csv) bytes"
+        fi
+        if [ -f "processed_data.json" ]; then
+          echo "JSON file size: $(wc -c < processed_data.json) bytes"
+        fi
         
     - name: Backup existing dataset
       run: |
@@ -152,10 +182,20 @@ jobs:
         echo "" >> processing_report.md
         echo "## Processing Results" >> processing_report.md
         echo "- ✅ PDF downloaded successfully" >> processing_report.md
-        echo "- ✅ Data extraction completed" >> processing_report.md
-        echo "- ✅ Duplicate detection performed" >> processing_report.md
-        echo "- ✅ Dataset backup created" >> processing_report.md
-        echo "- ✅ Master dataset updated" >> processing_report.md
+        
+        # Check if this was an empty PDF (no data)
+        if grep -q "PDF contained no cat flap usage data" duplicate_report.txt; then
+          echo "- ℹ️ PDF contained no cat flap usage data" >> processing_report.md
+          echo "- ✅ Empty file processing completed" >> processing_report.md
+          echo "- ✅ Dataset backup created" >> processing_report.md
+          echo "- ✅ Processing report generated" >> processing_report.md
+        else
+          echo "- ✅ Data extraction completed" >> processing_report.md
+          echo "- ✅ Duplicate detection performed" >> processing_report.md
+          echo "- ✅ Dataset backup created" >> processing_report.md
+          echo "- ✅ Master dataset updated" >> processing_report.md
+        fi
+        
         echo "" >> processing_report.md
         echo "## Duplicate Detection" >> processing_report.md
         cat duplicate_report.txt >> processing_report.md
@@ -197,17 +237,30 @@ jobs:
       env:
         RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       run: |
+        # Check if this was an empty PDF and customize email accordingly
+        if grep -q "PDF contained no cat flap usage data" duplicate_report.txt; then
+          # Email for empty PDF
+          EMAIL_SUBJECT="ℹ️ PDF Processed (No Data) - ${{ github.event.client_payload.filename }}"
+          EMAIL_HTML="<h2>PDF Processing Complete</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p><strong>Result:</strong> This PDF contained no cat flap usage data (Sven didn't use the cat flap during this period).</p><p>The master dataset remains unchanged. This is normal for periods when your cat doesn't use the flap.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>"
+          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed. Result: No cat flap usage data found in this PDF (normal for inactive periods). The dataset remains unchanged."
+        else
+          # Email for PDF with data
+          EMAIL_SUBJECT="✅ PDF Processing Complete - ${{ github.event.client_payload.filename }}"
+          EMAIL_HTML="<h2>PDF Processing Successful</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p>The master dataset has been updated with new cat flap usage data and is available for download.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>"
+          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated with new data. Visit the dashboard to download the latest data."
+        fi
+        
         # Send processing completion email
         curl -X POST "https://api.resend.com/emails" \
           -H "Authorization: Bearer $RESEND_API_KEY" \
           -H "Content-Type: application/json" \
-          -d '{
-            "from": "Cat Flap Stats <noreply@echoreflex.me>",
-            "to": ["${{ github.event.client_payload.uploaded_by }}"],
-            "subject": "✅ PDF Processing Complete - ${{ github.event.client_payload.filename }}",
-            "html": "<h2>PDF Processing Successful</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p>The master dataset has been updated and is available for download.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>",
-            "text": "PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated. Visit the dashboard to download the latest data."
-          }'
+          -d "{
+            \"from\": \"Cat Flap Stats <noreply@echoreflex.me>\",
+            \"to\": [\"${{ github.event.client_payload.uploaded_by }}\"],
+            \"subject\": \"$EMAIL_SUBJECT\",
+            \"html\": \"$EMAIL_HTML\",
+            \"text\": \"$EMAIL_TEXT\"
+          }"
         
         echo "Notification email sent"
         
