@@ -142,13 +142,7 @@ jobs:
           echo "No changes to commit"
         else
           # Commit changes
-          git commit -m "📊 Update dataset: processed ${{ github.event.client_payload.filename }}
-
-- Uploaded by: ${{ github.event.client_payload.uploaded_by }}
-- Processing date: $(date)
-- New sessions added from weekly PDF report
-
-🤖 Automated processing via GitHub Actions"
+          git commit -m "📊 Update dataset: processed ${{ github.event.client_payload.filename }} - uploaded by ${{ github.event.client_payload.uploaded_by }} - 🤖 Automated processing via GitHub Actions"
           
           # Push changes
           git push
