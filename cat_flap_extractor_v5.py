@@ -270,7 +270,7 @@ class ProductionCatFlapExtractor:
                         # Check if this table contains activity data
                         has_activity_data = False
                         for row in table:
-                            if row and any(cell for cell in row if cell and (':' in str(cell) or ' - ' in str(cell) or 'Date' in str(cell) or 'Left - Entered' in str(cell))):
+                            if row and any(cell for cell in row if cell and (':' in str(cell) or ' - ' in str(cell) or 'Date' in str(cell) or 'Left - Entered' in str(cell) or 'Total Entries' in str(cell) or 'Time Outside' in str(cell) or 'visits' in str(cell) or ' h' in str(cell) or 'mins' in str(cell))):
                                 has_activity_data = True
                                 break
                         
@@ -348,7 +348,7 @@ class ProductionCatFlapExtractor:
             
             # Process the reconstructed table in time/duration pairs
             i = header_idx + 1  # Start after header
-            while i < len(complete_table) - 1:
+            while i < len(complete_table):
                 current_row = complete_table[i]
                 next_row = complete_table[i + 1] if i + 1 < len(complete_table) else None
                 
