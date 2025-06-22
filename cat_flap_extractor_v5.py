@@ -185,6 +185,49 @@ class ProductionCatFlapExtractor:
             pass
         
         return None
+
+    def convert_duration_to_hhmm(self, duration_str: str) -> Optional[str]:
+        """Convert duration string to HH:MM format"""
+        hours = self.parse_duration_hours(duration_str)
+        if hours is None:
+            return None
+        
+        total_minutes = int(hours * 60)
+        hours_part = total_minutes // 60
+        minutes_part = total_minutes % 60
+        
+        return f"{hours_part:02d}:{minutes_part:02d}"
+
+    def calculate_daily_totals(self, sessions_for_day: List[Dict]) -> Dict:
+        """Calculate daily totals from extracted session data"""
+        if not sessions_for_day:
+            return {'visits': 0, 'time_outside': '00:00'}
+        
+        # Count visits (exclude overnight continuations - sessions without exit_time)
+        visit_count = 0
+        total_minutes = 0
+        
+        for session in sessions_for_day:
+            # Count as a visit if it has an exit_time (excludes overnight continuations)
+            if session.get('exit_time'):
+                visit_count += 1
+            
+            # Add duration to total time
+            duration_str = session.get('duration')
+            if duration_str:
+                hours = self.parse_duration_hours(duration_str)
+                if hours:
+                    total_minutes += int(hours * 60)
+        
+        # Convert total minutes to HH:MM format
+        total_hours = total_minutes // 60
+        remaining_minutes = total_minutes % 60
+        time_outside = f"{total_hours:02d}:{remaining_minutes:02d}"
+        
+        return {
+            'visits': visit_count,
+            'time_outside': time_outside
+        }
     
     def detect_no_data_period(self, pdf_path: str) -> bool:
         """Detect if this is a 'no data' period"""
@@ -649,8 +692,8 @@ class ProductionCatFlapExtractor:
                         'exit_time': pair['exit_time'],
                         'entry_time': pair['entry_time'],
                         'duration': pair['duration'],
-                        'daily_total_visits': day_data.get('daily_visits'),
-                        'daily_total_time_outside': day_data.get('daily_total_time')
+                        'daily_total_visits_PDF': day_data.get('daily_visits'),
+                        'daily_total_time_outside_PDF': day_data.get('daily_total_time')
                     })
                 
                 elif pair['type'] == 'single_timestamp':
@@ -676,8 +719,8 @@ class ProductionCatFlapExtractor:
                             'exit_time': timestamp,
                             'entry_time': None,
                             'duration': duration_str,
-                            'daily_total_visits': day_data.get('daily_visits'),
-                            'daily_total_time_outside': day_data.get('daily_total_time')
+                            'daily_total_visits_PDF': day_data.get('daily_visits'),
+                            'daily_total_time_outside_PDF': day_data.get('daily_total_time')
                         })
                     else:  # entry
                         sessions.append({
@@ -686,11 +729,28 @@ class ProductionCatFlapExtractor:
                             'exit_time': None,
                             'entry_time': timestamp,
                             'duration': duration_str,
-                            'daily_total_visits': day_data.get('daily_visits'),
-                            'daily_total_time_outside': day_data.get('daily_total_time')
+                            'daily_total_visits_PDF': day_data.get('daily_visits'),
+                            'daily_total_time_outside_PDF': day_data.get('daily_total_time')
                         })
                 
                 session_number += 1
+        
+        # Calculate daily totals from extracted sessions and add to each session
+        sessions_by_date = {}
+        for session in sessions:
+            date_str = session['date_str']
+            if date_str not in sessions_by_date:
+                sessions_by_date[date_str] = []
+            sessions_by_date[date_str].append(session)
+        
+        # Calculate and apply calculated totals to all sessions
+        for date_str, day_sessions in sessions_by_date.items():
+            calculated_totals = self.calculate_daily_totals(day_sessions)
+            
+            # Update all sessions for this day with calculated totals
+            for session in day_sessions:
+                session['daily_total_visits_calculated'] = calculated_totals['visits']
+                session['daily_total_time_outside_calculated'] = calculated_totals['time_outside']
         
         return sessions
     
@@ -859,8 +919,10 @@ class ProductionCatFlapExtractor:
                     'exit_time': session['exit_time'],
                     'entry_time': session['entry_time'],
                     'duration': session['duration'],
-                    'daily_total_visits': session['daily_total_visits'],
-                    'daily_total_time_outside': session['daily_total_time_outside'],
+                    'daily_total_visits_PDF': session['daily_total_visits_PDF'],
+                    'daily_total_time_outside_PDF': session['daily_total_time_outside_PDF'],
+                    'daily_total_visits_calculated': session['daily_total_visits_calculated'],
+                    'daily_total_time_outside_calculated': session['daily_total_time_outside_calculated'],
                     'extracted_at': result['extracted_at']
                 }
                 flattened.append(flat_record)
