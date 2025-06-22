@@ -98,50 +98,33 @@ jobs:
         
     - name: Generate processing report
       run: |
-        # Generate a processing report
-        cat > processing_report.md << EOF
-# PDF Processing Report
+        echo "Generating processing report..."
         
-**Date:** $(date)
-**File:** ${{ github.event.client_payload.filename }}
-**Uploaded by:** ${{ github.event.client_payload.uploaded_by }}
-
-## Processing Results
-- ✅ PDF downloaded successfully
-- ✅ Data extraction completed
-- ✅ Duplicate detection performed
-- ✅ Dataset backup created
-- ✅ Master dataset updated
-
-## Duplicate Detection
-$(cat duplicate_report.txt)
-
-## File Statistics
-- New CSV size: $(wc -c < processed_data.csv) bytes
-- New JSON size: $(wc -c < processed_data.json) bytes
-- Master CSV size: $(wc -c < master_dataset.csv) bytes  
-- Master JSON size: $(wc -c < master_dataset.json) bytes
-
-## Session Summary
-$(python3 -c "
-import pandas as pd
-try:
-    df = pd.read_csv('processed_data.csv')
-    print(f'- Sessions in uploaded PDF: {len(df)}')
-    
-    df_master = pd.read_csv('master_dataset.csv')
-    print(f'- Total sessions in master dataset: {len(df_master)}')
-    
-    # Show date range
-    if len(df_master) > 0:
-        dates = pd.to_datetime(df_master['date'])
-        print(f'- Dataset date range: {dates.min().strftime(\"%Y-%m-%d\")} to {dates.max().strftime(\"%Y-%m-%d\")}')
-except Exception as e:
-    print(f'- Error reading session information: {e}')
-")
-EOF
+        # Create processing report using echo statements to avoid YAML issues
+        echo "# PDF Processing Report" > processing_report.md
+        echo "" >> processing_report.md
+        echo "**Date:** $(date)" >> processing_report.md
+        echo "**File:** ${{ github.event.client_payload.filename }}" >> processing_report.md
+        echo "**Uploaded by:** ${{ github.event.client_payload.uploaded_by }}" >> processing_report.md
+        echo "" >> processing_report.md
+        echo "## Processing Results" >> processing_report.md
+        echo "- ✅ PDF downloaded successfully" >> processing_report.md
+        echo "- ✅ Data extraction completed" >> processing_report.md
+        echo "- ✅ Duplicate detection performed" >> processing_report.md
+        echo "- ✅ Dataset backup created" >> processing_report.md
+        echo "- ✅ Master dataset updated" >> processing_report.md
+        echo "" >> processing_report.md
+        echo "## Duplicate Detection" >> processing_report.md
+        cat duplicate_report.txt >> processing_report.md
+        echo "" >> processing_report.md
+        echo "## File Statistics" >> processing_report.md
+        echo "- New CSV size: $(wc -c < processed_data.csv) bytes" >> processing_report.md
+        echo "- New JSON size: $(wc -c < processed_data.json) bytes" >> processing_report.md
+        echo "- Master CSV size: $(wc -c < master_dataset.csv) bytes" >> processing_report.md
+        echo "- Master JSON size: $(wc -c < master_dataset.json) bytes" >> processing_report.md
+        echo "" >> processing_report.md
         
-        echo "Processing report generated with duplicate detection results"
+        echo "Processing report generated successfully"
         
     - name: Commit updated dataset
       env:
