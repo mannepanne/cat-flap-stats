@@ -12,7 +12,7 @@ def create_session_key(df):
     """Create composite key for duplicate detection using date + session + times"""
     # Find the date column (might be named differently)
     date_col = None
-    for col in ['date', 'Date', 'DATE', 'day', 'Day']:
+    for col in ['date_full', 'date', 'Date', 'DATE', 'day', 'Day', 'date_str']:
         if col in df.columns:
             date_col = col
             break
@@ -75,6 +75,13 @@ def main():
         master_df['session_key'] = create_session_key(master_df)
         new_df['session_key'] = create_session_key(new_df)
         
+        # Find the date column for reporting
+        date_col = None
+        for col in ['date_full', 'date', 'Date', 'DATE', 'day', 'Day', 'date_str']:
+            if col in new_df.columns:
+                date_col = col
+                break
+        
         # Find duplicates and unique sessions
         duplicates = new_df[new_df['session_key'].isin(master_df['session_key'])]
         unique_new = new_df[~new_df['session_key'].isin(master_df['session_key'])]
@@ -88,7 +95,7 @@ def main():
         if duplicates_count > 0:
             print('Duplicate sessions found:')
             for _, dup in duplicates.iterrows():
-                print(f'  - {dup["date"]} session {dup["session_number"]} ({dup["exit_time"]} - {dup["entry_time"]})')
+                print(f'  - {dup[date_col]} session {dup["session_number"]} ({dup["exit_time"]} - {dup["entry_time"]})')
         
         # Only append unique new sessions
         if unique_count > 0:
@@ -125,7 +132,7 @@ def main():
         if len(final_df) > 0:
             # Find the date column
             date_col = None
-            for col in ['date', 'Date', 'DATE', 'day', 'Day']:
+            for col in ['date_full', 'date', 'Date', 'DATE', 'day', 'Day', 'date_str']:
                 if col in final_df.columns:
                     date_col = col
                     break
