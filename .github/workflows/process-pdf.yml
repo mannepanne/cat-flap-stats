@@ -112,18 +112,16 @@ jobs:
           echo "filename,report_date,report_date_range,report_year,pet_name,age,weight,date_str,date_full,session_number,exit_time,entry_time,duration,daily_total_visits_PDF,daily_total_time_outside_PDF,daily_total_visits_calculated,daily_total_time_outside_calculated,extracted_at" > processed_data.csv
           
           # Create empty JSON with metadata
-          cat > processed_data.json << 'EOF'
-{
-  "metadata": {
-    "filename": "temp_upload.pdf",
-    "extraction_status": "no_data",
-    "extraction_note": "PDF contains no cat flap usage data",
-    "total_sessions": 0,
-    "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ)"
-  },
-  "sessions": []
-}
-EOF
+          echo '{
+            "metadata": {
+              "filename": "temp_upload.pdf",
+              "extraction_status": "no_data",
+              "extraction_note": "PDF contains no cat flap usage data",
+              "total_sessions": 0,
+              "generated_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ)'"
+            },
+            "sessions": []
+          }' > processed_data.json
           
           echo "Empty output files created for PDF with no data"
         elif [ ! -f "processed_data.csv" ] || [ ! -f "processed_data.json" ]; then
