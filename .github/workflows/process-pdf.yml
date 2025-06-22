@@ -51,13 +51,28 @@ jobs:
     - name: Process PDF with extractor
       run: |
         echo "Processing PDF with cat_flap_extractor_v5.py"
+        echo "Current directory: $(pwd)"
+        echo "Files in current directory:"
+        ls -la
+        echo "Python files available:"
+        ls -la *.py || echo "No Python files found"
+        echo "Checking if extractor exists:"
+        ls -la cat_flap_extractor_v5.py || echo "Extractor not found"
+        echo "PDF file to process:"
+        ls -la temp_upload.pdf
+        echo "Starting extraction..."
         
         # Run the extractor on the downloaded PDF
         python3 cat_flap_extractor_v5.py temp_upload.pdf --format both --output processed_data
         
+        echo "Extractor completed. Checking output files..."
+        ls -la processed_data* || echo "No processed_data files found"
+        
         # Check if processing succeeded
         if [ ! -f "processed_data.csv" ] || [ ! -f "processed_data.json" ]; then
           echo "PDF processing failed - output files not found"
+          echo "Contents of directory after processing:"
+          ls -la
           exit 1
         fi
         
