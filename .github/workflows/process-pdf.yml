@@ -89,43 +89,8 @@ jobs:
       run: |
         echo "Checking for duplicates and merging with master dataset"
         
-        # Run the dataset merge script
+        # Run the dataset merge script (handles both CSV and JSON)
         python3 .github/scripts/merge_datasets.py
-        
-        if [ ! -f "master_dataset.json" ]; then
-          echo "Initializing master JSON dataset"
-          cp processed_data.json master_dataset.json
-        else
-          echo "Merging with existing JSON dataset"
-          # For JSON: merge arrays (this is a simplified merge - in production might need more sophisticated merging)
-          python3 -c "
-import json
-import sys
-
-# Read existing dataset
-with open('master_dataset.json', 'r') as f:
-    existing = json.load(f)
-
-# Read new data
-with open('processed_data.json', 'r') as f:
-    new_data = json.load(f)
-
-# Simple merge - append new sessions to existing
-if 'sessions' in existing and 'sessions' in new_data:
-    existing['sessions'].extend(new_data['sessions'])
-    existing['metadata']['total_sessions'] = len(existing['sessions'])
-    existing['metadata']['last_updated'] = new_data['metadata']['generated_at']
-else:
-    # If structure is different, replace entirely
-    existing = new_data
-
-# Write merged dataset
-with open('master_dataset.json', 'w') as f:
-    json.dump(existing, f, indent=2)
-    
-print('JSON datasets merged successfully')
-"
-        fi
         
         echo "Dataset merge completed"
         echo "Final CSV size: $(wc -c < master_dataset.csv) bytes"

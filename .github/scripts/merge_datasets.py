@@ -5,6 +5,7 @@
 import pandas as pd
 import json
 import sys
+import os
 from datetime import datetime
 
 def create_session_key(df):
@@ -89,6 +90,41 @@ def main():
         if len(final_df) > 0:
             dates = pd.to_datetime(final_df['date'])
             f.write(f'Dataset date range: {dates.min().strftime("%Y-%m-%d")} to {dates.max().strftime("%Y-%m-%d")}\n')
+    
+    # Handle JSON dataset merging
+    print('Processing JSON dataset...')
+    try:
+        new_json = None
+        with open('processed_data.json', 'r') as f:
+            new_json = json.load(f)
+        
+        if os.path.exists('master_dataset.json'):
+            print('Merging with existing JSON dataset')
+            with open('master_dataset.json', 'r') as f:
+                existing_json = json.load(f)
+            
+            # Simple merge - append new sessions to existing
+            if 'sessions' in existing_json and 'sessions' in new_json:
+                existing_json['sessions'].extend(new_json['sessions'])
+                existing_json['metadata']['total_sessions'] = len(existing_json['sessions'])
+                existing_json['metadata']['last_updated'] = new_json['metadata'].get('generated_at', datetime.now().isoformat())
+            else:
+                # If structure is different, replace entirely
+                existing_json = new_json
+            
+            # Write merged JSON dataset
+            with open('master_dataset.json', 'w') as f:
+                json.dump(existing_json, f, indent=2)
+        else:
+            print('Initializing master JSON dataset')
+            with open('master_dataset.json', 'w') as f:
+                json.dump(new_json, f, indent=2)
+        
+        print('JSON dataset processed successfully')
+        
+    except Exception as e:
+        print(f'Warning: JSON processing failed: {e}')
+        print('Continuing with CSV-only processing')
     
     print('Dataset merge completed successfully')
     return 0
