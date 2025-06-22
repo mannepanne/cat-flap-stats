@@ -1,0 +1,33 @@
+# ABOUT: CloudFlare Workers configuration for Cat Flap Stats upload interface
+# ABOUT: Defines environment variables, KV bindings, and deployment settings
+
+name = "cat-flap-stats"
+main = "index.js"
+compatibility_date = "2024-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Enable logging
+[observability]
+enabled = true
+
+# For custom domain later:
+# [env.production]
+# zone_id = "your-zone-id-here"
+# route = "catflapstats.yourdomain.com/*"
+
+# KV namespace bindings
+[[kv_namespaces]]
+binding = "CAT_FLAP_KV"
+id = "2f3dc218aa4148e3a18f31683104c3ae"
+preview_id = "b2615c68aa1749de92e76ba8241ad666"
+
+# Environment variables
+[vars]
+BASE_URL = "https://cat-flap-stats.herrings.workers.dev"
+GITHUB_WEBHOOK_SECRET = "temp-webhook-secret"
+GITHUB_REPO_OWNER = "mannepanne"
+GITHUB_REPO_NAME = "cat-flap-stats"
+
+# For email notifications (to be configured later)
+# SENDGRID_API_KEY = "your-sendgrid-api-key"
+# FROM_EMAIL = "noreply@yourdomain.com"

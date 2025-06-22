@@ -92,3 +92,9 @@ archive/
 SAMPLE_TESTDATA/
 SAMPLE_VALIDATIONDATA/
 BULK_PRODUCTIONDATA/
+
+# CloudFlare Workers
+cloudflare-workers/node_modules/
+cloudflare-workers/.wrangler/
+cloudflare-workers/package-lock.json
+cloudflare-workers/wrangler.lock
