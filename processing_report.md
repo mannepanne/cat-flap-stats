@@ -1,6 +1,6 @@
 # PDF Processing Report
 
-**Date:** Sun Jun 22 21:43:56 UTC 2025
+**Date:** Sun Jun 22 21:45:51 UTC 2025
 **File:** SvenVarysSootyHultbergWong_Activity_Report_17-03-2024.pdf
 **Uploaded by:** magnus.hultberg@gmail.com
 
@@ -15,8 +15,8 @@
 Duplicate Detection Report
 ========================
 New sessions processed: 16
-Duplicate sessions found: 0
-Unique new sessions added: 16
+Duplicate sessions found: 16
+Unique new sessions added: 0
 Total sessions in dataset: 72
 Dataset date range: 2024-02-05 to 2024-03-17
 
