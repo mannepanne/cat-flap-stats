@@ -1,6 +1,3 @@
-# ABOUT: GitHub Actions workflow for processing uploaded PDF files
-# ABOUT: Triggered by CloudFlare webhook, processes PDF using Python extractor, updates dataset
-
 name: Process Cat Flap PDF
 
 on:
