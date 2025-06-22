@@ -85,18 +85,81 @@ jobs:
           echo "Backed up existing JSON dataset"
         fi
         
-    - name: Merge with master dataset
+    - name: Check for duplicates and merge with master dataset
       run: |
-        echo "Merging new data with master dataset"
+        echo "Checking for duplicates and merging with master dataset"
         
         # If master datasets don't exist, initialize them
         if [ ! -f "master_dataset.csv" ]; then
           echo "Initializing master CSV dataset"
           cp processed_data.csv master_dataset.csv
         else
-          echo "Merging with existing CSV dataset"
-          # For CSV: append new rows (skip header of new file)
-          tail -n +2 processed_data.csv >> master_dataset.csv
+          echo "Checking for duplicate data before merging"
+          
+          # Use Python to detect and handle duplicates intelligently
+          python3 -c "
+import pandas as pd
+import json
+from datetime import datetime
+
+print('Loading datasets for duplicate detection...')
+
+# Load existing master dataset
+master_df = pd.read_csv('master_dataset.csv')
+print(f'Master dataset has {len(master_df)} sessions')
+
+# Load new data
+new_df = pd.read_csv('processed_data.csv')
+print(f'New data has {len(new_df)} sessions')
+
+# Create a composite key for duplicate detection
+# Using date + session_number + exit_time + entry_time + duration
+def create_session_key(df):
+    return df['date'].astype(str) + '_' + df['session_number'].astype(str) + '_' + df['exit_time'].astype(str) + '_' + df['entry_time'].astype(str)
+
+if len(master_df) > 0:
+    master_df['session_key'] = create_session_key(master_df)
+    new_df['session_key'] = create_session_key(new_df)
+    
+    # Find duplicates
+    duplicates = new_df[new_df['session_key'].isin(master_df['session_key'])]
+    unique_new = new_df[~new_df['session_key'].isin(master_df['session_key'])]
+    
+    print(f'Found {len(duplicates)} duplicate sessions')
+    print(f'Found {len(unique_new)} new unique sessions')
+    
+    if len(duplicates) > 0:
+        print('Duplicate sessions found:')
+        for _, dup in duplicates.iterrows():
+            print(f'  - {dup[\"date\"]} session {dup[\"session_number\"]} ({dup[\"exit_time\"]} - {dup[\"entry_time\"]})')
+    
+    # Only append unique new sessions
+    if len(unique_new) > 0:
+        # Remove the session_key column before saving
+        unique_new = unique_new.drop('session_key', axis=1)
+        
+        # Append unique sessions to master dataset
+        combined_df = pd.concat([master_df.drop('session_key', axis=1), unique_new], ignore_index=True)
+        combined_df.to_csv('master_dataset.csv', index=False)
+        print(f'Updated master dataset now has {len(combined_df)} sessions')
+    else:
+        print('No new unique sessions to add - master dataset unchanged')
+        # Remove session_key from master and resave to clean it up
+        master_df.drop('session_key', axis=1).to_csv('master_dataset.csv', index=False)
+else:
+    # Master is empty, just copy new data
+    new_df.to_csv('master_dataset.csv', index=False)
+    print(f'Initialized master dataset with {len(new_df)} sessions')
+
+# Create processing summary
+with open('duplicate_report.txt', 'w') as f:
+    f.write(f'Duplicate Detection Report\\n')
+    f.write(f'========================\\n')
+    f.write(f'New sessions processed: {len(new_df)}\\n')
+    f.write(f'Duplicate sessions found: {len(duplicates) if len(master_df) > 0 else 0}\\n')
+    f.write(f'Unique new sessions added: {len(unique_new) if len(master_df) > 0 else len(new_df)}\\n')
+    f.write(f'Total sessions in dataset: {len(pd.read_csv(\"master_dataset.csv\"))}\\n')
+"
         fi
         
         if [ ! -f "master_dataset.json" ]; then
@@ -151,30 +214,39 @@ print('JSON datasets merged successfully')
 ## Processing Results
 - ✅ PDF downloaded successfully
 - ✅ Data extraction completed
+- ✅ Duplicate detection performed
 - ✅ Dataset backup created
 - ✅ Master dataset updated
 
-## Statistics
+## Duplicate Detection
+$(cat duplicate_report.txt)
+
+## File Statistics
 - New CSV size: $(wc -c < processed_data.csv) bytes
 - New JSON size: $(wc -c < processed_data.json) bytes
 - Master CSV size: $(wc -c < master_dataset.csv) bytes  
 - Master JSON size: $(wc -c < master_dataset.json) bytes
 
-## Session Count
+## Session Summary
 $(python3 -c "
 import pandas as pd
 try:
     df = pd.read_csv('processed_data.csv')
-    print(f'- New sessions extracted: {len(df)}')
+    print(f'- Sessions in uploaded PDF: {len(df)}')
     
     df_master = pd.read_csv('master_dataset.csv')
-    print(f'- Total sessions in dataset: {len(df_master)}')
+    print(f'- Total sessions in master dataset: {len(df_master)}')
+    
+    # Show date range
+    if len(df_master) > 0:
+        dates = pd.to_datetime(df_master['date'])
+        print(f'- Dataset date range: {dates.min().strftime(\"%Y-%m-%d\")} to {dates.max().strftime(\"%Y-%m-%d\")}')
 except Exception as e:
-    print(f'- Error reading session counts: {e}')
+    print(f'- Error reading session information: {e}')
 ")
 EOF
         
-        echo "Processing report generated"
+        echo "Processing report generated with duplicate detection results"
         
     - name: Commit updated dataset
       env:
