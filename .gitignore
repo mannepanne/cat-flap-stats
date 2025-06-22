@@ -79,4 +79,5 @@ temp/
 
 # Data directories - contain PDF files and processed output
 SAMPLE_TESTDATA/
+SAMPLE_VALIDATIONDATA/
 BULK_PRODUCTIONDATA/

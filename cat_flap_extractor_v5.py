@@ -69,6 +69,16 @@ class ProductionCatFlapExtractor:
         except Exception:
             return None
     
+    def parse_date_str_to_datetime(self, date_str: str, report_year: int) -> Optional[datetime]:
+        """Parse date string to datetime for sorting"""
+        full_date = self.convert_date_str_to_full_date(date_str, report_year)
+        if full_date:
+            try:
+                return datetime.strptime(full_date, "%Y-%m-%d")
+            except:
+                pass
+        return None
+    
     def extract_report_info(self, pdf_path: str) -> Dict:
         """Extract basic report information from PDF"""
         try:
@@ -195,8 +205,8 @@ class ProductionCatFlapExtractor:
             pass
         return False
     
-    def extract_all_times_by_day(self, pdf_path: str) -> Dict:
-        """Extract all times for each day with enhanced edge case handling"""
+    def extract_time_duration_pairs_by_day(self, pdf_path: str) -> Dict:
+        """Extract time-duration pairs for each day using proper table structure"""
         try:
             # Check for no-data periods first
             if self.detect_no_data_period(pdf_path):
@@ -204,163 +214,155 @@ class ProductionCatFlapExtractor:
                 return {}
             
             with pdfplumber.open(pdf_path) as pdf:
-                # Collect all table data across pages
-                all_table_data = []
-                
                 for page_num in range(len(pdf.pages)):
                     page = pdf.pages[page_num]
                     text = page.extract_text()
                     
-                    if ('Last 7 days' in text or 
-                        'Total Entries' in text or 
-                        'Time Outside' in text):
-                        
+                    if 'Last 7 days' in text:
                         tables = page.extract_tables()
-                        for table in tables:
-                            if table and len(table) > 0:
-                                all_table_data.extend(table)
-                
-                if not all_table_data:
-                    return {}
-                
-                # Find the date header row
-                date_row_idx = None
-                for i, row in enumerate(all_table_data):
-                    if row and len(row) >= 2 and row[0] and 'Date' in row[0]:
-                        date_row_idx = i
-                        break
-                
-                if date_row_idx is None:
-                    return {}
-                
-                # Extract dates with partial week handling
-                header_row = all_table_data[date_row_idx]
-                dates = []
-                
-                # Handle variable week lengths (partial weeks)
-                num_date_columns = len([cell for cell in header_row[1:] if cell and cell.strip()])
-                
-                if num_date_columns < 4:
-                    self.warnings.append(f"{os.path.basename(pdf_path)}: Partial week detected ({num_date_columns} days)")
-                
-                for cell in header_row[1:]:
-                    if cell and cell.strip():
-                        dates.append(cell.strip())
-                
-                # Find summary rows
-                total_entries_row_idx = None
-                time_outside_row_idx = None
-                
-                for i, row in enumerate(all_table_data):
-                    if row and row[0]:
-                        cell_content = row[0].strip().lower()
-                        if 'total entries' in cell_content:
-                            total_entries_row_idx = i
-                        elif 'time outside' in cell_content:
-                            time_outside_row_idx = i
-                
-                # Extract times for each day
-                daily_data = {}
-                
-                for day_idx, date_str in enumerate(dates):
-                    if not date_str:
-                        continue
-                    
-                    col_idx = day_idx + 1
-                    
-                    # Get daily totals
-                    daily_visits = None
-                    daily_total_time = None
-                    
-                    if total_entries_row_idx and col_idx < len(all_table_data[total_entries_row_idx]):
-                        visit_data = all_table_data[total_entries_row_idx][col_idx]
-                        if visit_data:
-                            match = re.search(r'(\d+)', visit_data)
-                            if match:
-                                daily_visits = int(match.group(1))
-                    
-                    if time_outside_row_idx and col_idx < len(all_table_data[time_outside_row_idx]):
-                        daily_total_time = all_table_data[time_outside_row_idx][col_idx]
-                        if daily_total_time:
-                            daily_total_time = daily_total_time.strip()
-                    
-                    # Extract all times for this day
-                    day_times = []
-                    day_durations = []
-                    
-                    for row_idx in range(date_row_idx + 1, len(all_table_data)):
-                        row = all_table_data[row_idx]
-                        
-                        # Skip summary rows
-                        if (row and row[0] and 
-                            any(keyword in row[0].lower() 
-                                for keyword in ['total entries', 'time outside'])):
-                            break
-                        
-                        if (row and len(row) > col_idx and 
-                            row[col_idx] and row[col_idx].strip()):
+                        if not tables:
+                            continue
                             
-                            cell_data = row[col_idx].strip()
+                        table = tables[0]  # Main activity table
+                        if not table or len(table) < 2:
+                            continue
+                        
+                        # Find date header row
+                        header_row = None
+                        for row in table:
+                            if row and row[0] and 'Date' in row[0]:
+                                header_row = row
+                                break
+                        
+                        if not header_row:
+                            continue
+                        
+                        # Extract date strings
+                        dates = [cell.strip() for cell in header_row[1:] if cell and cell.strip()]
+                        
+                        # Extract time-duration pairs for each day
+                        daily_data = {}
+                        
+                        # Go through table rows in pairs (time row, then duration row)
+                        i = 1  # Start after header row
+                        while i < len(table) - 1:
+                            time_row = table[i]
+                            duration_row = table[i + 1]
                             
-                            # Check if this is a time or duration
-                            if any(char in cell_data for char in ['h', 'm', 's']):
-                                # This is a duration
-                                day_durations.append(cell_data)
-                            else:
-                                # This is time data
-                                times = self.parse_time_range(cell_data)
-                                day_times.extend(times)
-                    
-                    daily_data[date_str] = {
-                        'times': day_times,
-                        'durations': day_durations,
-                        'daily_visits': daily_visits,
-                        'daily_total_time': daily_total_time
-                    }
+                            # Skip if this is a summary row
+                            if (time_row and time_row[0] and 
+                                any(keyword in time_row[0].lower() for keyword in ['total entries', 'time outside'])):
+                                break
+                            
+                            # Process each day for this time/duration pair
+                            for day_idx, date_str in enumerate(dates):
+                                col_idx = day_idx + 1
+                                
+                                if date_str not in daily_data:
+                                    daily_data[date_str] = {
+                                        'time_duration_pairs': [],
+                                        'daily_visits': None,
+                                        'daily_total_time': None
+                                    }
+                                
+                                # Get time and duration data for this day
+                                time_cell = time_row[col_idx] if col_idx < len(time_row) else None
+                                duration_cell = duration_row[col_idx] if col_idx < len(duration_row) else None
+                                
+                                if time_cell and time_cell.strip():
+                                    time_str = time_cell.strip()
+                                    duration_str = duration_cell.strip() if duration_cell else None
+                                    
+                                    # Parse the time entry
+                                    if ' - ' in time_str:
+                                        # Range format "HH:MM - HH:MM"
+                                        parts = time_str.split(' - ')
+                                        if len(parts) == 2:
+                                            daily_data[date_str]['time_duration_pairs'].append({
+                                                'exit_time': parts[0].strip(),
+                                                'entry_time': parts[1].strip(),
+                                                'duration': duration_str,
+                                                'type': 'complete_session'
+                                            })
+                                    else:
+                                        # Single timestamp
+                                        daily_data[date_str]['time_duration_pairs'].append({
+                                            'timestamp': time_str,
+                                            'duration': duration_str,
+                                            'type': 'single_timestamp'
+                                        })
+                            
+                            i += 2  # Skip to next time/duration pair
+                            
+                        # Extract daily totals (need to look for summary rows after the main table)
+                        daily_totals = {}
+                        
+                        # Look through the full table for summary rows
+                        for row in table:
+                            if row and row[0]:
+                                if 'total entries' in row[0].lower():
+                                    for day_idx, date_str in enumerate(dates):
+                                        col_idx = day_idx + 1
+                                        if col_idx < len(row) and row[col_idx]:
+                                            visit_data = row[col_idx]
+                                            match = re.search(r'(\d+)', visit_data)
+                                            if match:
+                                                if date_str not in daily_totals:
+                                                    daily_totals[date_str] = {}
+                                                daily_totals[date_str]['visits'] = int(match.group(1))
+                                
+                                elif 'time outside' in row[0].lower():
+                                    for day_idx, date_str in enumerate(dates):
+                                        col_idx = day_idx + 1
+                                        if col_idx < len(row) and row[col_idx]:
+                                            time_data = row[col_idx].strip()
+                                            if time_data:
+                                                if date_str not in daily_totals:
+                                                    daily_totals[date_str] = {}
+                                                daily_totals[date_str]['total_time'] = time_data
+                        
+                        # Update daily_data with totals
+                        for date_str in daily_data:
+                            totals = daily_totals.get(date_str, {})
+                            daily_data[date_str]['daily_visits'] = totals.get('visits')
+                            daily_data[date_str]['daily_total_time'] = totals.get('total_time')
+                        
+                        return daily_data
                 
-                return daily_data
+                return {}
                 
         except Exception as e:
             self.errors.append(f"Error extracting times from {pdf_path}: {e}")
             return {}
     
-    def validate_state_with_duration(self, time_str: str, duration_str: str, predicted_state: str, pdf_filename: str, date_str: str) -> str:
-        """Use duration clues to validate and potentially correct state prediction"""
-        if not duration_str:
-            return predicted_state
+    def extract_all_times_by_day(self, pdf_path: str) -> Dict:
+        """Extract all times for each day - wrapper for backward compatibility"""
+        structured_data = self.extract_time_duration_pairs_by_day(pdf_path)
         
-        duration_hours = self.parse_duration_hours(duration_str)
-        if duration_hours is None:
-            return predicted_state
+        # Convert to old format for compatibility with existing logic
+        daily_data = {}
+        for date_str, day_data in structured_data.items():
+            times = []
+            durations = []
+            
+            for pair in day_data['time_duration_pairs']:
+                if pair['type'] == 'complete_session':
+                    times.extend([pair['exit_time'], pair['entry_time']])
+                    durations.append(pair['duration'])
+                elif pair['type'] == 'single_timestamp':
+                    times.append(pair['timestamp'])
+                    durations.append(pair['duration'])
+            
+            daily_data[date_str] = {
+                'times': times,
+                'durations': durations,
+                'time_duration_pairs': day_data['time_duration_pairs'],  # Keep structured data too
+                'daily_visits': day_data['daily_visits'],
+                'daily_total_time': day_data['daily_total_time']
+            }
         
-        # Duration-based state validation rules
-        confidence_level = "medium"
-        
-        if duration_hours > 15:
-            # Long duration + single time = EXIT (time to midnight pattern)
-            if predicted_state == "exit":
-                confidence_level = "high"
-            else:
-                self.confidence_issues.append(
-                    f"{pdf_filename} - {date_str}: Long duration ({duration_str}) suggests EXIT, "
-                    f"but state tracking predicted {predicted_state}"
-                )
-                predicted_state = "exit"
-                confidence_level = "corrected"
-        
-        elif duration_hours < 5:
-            # Short duration + single time = ENTRY (remaining time pattern)
-            if predicted_state == "entry":
-                confidence_level = "high"
-            else:
-                self.confidence_issues.append(
-                    f"{pdf_filename} - {date_str}: Short duration ({duration_str}) suggests ENTRY, "
-                    f"but state tracking predicted {predicted_state}"
-                )
-                predicted_state = "entry"
-                confidence_level = "corrected"
-        
-        return predicted_state
+        return daily_data
+    
     
     def validate_sessions_with_tolerance(self, sessions: List[Dict], daily_data: Dict, pdf_filename: str):
         """Validate sessions with tolerance for normal counting differences"""
@@ -396,94 +398,235 @@ class ProductionCatFlapExtractor:
                         f"extracted {extracted_count}, reported {reported_count}"
                     )
     
-    def build_sessions_with_enhanced_validation(self, daily_data: Dict, pdf_filename: str) -> List[Dict]:
-        """Build sessions with enhanced state tracking and duration validation"""
+    def parse_timestamp_to_minutes(self, time_str: str) -> Optional[int]:
+        """Convert HH:MM timestamp to minutes since midnight"""
+        if not time_str or ':' not in time_str:
+            return None
+        try:
+            hours, minutes = time_str.split(':')
+            return int(hours) * 60 + int(minutes)
+        except:
+            return None
+    
+    def determine_single_timestamp_type(self, timestamp: str, duration_str: str, date_str: str, pdf_filename: str) -> str:
+        """Apply Magnus's rules to determine if single timestamp is exit or entry"""
+        if not timestamp or not duration_str:
+            return "entry"  # fallback
+        
+        duration_hours = self.parse_duration_hours(duration_str)
+        if duration_hours is None:
+            return "entry"  # fallback
+        
+        timestamp_minutes = self.parse_timestamp_to_minutes(timestamp)
+        if timestamp_minutes is None:
+            return "entry"  # fallback
+        
+        # Rule 3/4: Use timestamp + duration analysis
+        is_morning = timestamp_minutes < 12 * 60  # before 12:00
+        duration_under_12h = duration_hours < 12
+        
+        if is_morning and duration_under_12h:
+            # Rule 3: Morning timestamp + short duration = ENTRY
+            # (Duration matches time since midnight)
+            expected_since_midnight = timestamp_minutes / 60
+            if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+                self.confidence_issues.append(
+                    f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (since midnight pattern)"
+                )
+                return "entry"
+            else:
+                return "exit"  # Morning exit with different duration
+        
+        elif not is_morning and duration_under_12h:
+            # Rule 4: Afternoon/evening timestamp + short duration = EXIT
+            # (Duration matches time until midnight)
+            minutes_to_midnight = (24 * 60) - timestamp_minutes
+            expected_to_midnight = minutes_to_midnight / 60
+            if abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+                self.confidence_issues.append(
+                    f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (until midnight pattern)"
+                )
+                return "exit"
+            else:
+                return "entry"  # Afternoon entry with different duration
+        
+        # Long duration cases (>= 12h)
+        if duration_hours >= 12:
+            if is_morning:
+                # Rule 7a fallback: Long duration morning = ENTRY
+                return "entry"
+            else:
+                # Rule 7b fallback: Long duration afternoon/evening = EXIT
+                return "exit"
+        
+        # Default fallback rules 7a/7b for ambiguous cases
+        return "entry" if is_morning else "exit"
+    
+    def detect_cross_midnight_sessions(self, all_daily_data: Dict, pdf_filename: str, report_year: int) -> Dict[str, str]:
+        """Detect cross-midnight sessions using Rule 5"""
+        cross_midnight_pairs = {}
+        
+        # Sort dates chronologically for proper cross-midnight detection
+        date_keys = sorted(all_daily_data.keys(), 
+                          key=lambda d: self.parse_date_str_to_datetime(d, report_year) or datetime.min)
+        
+        for i in range(len(date_keys) - 1):
+            today_key = date_keys[i]
+            tomorrow_key = date_keys[i + 1]
+            
+            today_data = all_daily_data[today_key]
+            tomorrow_data = all_daily_data[tomorrow_key]
+            
+            # Check if today ends with single timestamp + duration to midnight
+            if (today_data['times'] and today_data['durations'] and 
+                len(today_data['times']) >= 1 and len(today_data['durations']) >= 1):
+                
+                last_time_today = today_data['times'][-1]
+                last_duration_today = today_data['durations'][-1]
+                
+                # Check if tomorrow starts with single timestamp + duration from midnight
+                if (tomorrow_data['times'] and tomorrow_data['durations'] and 
+                    len(tomorrow_data['times']) >= 1 and len(tomorrow_data['durations']) >= 1):
+                    
+                    first_time_tomorrow = tomorrow_data['times'][0]
+                    first_duration_tomorrow = tomorrow_data['durations'][0]
+                    
+                    # Apply Rule 5 logic
+                    last_timestamp_mins = self.parse_timestamp_to_minutes(last_time_today)
+                    first_timestamp_mins = self.parse_timestamp_to_minutes(first_time_tomorrow)
+                    
+                    if last_timestamp_mins and first_timestamp_mins:
+                        # Check if last timestamp + duration ≈ time to midnight
+                        minutes_to_midnight = (24 * 60) - last_timestamp_mins
+                        duration_hours_today = self.parse_duration_hours(last_duration_today)
+                        
+                        # Check if first timestamp + duration ≈ time from midnight
+                        duration_hours_tomorrow = self.parse_duration_hours(first_duration_tomorrow)
+                        
+                        if (duration_hours_today and duration_hours_tomorrow and
+                            abs(duration_hours_today - (minutes_to_midnight / 60)) < 0.5 and
+                            abs(duration_hours_tomorrow - (first_timestamp_mins / 60)) < 0.5):
+                            
+                            # This is a cross-midnight session!
+                            cross_midnight_pairs[f"{today_key}_{len(today_data['times'])}_{last_time_today}"] = "exit"
+                            cross_midnight_pairs[f"{tomorrow_key}_1_{first_time_tomorrow}"] = "entry"
+                            
+                            self.confidence_issues.append(
+                                f"{pdf_filename}: Cross-midnight session detected - {today_key} {last_time_today} (EXIT) → {tomorrow_key} {first_time_tomorrow} (ENTRY)"
+                            )
+        
+        return cross_midnight_pairs
+    
+    def build_sessions_with_enhanced_validation(self, daily_data: Dict, pdf_filename: str, report_year: int = None) -> List[Dict]:
+        """Build sessions using Magnus's new exit/entry time rules with structured data"""
         sessions = []
-        current_state = "inside"  # Reset state per PDF (weekly reset)
-        current_session = None
         
-        # Add warning about state reset
-        self.warnings.append(f"{pdf_filename}: State reset to 'inside' at start of PDF (weekly reset policy)")
+        # Process each day in chronological order
+        date_keys = sorted(daily_data.keys(), 
+                          key=lambda d: self.parse_date_str_to_datetime(d, report_year or 2024) or datetime.min)
         
-        # Process days in chronological order
-        for date_str in daily_data.keys():
+        # Collect single timestamp sessions for cross-midnight detection
+        single_timestamps = []
+        for date_str in date_keys:
             day_data = daily_data[date_str]
-            times = day_data['times']
-            durations = day_data['durations']
+            if 'time_duration_pairs' in day_data:
+                for pair in day_data['time_duration_pairs']:
+                    if pair['type'] == 'single_timestamp':
+                        single_timestamps.append({
+                            'date_str': date_str,
+                            'timestamp': pair['timestamp'],
+                            'duration': pair['duration']
+                        })
+        
+        # Detect cross-midnight sessions
+        cross_midnight_pairs = {}
+        for i in range(len(single_timestamps) - 1):
+            today = single_timestamps[i]
+            tomorrow = single_timestamps[i + 1]
             
-            # Skip days with no time data
-            if not times:
+            # Check if they could be cross-midnight pair
+            today_mins = self.parse_timestamp_to_minutes(today['timestamp'])
+            tomorrow_mins = self.parse_timestamp_to_minutes(tomorrow['timestamp'])
+            
+            if (today_mins and tomorrow_mins and 
+                today_mins > 20 * 60 and tomorrow_mins < 8 * 60):  # After 20:00 and before 08:00
+                
+                # Check duration patterns for Rule 5
+                today_duration = self.parse_duration_hours(today['duration'])
+                tomorrow_duration = self.parse_duration_hours(tomorrow['duration'])
+                
+                if today_duration and tomorrow_duration:
+                    # Check if durations match cross-midnight pattern
+                    mins_to_midnight = (24 * 60) - today_mins
+                    if (abs(today_duration - (mins_to_midnight / 60)) < 0.5 and
+                        abs(tomorrow_duration - (tomorrow_mins / 60)) < 0.5):
+                        
+                        cross_midnight_pairs[f"{today['date_str']}_{today['timestamp']}"] = "exit"
+                        cross_midnight_pairs[f"{tomorrow['date_str']}_{tomorrow['timestamp']}"] = "entry"
+                        
+                        self.confidence_issues.append(
+                            f"{pdf_filename}: Cross-midnight session detected - {today['date_str']} {today['timestamp']} (EXIT) → {tomorrow['date_str']} {tomorrow['timestamp']} (ENTRY)"
+                        )
+        
+        # Build sessions using structured data
+        for date_str in date_keys:
+            day_data = daily_data[date_str]
+            if 'time_duration_pairs' not in day_data:
                 continue
-            
+                
             session_number = 1
-            duration_idx = 0
             
-            for time_str in times:
-                # Predict state based on current tracking
-                predicted_state = "exit" if current_state == "inside" else "entry"
-                
-                # Get corresponding duration for validation
-                duration_str = durations[duration_idx] if duration_idx < len(durations) else None
-                
-                # Validate state with duration clues (for single times only)
-                if len(times) == 1 or not any(' - ' in t for t in times):
-                    # This is a single time, duration validation applies
-                    validated_state = self.validate_state_with_duration(
-                        time_str, duration_str, predicted_state, pdf_filename, date_str
-                    )
-                else:
-                    validated_state = predicted_state
-                
-                if validated_state == "exit":
-                    # Time represents an EXIT
-                    current_session = {
+            for pair in day_data['time_duration_pairs']:
+                if pair['type'] == 'complete_session':
+                    # Rule 1: Complete session with exit and entry times
+                    sessions.append({
                         'date_str': date_str,
                         'session_number': session_number,
-                        'exit_time': time_str,
-                        'entry_time': None,
-                        'duration': duration_str,
-                        'daily_total_visits': day_data['daily_visits'],
-                        'daily_total_time_outside': day_data['daily_total_time']
-                    }
+                        'exit_time': pair['exit_time'],
+                        'entry_time': pair['entry_time'],
+                        'duration': pair['duration'],
+                        'daily_total_visits': day_data.get('daily_visits'),
+                        'daily_total_time_outside': day_data.get('daily_total_time')
+                    })
+                
+                elif pair['type'] == 'single_timestamp':
+                    # Determine if this is exit or entry using rules 3/4/5/7
+                    timestamp = pair['timestamp']
+                    duration_str = pair['duration']
                     
-                    if duration_str:
-                        duration_idx += 1
+                    cross_midnight_key = f"{date_str}_{timestamp}"
                     
-                    current_state = "outside"
-                    
-                else:
-                    # Time represents an ENTRY
-                    if current_session:
-                        # Complete the current session
-                        current_session['entry_time'] = time_str
-                        sessions.append(current_session)
-                        session_number += 1
+                    if cross_midnight_key in cross_midnight_pairs:
+                        # Rule 5: Cross-midnight session
+                        timestamp_type = cross_midnight_pairs[cross_midnight_key]
                     else:
-                        # Entry without matching exit (continuing from previous day/period)
+                        # Apply rules 3/4/7
+                        timestamp_type = self.determine_single_timestamp_type(
+                            timestamp, duration_str, date_str, pdf_filename
+                        )
+                    
+                    if timestamp_type == "exit":
+                        sessions.append({
+                            'date_str': date_str,
+                            'session_number': session_number,
+                            'exit_time': timestamp,
+                            'entry_time': None,
+                            'duration': duration_str,
+                            'daily_total_visits': day_data.get('daily_visits'),
+                            'daily_total_time_outside': day_data.get('daily_total_time')
+                        })
+                    else:  # entry
                         sessions.append({
                             'date_str': date_str,
                             'session_number': session_number,
                             'exit_time': None,
-                            'entry_time': time_str,
+                            'entry_time': timestamp,
                             'duration': duration_str,
-                            'daily_total_visits': day_data['daily_visits'],
-                            'daily_total_time_outside': day_data['daily_total_time']
+                            'daily_total_visits': day_data.get('daily_visits'),
+                            'daily_total_time_outside': day_data.get('daily_total_time')
                         })
-                        if duration_str:
-                            duration_idx += 1
-                        session_number += 1
-                    
-                    current_session = None
-                    current_state = "inside"
-            
-            # If day ends with incomplete session, add it
-            if current_session:
-                sessions.append(current_session)
+                
                 session_number += 1
-                current_session = None
-        
-        # Enhanced validation with tolerance
-        self.validate_sessions_with_tolerance(sessions, daily_data, pdf_filename)
         
         return sessions
     
@@ -514,7 +657,7 @@ class ProductionCatFlapExtractor:
                 report_info['report_date_range'] = f"{first_full_date} to {last_full_date}"
         
         # Build sessions with enhanced validation
-        session_data = self.build_sessions_with_enhanced_validation(daily_data, os.path.basename(pdf_path))
+        session_data = self.build_sessions_with_enhanced_validation(daily_data, os.path.basename(pdf_path), report_info.get('report_year'))
         
         if not session_data:
             self.warnings.append(f"No sessions built from {pdf_path}")
