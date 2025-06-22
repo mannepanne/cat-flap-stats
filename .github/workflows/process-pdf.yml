@@ -1,0 +1,231 @@
+# ABOUT: GitHub Actions workflow for processing uploaded PDF files
+# ABOUT: Triggered by CloudFlare webhook, processes PDF using Python extractor, updates dataset
+
+name: Process Cat Flap PDF
+
+on:
+  repository_dispatch:
+    types: [process-pdf]
+
+jobs:
+  process-pdf:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Download PDF from CloudFlare KV
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
+      run: |
+        # Extract file ID from webhook payload
+        FILE_ID="${{ github.event.client_payload.file_id }}"
+        FILENAME="${{ github.event.client_payload.filename }}"
+        
+        echo "Processing file: $FILENAME (ID: $FILE_ID)"
+        
+        # Download PDF from CloudFlare KV using REST API
+        curl -X GET "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces/$KV_NAMESPACE_ID/values/upload:$FILE_ID" \
+          -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+          -H "Content-Type: application/octet-stream" \
+          --output "temp_upload.pdf"
+        
+        # Verify PDF was downloaded
+        if [ ! -f "temp_upload.pdf" ]; then
+          echo "Failed to download PDF file"
+          exit 1
+        fi
+        
+        echo "PDF downloaded successfully: $(wc -c < temp_upload.pdf) bytes"
+        
+    - name: Process PDF with extractor
+      run: |
+        echo "Processing PDF with cat_flap_extractor_v5.py"
+        
+        # Run the extractor on the downloaded PDF
+        python3 cat_flap_extractor_v5.py temp_upload.pdf --format both --output processed_data
+        
+        # Check if processing succeeded
+        if [ ! -f "processed_data.csv" ] || [ ! -f "processed_data.json" ]; then
+          echo "PDF processing failed - output files not found"
+          exit 1
+        fi
+        
+        echo "PDF processing completed successfully"
+        echo "CSV file size: $(wc -c < processed_data.csv) bytes"
+        echo "JSON file size: $(wc -c < processed_data.json) bytes"
+        
+    - name: Backup existing dataset
+      run: |
+        # Create backup directory with timestamp
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        mkdir -p "dataset_backups/$TIMESTAMP"
+        
+        # Backup existing dataset files if they exist
+        if [ -f "master_dataset.csv" ]; then
+          cp master_dataset.csv "dataset_backups/$TIMESTAMP/"
+          echo "Backed up existing CSV dataset"
+        fi
+        
+        if [ -f "master_dataset.json" ]; then
+          cp master_dataset.json "dataset_backups/$TIMESTAMP/"
+          echo "Backed up existing JSON dataset"
+        fi
+        
+    - name: Merge with master dataset
+      run: |
+        echo "Merging new data with master dataset"
+        
+        # If master datasets don't exist, initialize them
+        if [ ! -f "master_dataset.csv" ]; then
+          echo "Initializing master CSV dataset"
+          cp processed_data.csv master_dataset.csv
+        else
+          echo "Merging with existing CSV dataset"
+          # For CSV: append new rows (skip header of new file)
+          tail -n +2 processed_data.csv >> master_dataset.csv
+        fi
+        
+        if [ ! -f "master_dataset.json" ]; then
+          echo "Initializing master JSON dataset"
+          cp processed_data.json master_dataset.json
+        else
+          echo "Merging with existing JSON dataset"
+          # For JSON: merge arrays (this is a simplified merge - in production might need more sophisticated merging)
+          python3 -c "
+import json
+import sys
+
+# Read existing dataset
+with open('master_dataset.json', 'r') as f:
+    existing = json.load(f)
+
+# Read new data
+with open('processed_data.json', 'r') as f:
+    new_data = json.load(f)
+
+# Simple merge - append new sessions to existing
+if 'sessions' in existing and 'sessions' in new_data:
+    existing['sessions'].extend(new_data['sessions'])
+    existing['metadata']['total_sessions'] = len(existing['sessions'])
+    existing['metadata']['last_updated'] = new_data['metadata']['generated_at']
+else:
+    # If structure is different, replace entirely
+    existing = new_data
+
+# Write merged dataset
+with open('master_dataset.json', 'w') as f:
+    json.dump(existing, f, indent=2)
+    
+print('JSON datasets merged successfully')
+"
+        fi
+        
+        echo "Dataset merge completed"
+        echo "Final CSV size: $(wc -c < master_dataset.csv) bytes"
+        echo "Final JSON size: $(wc -c < master_dataset.json) bytes"
+        
+    - name: Generate processing report
+      run: |
+        # Generate a processing report
+        cat > processing_report.md << EOF
+# PDF Processing Report
+        
+**Date:** $(date)
+**File:** ${{ github.event.client_payload.filename }}
+**Uploaded by:** ${{ github.event.client_payload.uploaded_by }}
+
+## Processing Results
+- ✅ PDF downloaded successfully
+- ✅ Data extraction completed
+- ✅ Dataset backup created
+- ✅ Master dataset updated
+
+## Statistics
+- New CSV size: $(wc -c < processed_data.csv) bytes
+- New JSON size: $(wc -c < processed_data.json) bytes
+- Master CSV size: $(wc -c < master_dataset.csv) bytes  
+- Master JSON size: $(wc -c < master_dataset.json) bytes
+
+## Session Count
+$(python3 -c "
+import pandas as pd
+try:
+    df = pd.read_csv('processed_data.csv')
+    print(f'- New sessions extracted: {len(df)}')
+    
+    df_master = pd.read_csv('master_dataset.csv')
+    print(f'- Total sessions in dataset: {len(df_master)}')
+except Exception as e:
+    print(f'- Error reading session counts: {e}')
+")
+EOF
+        
+        echo "Processing report generated"
+        
+    - name: Commit updated dataset
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add files to git
+        git add master_dataset.csv master_dataset.json dataset_backups/ processing_report.md
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          # Commit changes
+          git commit -m "📊 Update dataset: processed ${{ github.event.client_payload.filename }}
+
+- Uploaded by: ${{ github.event.client_payload.uploaded_by }}
+- Processing date: $(date)
+- New sessions added from weekly PDF report
+
+🤖 Automated processing via GitHub Actions"
+          
+          # Push changes
+          git push
+          
+          echo "Dataset successfully updated and committed"
+        fi
+        
+    - name: Send notification email
+      env:
+        RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      run: |
+        # Send processing completion email
+        curl -X POST "https://api.resend.com/emails" \
+          -H "Authorization: Bearer $RESEND_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "from": "Cat Flap Stats <noreply@echoreflex.me>",
+            "to": ["${{ github.event.client_payload.uploaded_by }}"],
+            "subject": "✅ PDF Processing Complete - ${{ github.event.client_payload.filename }}",
+            "html": "<h2>PDF Processing Successful</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p>The master dataset has been updated and is available for download.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>",
+            "text": "PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated. Visit the dashboard to download the latest data."
+          }'
+        
+        echo "Notification email sent"
+        
+    - name: Clean up temporary files
+      run: |
+        # Remove temporary files
+        rm -f temp_upload.pdf processed_data.csv processed_data.json
+        echo "Temporary files cleaned up"
