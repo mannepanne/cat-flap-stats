@@ -73,12 +73,20 @@ venv.bak/
 # Project specific
 output/
 processed_data/
-*.csv
-*.json
 temp/
 temp_outputs/
 debug_scripts/
 archive/
+
+# Ignore temporary and intermediate CSV/JSON files, but allow master datasets
+*.csv
+*.json
+# Allow master dataset files
+!master_dataset.csv
+!master_dataset.json
+# Allow processing reports
+!processing_report.md
+!duplicate_report.txt
 
 # Data directories - contain PDF files and processed output
 SAMPLE_TESTDATA/
