@@ -1026,6 +1026,11 @@ class ProductionCatFlapExtractor:
         """Save extracted data to CSV file"""
         flattened_data = self.flatten_data_for_csv(results)
         df = pd.DataFrame(flattened_data)
+        
+        # Sort by date_full to ensure proper chronological order
+        # This is critical for cross-year boundary data to appear in correct sequence
+        df = df.sort_values('date_full')
+        
         df.to_csv(output_path, index=False)
         print(f"Production session data saved to CSV: {output_path}")
     
