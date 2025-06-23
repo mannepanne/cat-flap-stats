@@ -45,13 +45,13 @@ jobs:
         echo "KV Namespace ID: $KV_NAMESPACE_ID"
         echo "API Token length: ${#CLOUDFLARE_API_TOKEN} characters"
         
-        # Download PDF from CloudFlare KV using REST API
+        # Download PDF from CloudFlare KV using REST API with original filename
         echo "Downloading from CloudFlare KV..."
         HTTP_RESPONSE=$(curl -w "%{http_code}" -X GET \
           "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces/$KV_NAMESPACE_ID/values/upload:$FILE_ID" \
           -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
           -H "Accept: application/octet-stream" \
-          --output "temp_upload.pdf" \
+          --output "$FILENAME" \
           --silent)
         
         echo "HTTP Response Code: $HTTP_RESPONSE"
@@ -60,15 +60,15 @@ jobs:
         if [ "$HTTP_RESPONSE" != "200" ]; then
           echo "CloudFlare API request failed with HTTP $HTTP_RESPONSE"
           echo "Response content:"
-          cat temp_upload.pdf
+          cat "$FILENAME"
           exit 1
         fi
         
         # Verify PDF was downloaded and is a reasonable size
-        FILE_SIZE=$(wc -c < temp_upload.pdf)
+        FILE_SIZE=$(wc -c < "$FILENAME")
         echo "Downloaded file size: $FILE_SIZE bytes"
         
-        if [ ! -f "temp_upload.pdf" ]; then
+        if [ ! -f "$FILENAME" ]; then
           echo "Failed to download PDF file"
           exit 1
         fi
@@ -76,12 +76,12 @@ jobs:
         if [ "$FILE_SIZE" -lt 1000 ]; then
           echo "Downloaded file is too small ($FILE_SIZE bytes) - likely an error response"
           echo "File contents:"
-          cat temp_upload.pdf
+          cat "$FILENAME"
           exit 1
         fi
         
         # Check if it's actually a PDF file
-        file temp_upload.pdf
+        file "$FILENAME"
         
         echo "PDF downloaded successfully: $FILE_SIZE bytes"
         
@@ -96,11 +96,11 @@ jobs:
         echo "Checking if extractor exists:"
         ls -la cat_flap_extractor_v5.py || echo "Extractor not found"
         echo "PDF file to process:"
-        ls -la temp_upload.pdf
+        ls -la "$FILENAME"
         echo "Starting extraction..."
         
         # Run the extractor on the downloaded PDF and capture output
-        EXTRACTOR_OUTPUT=$(python3 cat_flap_extractor_v5.py temp_upload.pdf --format both --output processed_data 2>&1)
+        EXTRACTOR_OUTPUT=$(python3 cat_flap_extractor_v5.py "$FILENAME" --format both --output processed_data 2>&1)
         EXTRACTOR_EXIT_CODE=$?
         
         echo "Extractor output:"
@@ -117,10 +117,10 @@ jobs:
           # Create empty CSV with headers
           echo "filename,report_date,report_date_range,report_year,pet_name,age,weight,date_str,date_full,session_number,exit_time,entry_time,duration,daily_total_visits_PDF,daily_total_time_outside_PDF,daily_total_visits_calculated,daily_total_time_outside_calculated,extracted_at" > processed_data.csv
           
-          # Create empty JSON with metadata
+          # Create empty JSON with metadata using original filename
           echo '{
             "metadata": {
-              "filename": "temp_upload.pdf",
+              "filename": "'$FILENAME'",
               "extraction_status": "no_data",
               "extraction_note": "PDF contains no cat flap usage data",
               "total_sessions": 0,
@@ -299,6 +299,6 @@ jobs:
         
     - name: Clean up temporary files
       run: |
-        # Remove temporary files
-        rm -f temp_upload.pdf processed_data.csv processed_data.json
+        # Remove temporary files using original filename
+        rm -f "${{ github.event.client_payload.filename }}" processed_data.csv processed_data.json
         echo "Temporary files cleaned up"
