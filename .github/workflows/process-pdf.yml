@@ -40,6 +40,9 @@ jobs:
         FILE_ID="${{ github.event.client_payload.file_id }}"
         FILENAME="${{ github.event.client_payload.filename }}"
         
+        # Save filename to environment for next steps
+        echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+        
         echo "Processing file: $FILENAME (ID: $FILE_ID)"
         echo "CloudFlare Account ID: $CLOUDFLARE_ACCOUNT_ID"
         echo "KV Namespace ID: $KV_NAMESPACE_ID"
@@ -95,7 +98,7 @@ jobs:
         ls -la *.py || echo "No Python files found"
         echo "Checking if extractor exists:"
         ls -la cat_flap_extractor_v5.py || echo "Extractor not found"
-        echo "PDF file to process:"
+        echo "PDF file to process: $FILENAME"
         ls -la "$FILENAME"
         echo "Starting extraction..."
         
@@ -120,7 +123,7 @@ jobs:
           # Create empty JSON with metadata using original filename
           echo '{
             "metadata": {
-              "filename": "'$FILENAME'",
+              "filename": "'"$FILENAME"'",
               "extraction_status": "no_data",
               "extraction_note": "PDF contains no cat flap usage data",
               "total_sessions": 0,
@@ -300,5 +303,5 @@ jobs:
     - name: Clean up temporary files
       run: |
         # Remove temporary files using original filename
-        rm -f "${{ github.event.client_payload.filename }}" processed_data.csv processed_data.json
+        rm -f "$FILENAME" processed_data.csv processed_data.json
         echo "Temporary files cleaned up"
