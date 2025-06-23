@@ -273,30 +273,48 @@ jobs:
       env:
         RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       run: |
+        # Read processing report for inclusion in email
+        if [ -f "processing_report.md" ]; then
+          PROCESSING_REPORT=$(cat processing_report.md | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+        else
+          PROCESSING_REPORT="Processing report not available."
+        fi
+        
         # Check if this was an empty PDF and customize email accordingly
         if grep -q "PDF contained no cat flap usage data" duplicate_report.txt; then
           # Email for empty PDF
           EMAIL_SUBJECT="ℹ️ PDF Processed (No Data) - ${{ github.event.client_payload.filename }}"
-          EMAIL_HTML="<h2>PDF Processing Complete</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p><strong>Result:</strong> This PDF contained no cat flap usage data (Sven didn't use the cat flap during this period).</p><p>The master dataset remains unchanged. This is normal for periods when your cat doesn't use the flap.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>"
-          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed. Result: No cat flap usage data found in this PDF (normal for inactive periods). The dataset remains unchanged."
+          EMAIL_HTML="<h2>PDF Processing Complete</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p><strong>Result:</strong> This PDF contained no cat flap usage data (Sven didn't use the cat flap during this period).</p><p>The master dataset remains unchanged. This is normal for periods when your cat doesn't use the flap.</p><h3>Processing Details</h3><pre style='background:#f5f5f5;padding:10px;border-radius:5px;font-family:monospace;'>${PROCESSING_REPORT}</pre><p><a href='https://cat-flap-stats.herrings.workers.dev/dashboard'>View Dashboard</a></p>"
+          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed. Result: No cat flap usage data found in this PDF (normal for inactive periods). The dataset remains unchanged. Processing Details: ${PROCESSING_REPORT}"
         else
           # Email for PDF with data
           EMAIL_SUBJECT="✅ PDF Processing Complete - ${{ github.event.client_payload.filename }}"
-          EMAIL_HTML="<h2>PDF Processing Successful</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p>The master dataset has been updated with new cat flap usage data and is available for download.</p><p><a href=\"https://cat-flap-stats.herrings.workers.dev/dashboard\">View Dashboard</a></p>"
-          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated with new data. Visit the dashboard to download the latest data."
+          EMAIL_HTML="<h2>PDF Processing Successful</h2><p>Your file <strong>${{ github.event.client_payload.filename }}</strong> has been processed successfully.</p><p>The master dataset has been updated with new cat flap usage data and is available for download.</p><h3>Processing Details</h3><pre style='background:#f5f5f5;padding:10px;border-radius:5px;font-family:monospace;'>${PROCESSING_REPORT}</pre><p><a href='https://cat-flap-stats.herrings.workers.dev/dashboard'>View Dashboard</a></p>"
+          EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated with new data. Processing Details: ${PROCESSING_REPORT} Visit the dashboard to download the latest data."
         fi
         
-        # Send processing completion email
+        # Create a properly escaped JSON payload file
+        cat > email_payload.json << 'EOF'
+{
+  "from": "Cat Flap Stats <noreply@echoreflex.me>",
+  "to": ["EMAIL_TO_PLACEHOLDER"],
+  "subject": "EMAIL_SUBJECT_PLACEHOLDER", 
+  "html": "EMAIL_HTML_PLACEHOLDER",
+  "text": "EMAIL_TEXT_PLACEHOLDER"
+}
+EOF
+        
+        # Replace placeholders with properly escaped values
+        sed -i "s/EMAIL_TO_PLACEHOLDER/${{ github.event.client_payload.uploaded_by }}/g" email_payload.json
+        sed -i "s/EMAIL_SUBJECT_PLACEHOLDER/$(echo "$EMAIL_SUBJECT" | sed 's/"/\\"/g')/g" email_payload.json
+        sed -i "s/EMAIL_HTML_PLACEHOLDER/$(echo "$EMAIL_HTML" | sed 's/"/\\"/g' | sed "s/'/\\\\'/g")/g" email_payload.json
+        sed -i "s/EMAIL_TEXT_PLACEHOLDER/$(echo "$EMAIL_TEXT" | sed 's/"/\\"/g')/g" email_payload.json
+        
+        # Send processing completion email using the file
         curl -X POST "https://api.resend.com/emails" \
           -H "Authorization: Bearer $RESEND_API_KEY" \
           -H "Content-Type: application/json" \
-          -d "{
-            \"from\": \"Cat Flap Stats <noreply@echoreflex.me>\",
-            \"to\": [\"${{ github.event.client_payload.uploaded_by }}\"],
-            \"subject\": \"$EMAIL_SUBJECT\",
-            \"html\": \"$EMAIL_HTML\",
-            \"text\": \"$EMAIL_TEXT\"
-          }"
+          -d @email_payload.json
         
         echo "Notification email sent"
         
