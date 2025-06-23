@@ -663,6 +663,92 @@ With V1.0 establishing a robust data foundation, Phase 2 focuses on scientifical
 - Quality-adjusted statistical analysis capabilities
 - *Estimated Duration: 1 week*
 
+#### Data Architecture Strategy
+
+**Hybrid CSV/JSON Approach with Pre-computed Analytics:**
+
+Given our dataset characteristics (1,572 sessions, 334KB CSV, ~50 new sessions/week), we will maintain our simple, transparent data architecture while optimizing for analytics performance.
+
+**Current Dataset Analysis:**
+- **Size**: 1,572 sessions across 505+ days (manageable in-memory processing)
+- **Growth Rate**: ~40-50 sessions per week (predictable, linear growth)
+- **5-Year Projection**: ~15,000 sessions (still easily manageable)
+- **Storage**: CSV (334KB) + JSON (16KB) - fast download times
+
+**Architecture Decision: Enhanced CSV/JSON vs Database**
+
+**Option Evaluation:**
+- **SQLite/D1 Database**: Rejected due to complexity overhead for current dataset size
+- **Pure Client-Side**: Rejected due to repeated computation overhead
+- **Hybrid Approach**: Selected for optimal simplicity-to-performance ratio
+
+**Implementation Strategy:**
+```json
+{
+  "metadata": {
+    "lastUpdated": "2025-06-23T19:00:00Z",
+    "totalSessions": 1572,
+    "dateRange": "2024-02-05 to 2025-06-22",
+    "dataQuality": {
+      "completeDays": 485,
+      "partialDays": 20,
+      "confidenceScore": 0.94
+    }
+  },
+  "precomputed": {
+    "dailySummaries": [
+      {
+        "date": "2024-02-05",
+        "sessions": 4,
+        "firstExit": "06:01",
+        "lastEntry": "22:24",
+        "totalOutdoorTime": "05:26",
+        "isWeekend": false
+      }
+    ],
+    "peakHours": [
+      {"hour": 6, "exitFrequency": 0.45, "entryFrequency": 0.12},
+      {"hour": 22, "exitFrequency": 0.15, "entryFrequency": 0.38}
+    ],
+    "seasonalStats": {
+      "spring": {"avgDailySessions": 3.2, "avgFirstExit": "06:15"},
+      "summer": {"avgDailySessions": 2.8, "avgFirstExit": "05:45"},
+      "autumn": {"avgDailySessions": 3.5, "avgFirstExit": "06:45"},
+      "winter": {"avgDailySessions": 3.1, "avgFirstExit": "07:15"}
+    },
+    "weekdayPatterns": {
+      "weekdays": {"avgFirstExit": "06:30", "avgLastEntry": "22:15"},
+      "weekends": {"avgFirstExit": "07:00", "avgLastEntry": "22:45"}
+    }
+  },
+  "sessions": [...],     // Full session data for detailed analysis
+  "annotations": [...]   // User annotations with date ranges
+}
+```
+
+**Performance Benefits:**
+- **Actogram Rendering**: Use dailySummaries (~365 records) vs full sessions (1,572 records)
+- **Peak Hours Analysis**: Direct lookup from precomputed peakHours array
+- **Pattern Detection**: Leverage weekdayPatterns and seasonalStats for instant comparison
+- **Incremental Loading**: Load metadata + precomputed first, sessions on-demand
+
+**Data Processing Pipeline:**
+1. **GitHub Actions Enhancement**: Extend existing workflow to compute analytics
+2. **Statistical Analysis**: Python scripts generate summaries during PDF processing
+3. **JSON Generation**: Export enhanced JSON with precomputed analytics
+4. **Client Optimization**: Progressive loading with smart caching strategies
+
+**Advantages of This Approach:**
+- ✅ **Simplicity**: No database setup, familiar JSON structures
+- ✅ **Transparency**: Raw data remains in version-controlled CSV/JSON
+- ✅ **Performance**: Pre-computed analytics eliminate repeated calculations
+- ✅ **Cost**: Zero additional hosting costs
+- ✅ **Flexibility**: Easy migration to database later if dataset grows significantly
+- ✅ **Offline Capability**: Client can cache and work without constant server connection
+
+**Migration Path:**
+If dataset grows beyond ~50,000 sessions or query complexity increases significantly, migration to CloudFlare D1 (SQLite) can be implemented with minimal client-side changes due to JSON API compatibility.
+
 #### Technical Implementation Strategy
 
 **Web Dashboard Enhancement:**
