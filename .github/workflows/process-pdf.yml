@@ -293,22 +293,20 @@ jobs:
           EMAIL_TEXT="PDF Processing Complete! Your file ${{ github.event.client_payload.filename }} has been processed and the dataset has been updated with new data. Processing Details: ${PROCESSING_REPORT} Visit the dashboard to download the latest data."
         fi
         
-        # Create a properly escaped JSON payload file
-        cat > email_payload.json << 'EOF'
-{
-  "from": "Cat Flap Stats <noreply@echoreflex.me>",
-  "to": ["EMAIL_TO_PLACEHOLDER"],
-  "subject": "EMAIL_SUBJECT_PLACEHOLDER", 
-  "html": "EMAIL_HTML_PLACEHOLDER",
-  "text": "EMAIL_TEXT_PLACEHOLDER"
-}
-EOF
-        
-        # Replace placeholders with properly escaped values
-        sed -i "s/EMAIL_TO_PLACEHOLDER/${{ github.event.client_payload.uploaded_by }}/g" email_payload.json
-        sed -i "s/EMAIL_SUBJECT_PLACEHOLDER/$(echo "$EMAIL_SUBJECT" | sed 's/"/\\"/g')/g" email_payload.json
-        sed -i "s/EMAIL_HTML_PLACEHOLDER/$(echo "$EMAIL_HTML" | sed 's/"/\\"/g' | sed "s/'/\\\\'/g")/g" email_payload.json
-        sed -i "s/EMAIL_TEXT_PLACEHOLDER/$(echo "$EMAIL_TEXT" | sed 's/"/\\"/g')/g" email_payload.json
+        # Create properly escaped JSON payload using jq for safe JSON generation
+        jq -n \
+          --arg from "Cat Flap Stats <noreply@echoreflex.me>" \
+          --arg to "${{ github.event.client_payload.uploaded_by }}" \
+          --arg subject "$EMAIL_SUBJECT" \
+          --arg html "$EMAIL_HTML" \
+          --arg text "$EMAIL_TEXT" \
+          '{
+            from: $from,
+            to: [$to],
+            subject: $subject,
+            html: $html,
+            text: $text
+          }' > email_payload.json
         
         # Send processing completion email using the file
         curl -X POST "https://api.resend.com/emails" \
