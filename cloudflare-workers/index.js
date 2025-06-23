@@ -40,6 +40,15 @@ export default {
           return await handleDashboard(request, env);
         case '/api/dataset':
           return await handleDatasetApi(request, env);
+        case '/favicon.ico':
+          return await handleFavicon(request, env);
+        case '/favicons/android-chrome-192x192.png':
+        case '/favicons/android-chrome-512x512.png':
+        case '/favicons/apple-touch-icon.png':
+        case '/favicons/favicon-16x16.png':
+        case '/favicons/favicon-32x32.png':
+        case '/favicons/favicon.ico':
+          return await handleFaviconAssets(request, env, path);
         default:
           return new Response('Not Found', { status: 404 });
       }
@@ -490,6 +499,10 @@ function getLoginPage(message = '') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cat Flap Stats - Login</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -595,6 +608,10 @@ function getDashboardPage(email) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cat Flap Stats - Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -751,6 +768,10 @@ function getUploadPage(email) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cat Flap Stats - Upload PDF</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -984,4 +1005,19 @@ function getUploadPage(email) {
     </script>
 </body>
 </html>`;
+}
+
+// Favicon handlers
+async function handleFavicon(request, env) {
+  // Return a simple redirect to the main favicon
+  return Response.redirect('https://raw.githubusercontent.com/mannepanne/cat-flap-stats/main/favicon.ico', 302);
+}
+
+async function handleFaviconAssets(request, env, path) {
+  // Extract filename from path
+  const filename = path.split('/').pop();
+  
+  // Return redirect to GitHub raw content
+  const githubUrl = `https://raw.githubusercontent.com/mannepanne/cat-flap-stats/main/favicons/${filename}`;
+  return Response.redirect(githubUrl, 302);
 }
