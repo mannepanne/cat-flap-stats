@@ -1,0 +1,40 @@
+[
+  {
+    "report_info": {
+      "filename": "temp_upload.pdf",
+      "report_date": "25 Feb 2024",
+      "report_date_range": "2024-02-23 to 2024-02-23",
+      "report_year": 2024,
+      "pet_name": "Sven Varys Sooty...",
+      "age": 1,
+      "weight": 4
+    },
+    "session_data": [
+      {
+        "date_str": "Fri 23 Feb",
+        "session_number": 1,
+        "exit_time": "08:58",
+        "entry_time": "09:11",
+        "duration": "13:01 mins",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "39:43 mins",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "00:39",
+        "date_full": "2024-02-23"
+      },
+      {
+        "date_str": "Fri 23 Feb",
+        "session_number": 2,
+        "exit_time": "09:31",
+        "entry_time": "09:58",
+        "duration": "26:42 mins",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "39:43 mins",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "00:39",
+        "date_full": "2024-02-23"
+      }
+    ],
+    "extracted_at": "2025-06-23T08:18:14.513943"
+  }
+]
