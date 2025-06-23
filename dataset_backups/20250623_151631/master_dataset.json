@@ -1,0 +1,184 @@
+[
+  {
+    "report_info": {
+      "filename": "SvenVarysSootyHultbergWong Activity Report 12-05-2025.pdf",
+      "report_date": "12 May 2025",
+      "report_date_range": "2025-05-06 to 2025-05-12",
+      "report_year": 2025,
+      "pet_name": "Sven Varys Sooty...",
+      "age": 2,
+      "weight": 4
+    },
+    "session_data": [
+      {
+        "date_str": "Tue 6 May",
+        "session_number": 1,
+        "exit_time": "05:57",
+        "entry_time": "07:48",
+        "duration": "01:51 h",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "06:06 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "06:05",
+        "date_full": "2025-05-06"
+      },
+      {
+        "date_str": "Tue 6 May",
+        "session_number": 2,
+        "exit_time": "08:03",
+        "entry_time": "10:50",
+        "duration": "02:47 h",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "06:06 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "06:05",
+        "date_full": "2025-05-06"
+      },
+      {
+        "date_str": "Tue 6 May",
+        "session_number": 3,
+        "exit_time": "10:59",
+        "entry_time": "12:26",
+        "duration": "01:27 h",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "06:06 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "06:05",
+        "date_full": "2025-05-06"
+      },
+      {
+        "date_str": "Wed 7 May",
+        "session_number": 1,
+        "exit_time": "04:42",
+        "entry_time": "07:28",
+        "duration": "02:46 h",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "05:49 h",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "05:49",
+        "date_full": "2025-05-07"
+      },
+      {
+        "date_str": "Wed 7 May",
+        "session_number": 2,
+        "exit_time": "10:24",
+        "entry_time": "13:27",
+        "duration": "03:03 h",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "05:49 h",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "05:49",
+        "date_full": "2025-05-07"
+      },
+      {
+        "date_str": "Thu 8 May",
+        "session_number": 1,
+        "exit_time": "06:27",
+        "entry_time": "17:19",
+        "duration": "10:52 h",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "11:02 h",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "11:01",
+        "date_full": "2025-05-08"
+      },
+      {
+        "date_str": "Thu 8 May",
+        "session_number": 2,
+        "exit_time": "21:40",
+        "entry_time": "21:50",
+        "duration": "09:57 mins",
+        "daily_total_visits_PDF": 2,
+        "daily_total_time_outside_PDF": "11:02 h",
+        "daily_total_visits_calculated": 2,
+        "daily_total_time_outside_calculated": "11:01",
+        "date_full": "2025-05-08"
+      },
+      {
+        "date_str": "Fri 9 May",
+        "session_number": 1,
+        "exit_time": "04:52",
+        "entry_time": "05:01",
+        "duration": "09:20 mins",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "03:57 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "03:56",
+        "date_full": "2025-05-09"
+      },
+      {
+        "date_str": "Fri 9 May",
+        "session_number": 2,
+        "exit_time": "09:53",
+        "entry_time": "13:06",
+        "duration": "03:12 h",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "03:57 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "03:56",
+        "date_full": "2025-05-09"
+      },
+      {
+        "date_str": "Fri 9 May",
+        "session_number": 3,
+        "exit_time": "19:05",
+        "entry_time": "19:41",
+        "duration": "35:51 mins",
+        "daily_total_visits_PDF": 3,
+        "daily_total_time_outside_PDF": "03:57 h",
+        "daily_total_visits_calculated": 3,
+        "daily_total_time_outside_calculated": "03:56",
+        "date_full": "2025-05-09"
+      },
+      {
+        "date_str": "Sat 10 May",
+        "session_number": 1,
+        "exit_time": null,
+        "entry_time": "06:41",
+        "duration": "17:18 h",
+        "daily_total_visits_PDF": 0,
+        "daily_total_time_outside_PDF": "17:18 h",
+        "daily_total_visits_calculated": 0,
+        "daily_total_time_outside_calculated": "17:18",
+        "date_full": "2025-05-10"
+      },
+      {
+        "date_str": "Sun 11 May",
+        "session_number": 1,
+        "exit_time": null,
+        "entry_time": "04:55",
+        "duration": "04:55 h",
+        "daily_total_visits_PDF": 1,
+        "daily_total_time_outside_PDF": "21:33 h",
+        "daily_total_visits_calculated": 0,
+        "daily_total_time_outside_calculated": "21:32",
+        "date_full": "2025-05-11"
+      },
+      {
+        "date_str": "Sun 11 May",
+        "session_number": 2,
+        "exit_time": null,
+        "entry_time": "07:22",
+        "duration": "16:37 h",
+        "daily_total_visits_PDF": 1,
+        "daily_total_time_outside_PDF": "21:33 h",
+        "daily_total_visits_calculated": 0,
+        "daily_total_time_outside_calculated": "21:32",
+        "date_full": "2025-05-11"
+      },
+      {
+        "date_str": "Mon 12 May",
+        "session_number": 1,
+        "exit_time": null,
+        "entry_time": "00:57",
+        "duration": "57:34 mins",
+        "daily_total_visits_PDF": 1,
+        "daily_total_time_outside_PDF": "57:34 mins",
+        "daily_total_visits_calculated": 0,
+        "daily_total_time_outside_calculated": "00:57",
+        "date_full": "2025-05-12"
+      }
+    ],
+    "extracted_at": "2025-06-23T15:11:44.105103"
+  }
+]
