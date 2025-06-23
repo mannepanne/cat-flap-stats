@@ -427,7 +427,7 @@ Example: `06:01 - 07:39` with duration `01:38 h`
 ### Rule 2: Single Timestamp Analysis
 For sessions with only one timestamp, use duration analysis to determine the timestamp type.
 
-### Rule 3: Morning Single Timestamp (Before 12:00)
+### Rule 3: Morning Single Timestamp (Before 12:00) with Short Duration
 If timestamp is before 12:00 (midday) AND duration < 12 hours:
 - **If duration ≈ time since midnight → ENTRY**
 - **Otherwise → EXIT**
@@ -437,7 +437,19 @@ Example: `00:21` with duration `21:40 mins`
 - Duration = 21 minutes 40 seconds
 - Since duration ≈ time since midnight → **ENTRY** (cat was outside overnight, came in at 00:21)
 
-### Rule 4: Afternoon/Evening Single Timestamp (After 12:00)
+### Rule 3b: Morning Single Timestamp (Before 12:00) with Long Duration
+If timestamp is before 12:00 (midday) AND duration ≥ 12 hours:
+- **If duration ≈ time since preceding midnight → ENTRY**
+- **If duration ≈ time until following midnight → EXIT**
+- **Otherwise → fallback to ENTRY**
+
+Example: `05:58` with duration `18:00 h`
+- 05:58 = 5h 58min since midnight
+- Time until following midnight = 18h 2min
+- Duration = 18h 0min
+- Since duration ≈ time until following midnight → **EXIT** (cat went out at 05:58 and stayed out until ~midnight)
+
+### Rule 4: Afternoon/Evening Single Timestamp (After 12:00) with Short Duration
 If timestamp is after 12:00 (midday) AND duration < 12 hours:
 - **If duration ≈ time until midnight → EXIT**
 - **Otherwise → ENTRY**
@@ -446,6 +458,18 @@ Example: `22:24` with duration `01:35 h`
 - 22:24 = 96 minutes until midnight
 - Duration = 1h 35min = 95 minutes
 - Since duration ≈ time until midnight → **EXIT** (cat went out and stayed out until midnight)
+
+### Rule 4b: Afternoon/Evening Single Timestamp (After 12:00) with Long Duration
+If timestamp is after 12:00 (midday) AND duration ≥ 12 hours:
+- **If duration ≈ time since preceding midnight → ENTRY**
+- **If duration ≈ time until following midnight → EXIT**
+- **Otherwise → fallback to EXIT**
+
+Example: `14:00` with duration `14:00 h`
+- 14:00 = 14h since midnight
+- Time until following midnight = 10h
+- Duration = 14h 0min
+- Since duration ≈ time since preceding midnight → **ENTRY** (cat was outside for 14h since midnight, came in at 14:00)
 
 ### Rule 5: Cross-Midnight Session Detection
 When consecutive days have single timestamps that form overnight sessions:
