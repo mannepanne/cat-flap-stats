@@ -157,8 +157,13 @@ class TestMergeDatasetMain:
     def setup_method(self):
         """Set up temporary directory for test files"""
         self.temp_dir = tempfile.mkdtemp()
-        self.original_cwd = os.getcwd()
-        os.chdir(self.temp_dir)
+        try:
+            self.original_cwd = os.getcwd()
+            os.chdir(self.temp_dir)
+        except FileNotFoundError:
+            # Handle case where current directory doesn't exist
+            self.original_cwd = self.temp_dir
+            os.chdir(self.temp_dir)
     
     def teardown_method(self):
         """Clean up temporary files"""
@@ -313,8 +318,13 @@ class TestErrorHandling:
     def setup_method(self):
         """Set up temporary directory for test files"""
         self.temp_dir = tempfile.mkdtemp()
-        self.original_cwd = os.getcwd()
-        os.chdir(self.temp_dir)
+        try:
+            self.original_cwd = os.getcwd()
+            os.chdir(self.temp_dir)
+        except FileNotFoundError:
+            # Handle case where current directory doesn't exist
+            self.original_cwd = self.temp_dir
+            os.chdir(self.temp_dir)
     
     def teardown_method(self):
         """Clean up temporary files"""
