@@ -27,7 +27,7 @@ jobs:
     - name: Run test suite
       run: |
         echo "Running comprehensive test suite to validate code integrity..."
-        python -m pytest test_cat_flap_extractor.py test_merge_datasets.py test_backup_system.py -v --tb=short
+        python -m pytest test_*.py -v --tb=short --cov=cat_flap_extractor_v5 --cov=.github/scripts/merge_datasets --cov-report=term-missing --cov-fail-under=50
         echo "✅ All tests passed - proceeding with PDF processing"
         
     - name: Download PDF from CloudFlare KV
