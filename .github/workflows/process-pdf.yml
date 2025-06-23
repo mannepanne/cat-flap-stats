@@ -24,6 +24,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
+    - name: Run test suite
+      run: |
+        echo "Running comprehensive test suite to validate code integrity..."
+        python -m pytest test_cat_flap_extractor.py -v --tb=short
+        echo "✅ All tests passed - proceeding with PDF processing"
+        
     - name: Download PDF from CloudFlare KV
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
