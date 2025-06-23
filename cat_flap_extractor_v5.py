@@ -605,14 +605,50 @@ class ProductionCatFlapExtractor:
             else:
                 return "entry"  # Afternoon entry with different duration
         
-        # Long duration cases (>= 12h)
+        # Long duration cases (>= 12h) - Rules 3b and 4b
         if duration_hours >= 12:
             if is_morning:
-                # Rule 7a fallback: Long duration morning = ENTRY
-                return "entry"
+                # Rule 3b: Morning timestamp + long duration
+                # Check if duration matches time since preceding midnight (ENTRY)
+                expected_since_midnight = timestamp_minutes / 60
+                # Check if duration matches time until following midnight (EXIT)  
+                minutes_to_midnight = (24 * 60) - timestamp_minutes
+                expected_to_midnight = minutes_to_midnight / 60
+                
+                if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+                    self.confidence_issues.append(
+                        f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (long duration since midnight pattern)"
+                    )
+                    return "entry"
+                elif abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+                    self.confidence_issues.append(
+                        f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (long duration until midnight pattern)"
+                    )
+                    return "exit"
+                else:
+                    # Rule 7a fallback: Long duration morning = ENTRY
+                    return "entry"
             else:
-                # Rule 7b fallback: Long duration afternoon/evening = EXIT
-                return "exit"
+                # Rule 4b: Afternoon/evening timestamp + long duration
+                # Check if duration matches time since preceding midnight (ENTRY)
+                expected_since_midnight = timestamp_minutes / 60  
+                # Check if duration matches time until following midnight (EXIT)
+                minutes_to_midnight = (24 * 60) - timestamp_minutes
+                expected_to_midnight = minutes_to_midnight / 60
+                
+                if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+                    self.confidence_issues.append(
+                        f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (long duration since midnight pattern)"
+                    )
+                    return "entry"
+                elif abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+                    self.confidence_issues.append(
+                        f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (long duration until midnight pattern)"
+                    )
+                    return "exit"
+                else:
+                    # Rule 7b fallback: Long duration afternoon/evening = EXIT
+                    return "exit"
         
         # Default fallback rules 7a/7b for ambiguous cases
         return "entry" if is_morning else "exit"
