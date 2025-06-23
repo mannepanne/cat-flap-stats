@@ -379,30 +379,50 @@ The robust foundation is now in place for comprehensive cat behavior analysis wi
 
 **< user_story >**
 - ID: US-013
-- Title: Future - Import to PowerBI
-- Description: As a user, I want to easily import the processed data into PowerBI so that I can create visualizations and dashboards
-- Acceptance criteria: Data format compatible with PowerBI import, clear documentation for import process, sample dashboard templates provided
+- Title: Basic Activity Rhythm Visualization
+- Description: As Sven's human, I want to see his daily activity rhythms displayed as a scientifically accurate actogram so that I can understand his natural behavioral patterns and identify his "Peak Sven hours"
+- Acceptance criteria: Web dashboard displays chronobiological actogram showing exit/entry events over time, activity frequency histogram identifying peak activity periods, basic pattern consistency metrics, configurable time windows (7-day, monthly views)
+- Implementation Notes: Follow established chronobiology visualization standards with 24-hour X-axis and chronological Y-axis, double-plotting option for overnight patterns
 **</user_story >**
 
 **< user_story >**
 - ID: US-014
-- Title: Future - Seasonal pattern analysis
-- Description: As a user, I want to view seasonal patterns in the dashboard so that I can understand how Sven's behavior changes throughout the year
-- Acceptance criteria: Dashboard shows monthly/seasonal comparisons, outdoor time trends, entry/exit frequency patterns, winter vs summer analysis
+- Title: Daily Routine Pattern Analysis
+- Description: As Sven's human, I want to track his daily routine consistency (first exit, last entry times) with scientific tolerance levels so that I can understand his natural schedule and detect meaningful changes
+- Acceptance criteria: Dashboard shows "Sven's Daily Rhythm" with first exit and last entry time tracking, consistency analysis with ±60 minute tolerance for routine detection, weekday vs weekend baseline patterns, rolling 7-day pattern stability assessment
+- Implementation Notes: Use circular statistics for time-of-day analysis, implement mixed-effects models for weekday/weekend baselines
 **</user_story >**
 
 **< user_story >**
 - ID: US-015
-- Title: Future - Daily routine visualization
-- Description: As a user, I want to see daily routine patterns so that I can understand Sven's typical schedule and identify changes
-- Acceptance criteria: Dashboard shows average daily patterns, identifies routine changes, highlights unusual days, time-of-day analysis
+- Title: Behavioral Annotation System  
+- Description: As Sven's human, I want to annotate time periods with contextual information (health events, travel, environmental changes) so that I can correlate behavioral changes with real-world events
+- Acceptance criteria: Simple interface to add date-range annotations with categories (health, environment, schedule), visual annotation overlays on all behavioral visualizations, filter capability to include/exclude annotated periods, correlation analysis between annotations and behavior changes
+- Implementation Notes: JSON-based annotation storage, color-coded visualization overlays, integration with all analytics features
 **</user_story >**
 
 **< user_story >**
 - ID: US-016
-- Title: Future - Data quality reporting
-- Description: As a user, I want to see data quality metrics in the dashboard so that I can understand the completeness and reliability of the analysis
-- Acceptance criteria: Dashboard shows data completeness by time period, identifies gaps, shows confidence levels, validates against known patterns
+- Title: Seasonal Pattern Detection
+- Description: As Sven's human, I want to see how his behavioral patterns change across seasons using scientifically robust methods so that I can understand his long-term behavioral rhythms and anticipate seasonal changes
+- Acceptance criteria: Seasonal baseline comparison (Spring/Summer/Autumn/Winter), statistical significance testing for seasonal differences, overlay visualization showing seasonal pattern shifts, confidence intervals for pattern reliability
+- Implementation Notes: Use 4+ week periods for seasonal analysis per chronobiology research, spectral analysis for rhythm detection, statistical validation of seasonal differences
+**</user_story >**
+
+**< user_story >**
+- ID: US-017
+- Title: Anomaly Detection and Health Monitoring
+- Description: As Sven's human, I want to be alerted to significant deviations from his established behavioral patterns so that I can identify potential health issues or environmental disruptions early
+- Acceptance criteria: Statistical anomaly detection using ±2 standard deviation thresholds, classification of mild/moderate/significant anomalies, sustained pattern disruption alerts (>3 days), integration with annotation system for anomaly correlation
+- Implementation Notes: Implement change point detection algorithms, rolling baseline calculations, configurable alert thresholds
+**</user_story >**
+
+**< user_story >**
+- ID: US-018
+- Title: Data Quality Dashboard
+- Description: As Sven's human, I want to understand the quality and reliability of the behavioral analysis so that I can interpret results with appropriate confidence
+- Acceptance criteria: Data completeness visualization by time period, Sunday truncation impact assessment, single timestamp confidence scoring, processing report trend analysis, validation against known behavioral events
+- Implementation Notes: Quality metrics based on extraction confidence levels, visual indicators for data reliability, systematic missing data handling
 **</user_story >**
 
 ## Exit/Entry Time Determination Rules
@@ -588,15 +608,123 @@ This V1.0 release represents a **known good state** that can be safely returned 
 - **Error Handling**: Comprehensive logging and graceful degradation
 - **Backup Protection**: Multi-layer data safety with versioned storage
 
-### Next Phase Recommendations
+### Phase 2: Scientific Behavioral Analytics - Implementation Plan
 
-With V1.0 establishing a robust foundation, future development can focus on:
+With V1.0 establishing a robust data foundation, Phase 2 focuses on scientifically rigorous behavioral analysis and visualization. Our approach is grounded in chronobiology research and animal behavior analysis standards (see `SPECIFICATIONS/ScientificAnalyticsApproach.md`).
 
-1. **Advanced Analytics Dashboard**: PowerBI/Tableau integration for pattern analysis
-2. **Enhanced Visualizations**: Seasonal trends, behavioral pattern detection
-3. **Mobile Application**: Native mobile interface for data access
-4. **API Development**: RESTful API for third-party integrations
-5. **Machine Learning**: Predictive analytics for cat behavior patterns
+#### Phase 2.1: Foundation Analytics (Priority 1)
+**Target User Stories:** US-013, US-014
+
+**Step 1: Basic Actogram Implementation**
+- Create chronobiological actogram visualization in web dashboard
+- 24-hour X-axis with days on Y-axis, showing exit/entry events
+- Activity frequency histogram for "Peak Sven Hours" analysis
+- Configurable time windows (7-day, monthly views)
+- *Estimated Duration: 2 weeks*
+
+**Step 2: Daily Rhythm Pattern Analysis**
+- Implement "Sven's Daily Rhythm" tracking (first exit, last entry)
+- Statistical analysis with ±60 minute tolerance for routine detection
+- Weekday vs weekend baseline pattern establishment
+- Rolling 7-day pattern stability assessment using circular statistics
+- *Estimated Duration: 1.5 weeks*
+
+#### Phase 2.2: Contextual Analytics (Priority 2)
+**Target User Stories:** US-015, US-016
+
+**Step 3: Behavioral Annotation System**
+- JSON-based annotation storage for health/environmental events
+- Simple web interface for adding date-range annotations
+- Color-coded visualization overlays on all charts
+- Filter capability to include/exclude annotated periods
+- *Estimated Duration: 1 week*
+
+**Step 4: Seasonal Pattern Detection**
+- Implement seasonal baseline comparison (Spring/Summer/Autumn/Winter)
+- Statistical significance testing for seasonal differences
+- Overlay visualization showing seasonal pattern shifts
+- 4+ week period analysis per chronobiology research standards
+- *Estimated Duration: 2 weeks*
+
+#### Phase 2.3: Advanced Health Monitoring (Priority 3)
+**Target User Stories:** US-017, US-018
+
+**Step 5: Anomaly Detection System**
+- Statistical anomaly detection using ±2 standard deviation thresholds
+- Classification of mild/moderate/significant anomalies
+- Sustained pattern disruption alerts (>3 days deviation)
+- Change point detection algorithm implementation
+- *Estimated Duration: 2 weeks*
+
+**Step 6: Data Quality Dashboard**
+- Data completeness visualization and Sunday truncation impact assessment
+- Single timestamp confidence scoring and reliability indicators
+- Processing report trend analysis and validation metrics
+- Quality-adjusted statistical analysis capabilities
+- *Estimated Duration: 1 week*
+
+#### Technical Implementation Strategy
+
+**Web Dashboard Enhancement:**
+- Extend existing CloudFlare Workers dashboard with new analytics pages
+- Client-side JavaScript for interactive visualizations (D3.js/Chart.js)
+- Server-side statistical analysis using Python modules
+- Real-time data updates when new PDFs are processed
+
+**Navigation Structure:**
+```
+Dashboard (current stats) → 
+├── Patterns (New)
+│   ├── Activity Rhythm (Actogram + Peak Hours)
+│   ├── Daily Routine (Consistency tracking)
+│   └── Seasonal Trends (Long-term patterns)
+├── Health Monitoring (New)
+│   ├── Anomaly Alerts (Unusual behavior detection)
+│   └── Data Quality (Reliability assessment)
+├── Annotations (New)
+│   └── Event Timeline (Contextual information)
+└── Upload (existing functionality)
+```
+
+**Data Processing Pipeline:**
+- Extend existing GitHub Actions workflow with analytics computation
+- Generate statistical summaries alongside CSV/JSON export
+- Pre-computed metrics stored for dashboard performance
+- Real-time analysis capability for immediate feedback
+
+#### Success Metrics
+
+**Phase 2.1 Success Criteria:**
+- Actogram displays 500+ days of behavioral data accurately
+- Peak activity hours identified with statistical confidence
+- Daily routine consistency measured with ±60 minute tolerance
+- User can identify Sven's behavioral patterns visually
+
+**Phase 2.2 Success Criteria:**
+- Annotation system allows correlation of behavior with real events
+- Seasonal differences detected and displayed with statistical significance
+- User can understand how Sven's behavior changes across seasons
+- Historical context enhances pattern interpretation
+
+**Phase 2.3 Success Criteria:**
+- Anomaly detection identifies unusual behavioral periods accurately
+- Health monitoring provides early warning indicators
+- Data quality assessment guides interpretation confidence
+- System provides actionable insights for pet care decisions
+
+#### Risk Mitigation
+
+**Technical Risks:**
+- **Performance**: Pre-compute statistical analysis, implement progressive loading
+- **Complexity**: Start with simple visualizations, add sophistication iteratively
+- **Data Volume**: Efficient algorithms for 500+ days of session data
+
+**User Experience Risks:**
+- **Overwhelming Information**: Progressive disclosure, clear navigation hierarchy
+- **Scientific Complexity**: Tooltips and help text explaining statistical concepts
+- **Mobile Compatibility**: Responsive design for all new analytics features
+
+This phased approach ensures each increment delivers value while building toward comprehensive behavioral insights grounded in scientific methodology.
 
 ### V1.0 Success Criteria - ACHIEVED ✅
 
