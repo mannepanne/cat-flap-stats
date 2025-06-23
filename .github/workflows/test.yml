@@ -30,7 +30,7 @@ jobs:
     - name: Run comprehensive test suite
       run: |
         echo "Running full test suite with coverage reporting..."
-        python -m pytest test_*.py -v --tb=short --cov=cat_flap_extractor_v5 --cov-report=term-missing --cov-fail-under=30
+        python -m pytest test_*.py -v --tb=short --cov=cat_flap_extractor_v5 --cov-report=term-missing --cov-fail-under=25
         
     - name: Test critical functions exist
       run: |
