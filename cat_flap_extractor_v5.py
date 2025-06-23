@@ -69,6 +69,54 @@ class ProductionCatFlapExtractor:
         except Exception:
             return None
     
+    def detect_cross_year_boundary(self, date_strings: List[str], report_year: int) -> Dict[str, int]:
+        """Detect if dates span December→January and return correct years for each month"""
+        # Extract months from date strings
+        months_found = set()
+        
+        for date_str in date_strings:
+            if not date_str:
+                continue
+            if 'Dec' in date_str:
+                months_found.add(12)
+            elif 'Jan' in date_str:
+                months_found.add(1)
+        
+        # Check for December→January cross-year boundary
+        if 12 in months_found and 1 in months_found:
+            # Cross-year boundary detected!
+            # December dates belong to previous year, January dates to report year
+            return {
+                'december_year': report_year - 1,
+                'january_year': report_year,
+                'cross_year_detected': True
+            }
+        else:
+            # No cross-year boundary, all dates use report year
+            return {
+                'all_year': report_year,
+                'cross_year_detected': False
+            }
+    
+    def convert_date_str_to_full_date_with_cross_year(self, date_str: str, report_year: int, year_mapping: Dict[str, int]) -> Optional[str]:
+        """Convert date_str to full date with cross-year boundary support"""
+        if not date_str or not report_year:
+            return None
+        
+        # Determine correct year based on month
+        if year_mapping.get('cross_year_detected', False):
+            if 'Dec' in date_str:
+                actual_year = year_mapping['december_year']
+            elif 'Jan' in date_str:
+                actual_year = year_mapping['january_year']
+            else:
+                actual_year = report_year  # Other months use report year
+        else:
+            actual_year = year_mapping['all_year']
+        
+        # Use the standard conversion logic with the correct year
+        return self.convert_date_str_to_full_date(date_str, actual_year)
+    
     def parse_date_str_to_datetime(self, date_str: str, report_year: int) -> Optional[datetime]:
         """Parse date string to datetime for sorting"""
         full_date = self.convert_date_str_to_full_date(date_str, report_year)
@@ -787,12 +835,21 @@ class ProductionCatFlapExtractor:
             self.warnings.append(f"No sessions built from {pdf_path}")
             return None
         
-        # Add date_full to each session
-        for session in session_data:
-            if report_info.get('report_year'):
-                session['date_full'] = self.convert_date_str_to_full_date(
+        # Add date_full to each session with cross-year boundary detection
+        if report_info.get('report_year'):
+            # Detect cross-year boundaries for all date strings
+            all_date_strings = [session['date_str'] for session in session_data]
+            year_mapping = self.detect_cross_year_boundary(all_date_strings, report_info['report_year'])
+            
+            if year_mapping.get('cross_year_detected'):
+                self.warnings.append(f"{os.path.basename(pdf_path)}: Cross-year boundary detected - December dates assigned to {year_mapping['december_year']}, January dates to {year_mapping['january_year']}")
+            
+            # Apply correct year mapping to each session
+            for session in session_data:
+                session['date_full'] = self.convert_date_str_to_full_date_with_cross_year(
                     session['date_str'], 
-                    report_info['report_year']
+                    report_info['report_year'],
+                    year_mapping
                 )
         
         result = {
