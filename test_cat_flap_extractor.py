@@ -96,13 +96,18 @@ class TestTimestampAnalysis:
         assert result == "entry"
     
     def test_determine_single_timestamp_type_fallback_rules(self):
-        """Test Rule 7: Fallback rules for ambiguous cases"""
-        # Rule 7a: Morning fallback → ENTRY
+        """Test Rule 7: Fallback rules for ambiguous cases and Rules 3b/4b for long durations"""
+        # Rule 3b: Morning with 15h duration = time since midnight → ENTRY  
         result = self.extractor.determine_single_timestamp_type("08:00", "15:00 h", "Test Day", "test.pdf")
         assert result == "entry"
         
-        # Rule 7b: Afternoon/evening fallback → EXIT
+        # Rule 4b: Afternoon with 15h duration = time since midnight → ENTRY
+        # (15:00 = 15h since midnight, so 15:00 + 15h duration matches since-midnight pattern)
         result = self.extractor.determine_single_timestamp_type("15:00", "15:00 h", "Test Day", "test.pdf")
+        assert result == "entry"
+        
+        # Rule 7b: Afternoon/evening fallback for non-matching long duration → EXIT
+        result = self.extractor.determine_single_timestamp_type("15:00", "13:00 h", "Test Day", "test.pdf")
         assert result == "exit"
 
 
