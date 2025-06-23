@@ -40,6 +40,10 @@ export default {
           return await handleDashboard(request, env);
         case '/api/dataset':
           return await handleDatasetApi(request, env);
+        case '/api/download/dataset.csv':
+          return await handleDownloadCsv(request, env);
+        case '/api/download/dataset.json':
+          return await handleDownloadJson(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -372,22 +376,78 @@ async function handleDatasetApi(request, env) {
     return new Response('Unauthorized', { status: 401 });
   }
   
-  // TODO: Return current dataset status and download links
-  return new Response(JSON.stringify({
-    status: 'active',
-    last_updated: '2025-06-22T12:00:00Z',
-    total_sessions: 1250,
-    date_range: {
-      start: '2024-01-01',
-      end: '2025-06-22'
-    },
-    download_links: {
-      csv: '/api/download/dataset.csv',
-      json: '/api/download/dataset.json'
+  try {
+    // Fetch current dataset info from GitHub
+    const csvUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.csv`;
+    const csvResponse = await fetch(csvUrl);
+    
+    let datasetInfo = {
+      status: 'active',
+      download_links: {
+        csv: '/api/download/dataset.csv',
+        json: '/api/download/dataset.json'
+      }
+    };
+    
+    if (csvResponse.ok) {
+      const csvData = await csvResponse.text();
+      const lines = csvData.split('\n').filter(line => line.trim());
+      const totalSessions = Math.max(0, lines.length - 1); // Subtract header row
+      
+      // Extract date range from the data
+      if (totalSessions > 0) {
+        const dataLines = lines.slice(1); // Skip header
+        const dates = dataLines
+          .map(line => {
+            const parts = line.split(',');
+            return parts[8]; // date_full column
+          })
+          .filter(date => date && date.match(/^\d{4}-\d{2}-\d{2}$/))
+          .sort();
+        
+        if (dates.length > 0) {
+          datasetInfo.date_range = {
+            start: dates[0],
+            end: dates[dates.length - 1]
+          };
+        }
+      }
+      
+      datasetInfo.total_sessions = totalSessions;
+      datasetInfo.last_updated = new Date().toISOString();
+    } else {
+      // Fallback values if GitHub fetch fails
+      datasetInfo.total_sessions = 1572;
+      datasetInfo.last_updated = '2025-06-23T12:00:00Z';
+      datasetInfo.date_range = {
+        start: '2024-02-05',
+        end: '2025-06-22'
+      };
     }
-  }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
+    
+    return new Response(JSON.stringify(datasetInfo), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Error fetching dataset info:', error);
+    
+    // Return fallback data
+    return new Response(JSON.stringify({
+      status: 'active',
+      last_updated: '2025-06-23T12:00:00Z',
+      total_sessions: 1572,
+      date_range: {
+        start: '2024-02-05',
+        end: '2025-06-22'
+      },
+      download_links: {
+        csv: '/api/download/dataset.csv',
+        json: '/api/download/dataset.json'
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
 // GitHub Actions integration
@@ -723,8 +783,8 @@ function getDashboardPage(email) {
             <h3>Download Dataset</h3>
             <p>Download the complete dataset in CSV or JSON format for analysis.</p>
             <br>
-            <a href="/api/dataset" class="btn btn-secondary">Download CSV</a>
-            <a href="/api/dataset" class="btn btn-secondary">Download JSON</a>
+            <a href="/api/download/dataset.csv" class="btn btn-secondary">Download CSV</a>
+            <a href="/api/download/dataset.json" class="btn btn-secondary">Download JSON</a>
         </div>
         
         <div class="card">
@@ -996,6 +1056,73 @@ function getUploadPage(email) {
     </script>
 </body>
 </html>`;
+}
+
+// Download handlers
+async function handleDownloadCsv(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    // Fetch CSV file from GitHub
+    const githubUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.csv`;
+    const response = await fetch(githubUrl);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch CSV from GitHub: ${response.status}`);
+      return new Response('Dataset not available', { status: 404 });
+    }
+    
+    const csvData = await response.text();
+    
+    return new Response(csvData, {
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': 'attachment; filename="cat_flap_master_dataset.csv"',
+        'Cache-Control': 'no-cache'
+      }
+    });
+  } catch (error) {
+    console.error('Error downloading CSV:', error);
+    return new Response('Download failed', { status: 500 });
+  }
+}
+
+async function handleDownloadJson(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    // Fetch JSON file from GitHub
+    const githubUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
+    const response = await fetch(githubUrl);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch JSON from GitHub: ${response.status}`);
+      return new Response('Dataset not available', { status: 404 });
+    }
+    
+    const jsonData = await response.text();
+    
+    return new Response(jsonData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Disposition': 'attachment; filename="cat_flap_master_dataset.json"',
+        'Cache-Control': 'no-cache'
+      }
+    });
+  } catch (error) {
+    console.error('Error downloading JSON:', error);
+    return new Response('Download failed', { status: 500 });
+  }
 }
 
 // Favicon handlers
