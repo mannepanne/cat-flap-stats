@@ -1,29 +1,28 @@
 # PDF Processing Report
 
-**Date:** Mon Jun 23 08:19:23 UTC 2025
-**File:** SvenVarysSootyHultbergWong_Activity_Report_03-03-2024.pdf
+**Date:** Mon Jun 23 08:32:18 UTC 2025
+**File:** SvenVarysSootyHultbergWong_Activity_Report_25-02-2024.pdf
 **Uploaded by:** magnus.hultberg@gmail.com
 
 ## Processing Results
 - ✅ PDF downloaded successfully
-- ℹ️ PDF contained no cat flap usage data
-- ✅ Empty file processing completed
+- ✅ Data extraction completed
+- ✅ Duplicate detection performed
 - ✅ Dataset backup created
-- ✅ Processing report generated
+- ✅ Master dataset updated
 
 ## Duplicate Detection
 Duplicate Detection Report
 ========================
-New sessions processed: 0
-Duplicate sessions found: 0
+New sessions processed: 2
+Duplicate sessions found: 2
 Unique new sessions added: 0
-Total sessions in dataset: 72
-Dataset date range: 2024-02-05 to 2024-03-17
-Note: PDF contained no cat flap usage data
+Total sessions in dataset: 1563
+Dataset date range: 2024-02-05 to 2025-12-31
 
 ## File Statistics
-- New CSV size: 266 bytes
-- New JSON size: 268 bytes
-- Master CSV size: 12515 bytes
+- New CSV size: 620 bytes
+- New JSON size: 1146 bytes
+- Master CSV size: 331971 bytes
 - Master JSON size: 1146 bytes
 
