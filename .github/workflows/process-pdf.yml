@@ -156,6 +156,35 @@ jobs:
           echo "Backed up existing JSON dataset"
         fi
         
+        # Prune old backups - keep only the 3 most recent timestamped directories
+        echo "Pruning old backups (keeping 3 most recent)..."
+        cd dataset_backups
+        
+        # List all timestamped directories (format: YYYYMMDD_HHMMSS) and sort by name (chronological)
+        # Keep only directories that match the timestamp pattern to avoid deleting other files
+        BACKUP_DIRS=$(find . -maxdepth 1 -type d -name "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]" | sort)
+        BACKUP_COUNT=$(echo "$BACKUP_DIRS" | wc -l)
+        
+        if [ $BACKUP_COUNT -gt 3 ]; then
+          # Calculate how many to remove (keep the last 3)
+          REMOVE_COUNT=$((BACKUP_COUNT - 3))
+          echo "Found $BACKUP_COUNT backup directories, removing oldest $REMOVE_COUNT..."
+          
+          # Remove the oldest directories (first N in sorted list)
+          echo "$BACKUP_DIRS" | head -n $REMOVE_COUNT | while read dir; do
+            if [ -d "$dir" ] && [ "$dir" != "." ]; then
+              echo "Removing old backup: $dir"
+              rm -rf "$dir"
+            fi
+          done
+          
+          echo "Backup pruning completed - kept 3 most recent backups"
+        else
+          echo "Only $BACKUP_COUNT backup directories found - no pruning needed"
+        fi
+        
+        cd ..
+        
     - name: Check for duplicates and merge with master dataset
       run: |
         echo "Checking for duplicates and merging with master dataset"
