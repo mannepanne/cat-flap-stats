@@ -897,6 +897,16 @@ function getDashboardPage(email) {
                 <div class="stat-label">Total Sessions</div>
             </div>
             <div class="stat-card">
+                <div class="info-icon">
+                    i
+                    <div class="tooltip" id="days-data-tooltip">
+                        <strong>Days of Data: 455</strong><br><br>
+                        Total calendar days from first to last recorded session.<br><br>
+                        <strong>Date Range:</strong> <span id="tooltip-date-range">Loading...</span><br>
+                        <strong>Calculation:</strong> End date - Start date + 1<br><br>
+                        This represents the complete timespan covered by the dataset, including days with no activity.
+                    </div>
+                </div>
                 <div class="stat-number" id="date-range">365</div>
                 <div class="stat-label">Days of Data</div>
             </div>
@@ -977,6 +987,19 @@ function getDashboardPage(email) {
                     const timeDiff = end - start;
                     const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
                     document.getElementById('date-range').textContent = daysDiff.toLocaleString();
+                    
+                    // Update tooltip with real data
+                    const formattedStart = start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const formattedEnd = end.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const tooltipElement = document.getElementById('days-data-tooltip');
+                    if (tooltipElement) {
+                        tooltipElement.innerHTML = 
+                            '<strong>Days of Data: ' + daysDiff.toLocaleString() + '</strong><br><br>' +
+                            'Total calendar days from first to last recorded session.<br><br>' +
+                            '<strong>Date Range:</strong> ' + formattedStart + ' to ' + formattedEnd + '<br>' +
+                            '<strong>Calculation:</strong> End date - Start date + 1<br><br>' +
+                            'This represents the complete timespan covered by the dataset, including days with no activity.';
+                    }
                 }
             }
             
@@ -1091,6 +1114,18 @@ function getPatternsPage(email) {
     <div class="container">
         <div class="stats-grid">
             <div class="stat-card">
+                <div class="info-icon">
+                    i
+                    <div class="tooltip" id="days-analyzed-tooltip">
+                        <strong>Days Analyzed: 404</strong><br><br>
+                        Days with actual cat flap activity recorded (≥1 session).<br><br>
+                        <strong>Difference from "Days of Data":</strong><br>
+                        • Days of Data: 455 (total calendar span)<br>
+                        • Days Analyzed: 404 (days with activity)<br>
+                        • Gap: 51 days with no recorded sessions<br><br>
+                        Days without activity occur due to weather, illness, alternative exits, or Sven staying indoors.
+                    </div>
+                </div>
                 <div class="stat-number" id="total-days">0</div>
                 <div class="stat-label">Days Analyzed</div>
             </div>
@@ -1202,8 +1237,35 @@ function getPatternsPage(email) {
             });
         
         function updateSummaryStats(data) {
-            document.getElementById('total-days').textContent = data.precomputed.dailySummaries.length;
+            const totalDaysAnalyzed = data.precomputed.dailySummaries.length;
+            document.getElementById('total-days').textContent = totalDaysAnalyzed;
             document.getElementById('data-quality').textContent = Math.round(data.metadata.dataQuality.confidenceScore * 100) + '%';
+            
+            // Update Days Analyzed tooltip with real data
+            if (data.metadata && data.metadata.dateRange) {
+                const dateRange = data.metadata.dateRange;
+                let totalDaysInRange = 0;
+                if (dateRange.includes(' to ')) {
+                    const [startDate, endDate] = dateRange.split(' to ');
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const timeDiff = end - start;
+                    totalDaysInRange = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                }
+                
+                const daysWithoutActivity = totalDaysInRange - totalDaysAnalyzed;
+                const tooltipElement = document.getElementById('days-analyzed-tooltip');
+                if (tooltipElement) {
+                    tooltipElement.innerHTML = 
+                        '<strong>Days Analyzed: ' + totalDaysAnalyzed.toLocaleString() + '</strong><br><br>' +
+                        'Days with actual cat flap activity recorded (≥1 session).<br><br>' +
+                        '<strong>Difference from "Days of Data":</strong><br>' +
+                        '• Days of Data: ' + totalDaysInRange.toLocaleString() + ' (total calendar span)<br>' +
+                        '• Days Analyzed: ' + totalDaysAnalyzed.toLocaleString() + ' (days with activity)<br>' +
+                        '• Gap: ' + daysWithoutActivity.toLocaleString() + ' days with no recorded sessions<br><br>' +
+                        'Days without activity occur due to weather, illness, alternative exits, or Sven staying indoors.';
+                }
+            }
             
             // Find peak hour
             const peakHours = data.precomputed.peakHours;
