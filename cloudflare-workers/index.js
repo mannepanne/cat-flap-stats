@@ -886,18 +886,27 @@ function getDashboardPage(email) {
     
     <script>
         // Load dashboard data
-        fetch('/api/dataset')
-            .then(response => response.json())
-            .then(data => {
-                if (data.total_sessions) {
-                    document.getElementById('total-sessions').textContent = data.total_sessions.toLocaleString();
-                }
-                if (data.last_updated) {
-                    const date = new Date(data.last_updated);
-                    document.getElementById('last-update').textContent = date.toLocaleDateString();
-                }
-            })
-            .catch(error => console.error('Error loading dashboard data:', error));
+        Promise.all([
+            fetch('/api/dataset').then(r => r.json()),
+            fetch('/api/analytics').then(r => r.json())
+        ])
+        .then(([datasetInfo, analyticsData]) => {
+            // Update basic stats
+            if (datasetInfo.total_sessions) {
+                document.getElementById('total-sessions').textContent = datasetInfo.total_sessions.toLocaleString();
+            }
+            if (datasetInfo.last_updated) {
+                const date = new Date(datasetInfo.last_updated);
+                document.getElementById('last-update').textContent = date.toLocaleDateString();
+            }
+            
+            // Update data quality with real calculated value
+            if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
+                const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
+                document.getElementById('data-quality').textContent = qualityScore + '%';
+            }
+        })
+        .catch(error => console.error('Error loading dashboard data:', error));
     </script>
 </body>
 </html>`;
