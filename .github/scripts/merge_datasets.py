@@ -189,7 +189,6 @@ def main():
     print('Rebuilding complete JSON dataset from CSV master...')
     try:
         import subprocess
-        import sys
         
         # Run the JSON rebuild script
         result = subprocess.run([sys.executable, '.github/scripts/rebuild_json_dataset.py'], 
