@@ -967,6 +967,19 @@ function getDashboardPage(email) {
                 document.getElementById('last-update').textContent = date.toLocaleDateString();
             }
             
+            // Calculate and update days of data from date range
+            if (analyticsData.metadata && analyticsData.metadata.dateRange) {
+                const dateRange = analyticsData.metadata.dateRange;
+                if (dateRange.includes(' to ')) {
+                    const [startDate, endDate] = dateRange.split(' to ');
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const timeDiff = end - start;
+                    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
+                    document.getElementById('date-range').textContent = daysDiff.toLocaleString();
+                }
+            }
+            
             // Update data quality with real calculated value
             if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
                 const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
