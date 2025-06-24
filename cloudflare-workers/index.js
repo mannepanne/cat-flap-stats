@@ -998,27 +998,28 @@ function getPatternsPage(email) {
             padding: 2rem;
             color: #666;
         }
-        .stats-summary {
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
-        .stat-item {
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             text-align: center;
-            padding: 1rem;
-            background: #f8f9ff;
-            border-radius: 4px;
         }
-        .stat-value {
-            font-size: 1.5rem;
+        .stat-number {
+            font-size: 2rem;
             font-weight: 700;
             color: #667eea;
+            margin-bottom: 0.5rem;
         }
         .stat-label {
             color: #666;
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
+            font-weight: 500;
         }
         .legend {
             display: flex;
@@ -1062,21 +1063,21 @@ function getPatternsPage(email) {
     </div>
     
     <div class="container">
-        <div class="stats-summary">
-            <div class="stat-item">
-                <div class="stat-value" id="total-days">0</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-days">0</div>
                 <div class="stat-label">Days Analyzed</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value" id="peak-hour">--:--</div>
+            <div class="stat-card">
+                <div class="stat-number" id="peak-hour">--:--</div>
                 <div class="stat-label">Peak Activity Hour</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value" id="avg-sessions">0</div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-sessions">0</div>
                 <div class="stat-label">Avg Daily Sessions</div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value" id="data-quality">0%</div>
+            <div class="stat-card">
+                <div class="stat-number" id="data-quality">0%</div>
                 <div class="stat-label">Data Quality</div>
             </div>
         </div>
