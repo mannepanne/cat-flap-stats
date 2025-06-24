@@ -44,6 +44,10 @@ export default {
           return await handleDownloadCsv(request, env);
         case '/api/download/dataset.json':
           return await handleDownloadJson(request, env);
+        case '/patterns':
+          return await handlePatterns(request, env);
+        case '/api/analytics':
+          return await handleAnalyticsApi(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -450,6 +454,83 @@ async function handleDatasetApi(request, env) {
   }
 }
 
+async function handlePatterns(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getPatternsPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
+async function handleAnalyticsApi(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    // Fetch enhanced JSON dataset with analytics from GitHub
+    const jsonUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
+    const response = await fetch(jsonUrl);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch analytics data from GitHub: ${response.status}`);
+      return new Response('Analytics data not available', { status: 404 });
+    }
+    
+    const analyticsData = await response.text();
+    const parsedData = JSON.parse(analyticsData);
+    
+    // Extract just the analytics portions for the dashboard
+    const dashboardData = {
+      metadata: parsedData.metadata,
+      precomputed: parsedData.precomputed,
+      // Include recent sessions for detailed view (last 30 days)
+      recentSessions: getRecentSessions(parsedData.sessions, 30)
+    };
+    
+    return new Response(JSON.stringify(dashboardData), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300' // 5 minute cache
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching analytics data:', error);
+    return new Response('Analytics fetch failed', { status: 500 });
+  }
+}
+
+function getRecentSessions(sessions, days) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  const cutoffString = cutoffDate.toISOString().split('T')[0];
+  
+  const recentSessions = [];
+  for (const report of sessions) {
+    if (report.session_data) {
+      const filteredSessions = report.session_data.filter(session => 
+        session.date_full >= cutoffString
+      );
+      if (filteredSessions.length > 0) {
+        recentSessions.push({
+          ...report,
+          session_data: filteredSessions
+        });
+      }
+    }
+  }
+  
+  return recentSessions;
+}
+
 // GitHub Actions integration
 async function triggerGitHubProcessing(fileId, filename, uploadedBy, env) {
   const githubUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
@@ -773,6 +854,13 @@ function getDashboardPage(email) {
         </div>
         
         <div class="card">
+            <h3>📊 Behavioral Patterns</h3>
+            <p>View Sven's activity rhythms, peak hours, and seasonal patterns with scientific actogram visualization.</p>
+            <br>
+            <a href="/patterns" class="btn">View Activity Patterns</a>
+        </div>
+        
+        <div class="card">
             <h3>Upload New PDF Report</h3>
             <p>Upload your weekly SURE Petcare PDF report to add new data to the dataset.</p>
             <br>
@@ -810,6 +898,532 @@ function getDashboardPage(email) {
                 }
             })
             .catch(error => console.error('Error loading dashboard data:', error));
+    </script>
+</body>
+</html>`;
+}
+
+function getPatternsPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Behavioral Patterns</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { color: #333; }
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .section-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .section-grid { grid-template-columns: 1fr; }
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            overflow: auto;
+        }
+        .actogram-container {
+            width: 100%;
+            height: 600px;
+            overflow: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-block;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+        .btn:hover { background: #5a6fd8; }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover { background: #d0d0d0; }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9ff;
+            border-radius: 4px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .legend {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h2>🐱 Cat Flap Stats - Behavioral Patterns</h2>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <span>Welcome, ${email}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="stats-summary">
+            <div class="stat-item">
+                <div class="stat-value" id="total-days">0</div>
+                <div class="stat-label">Days Analyzed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="peak-hour">--:--</div>
+                <div class="stat-label">Peak Activity Hour</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="avg-sessions">0</div>
+                <div class="stat-label">Avg Daily Sessions</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="data-quality">0%</div>
+                <div class="stat-label">Data Quality</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>📈 Peak Sven Hours - Activity Frequency</h3>
+            <p>This chart shows when Sven is most active throughout the day, based on all recorded exit and entry times.</p>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #667eea;"></div>
+                    <span>Exits (going outside)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #42a5f5;"></div>
+                    <span>Entries (coming inside)</span>
+                </div>
+            </div>
+            <div class="chart-container" id="peak-hours-chart">
+                <div class="loading">Loading peak hours data...</div>
+            </div>
+        </div>
+        
+        <div class="section-grid">
+            <div class="card">
+                <h3>📅 Weekday vs Weekend Patterns</h3>
+                <div class="chart-container" id="weekday-patterns-chart">
+                    <div class="loading">Loading weekday patterns...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🌱 Seasonal Activity Patterns</h3>
+                <div class="chart-container" id="seasonal-patterns-chart">
+                    <div class="loading">Loading seasonal patterns...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>🕐 Chronobiological Actogram</h3>
+            <p>Scientific visualization showing Sven's daily activity patterns over time. Each row represents one day, with time of day on the horizontal axis.</p>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>Exit events</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ecdc4;"></div>
+                    <span>Entry events</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f0f0f0;"></div>
+                    <span>Daytime (6AM - 6PM)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e0e0e0;"></div>
+                    <span>Nighttime (6PM - 6AM)</span>
+                </div>
+            </div>
+            <div class="actogram-container" id="actogram">
+                <div class="loading">Loading actogram data...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize analytics dashboard
+        let analyticsData = null;
+        
+        // Load analytics data
+        fetch('/api/analytics')
+            .then(response => response.json())
+            .then(data => {
+                analyticsData = data;
+                updateSummaryStats(data);
+                renderPeakHoursChart(data.precomputed.peakHours);
+                renderWeekdayPatternsChart(data.precomputed.weekdayPatterns);
+                renderSeasonalPatternsChart(data.precomputed.seasonalStats);
+                renderActogram(data.precomputed.dailySummaries);
+            })
+            .catch(error => {
+                console.error('Error loading analytics data:', error);
+                document.querySelectorAll('.loading').forEach(el => {
+                    el.textContent = 'Error loading data. Please try again later.';
+                });
+            });
+        
+        function updateSummaryStats(data) {
+            document.getElementById('total-days').textContent = data.precomputed.dailySummaries.length;
+            document.getElementById('data-quality').textContent = Math.round(data.metadata.dataQuality.confidenceScore * 100) + '%';
+            
+            // Find peak hour
+            const peakHours = data.precomputed.peakHours;
+            const maxActivity = Math.max(...peakHours.map(h => h.exitFrequency + h.entryFrequency));
+            const peakHour = peakHours.find(h => (h.exitFrequency + h.entryFrequency) === maxActivity);
+            if (peakHour) {
+                document.getElementById('peak-hour').textContent = peakHour.hour.toString().padStart(2, '0') + ':00';
+            }
+            
+            // Calculate average daily sessions
+            const avgSessions = data.precomputed.dailySummaries.reduce((sum, day) => sum + day.sessions, 0) / data.precomputed.dailySummaries.length;
+            document.getElementById('avg-sessions').textContent = avgSessions.toFixed(1);
+        }
+        
+        function renderPeakHoursChart(peakHours) {
+            const container = document.getElementById('peak-hours-chart');
+            container.innerHTML = '';
+            
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+            const width = container.clientWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', \`translate(\${margin.left},\${margin.top})\`);
+            
+            // Scales
+            const xScale = d3.scaleBand()
+                .domain(peakHours.map(d => d.hour))
+                .range([0, width])
+                .padding(0.1);
+            
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(peakHours, d => Math.max(d.exitFrequency, d.entryFrequency))])
+                .nice()
+                .range([height, 0]);
+            
+            // Bars for exits
+            g.selectAll('.bar-exit')
+                .data(peakHours)
+                .enter().append('rect')
+                .attr('class', 'bar-exit')
+                .attr('x', d => xScale(d.hour))
+                .attr('y', d => yScale(d.exitFrequency))
+                .attr('width', xScale.bandwidth() / 2)
+                .attr('height', d => height - yScale(d.exitFrequency))
+                .attr('fill', '#667eea');
+            
+            // Bars for entries
+            g.selectAll('.bar-entry')
+                .data(peakHours)
+                .enter().append('rect')
+                .attr('class', 'bar-entry')
+                .attr('x', d => xScale(d.hour) + xScale.bandwidth() / 2)
+                .attr('y', d => yScale(d.entryFrequency))
+                .attr('width', xScale.bandwidth() / 2)
+                .attr('height', d => height - yScale(d.entryFrequency))
+                .attr('fill', '#42a5f5');
+            
+            // Axes
+            g.append('g')
+                .attr('transform', \`translate(0,\${height})\`)
+                .call(d3.axisBottom(xScale).tickFormat(d => d + ':00'));
+            
+            g.append('g')
+                .call(d3.axisLeft(yScale));
+            
+            // Labels
+            g.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text('Events per Day');
+            
+            g.append('text')
+                .attr('transform', \`translate(\${width / 2}, \${height + margin.bottom})\`)
+                .style('text-anchor', 'middle')
+                .text('Hour of Day');
+        }
+        
+        function renderWeekdayPatternsChart(patterns) {
+            const container = document.getElementById('weekday-patterns-chart');
+            container.innerHTML = '';
+            
+            if (!patterns.weekdays || !patterns.weekends) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No weekday pattern data available</p>';
+                return;
+            }
+            
+            const data = [
+                { type: 'Weekdays', firstExit: patterns.weekdays.avgFirstExit, lastEntry: patterns.weekdays.avgLastEntry },
+                { type: 'Weekends', firstExit: patterns.weekends.avgFirstExit, lastEntry: patterns.weekends.avgLastEntry }
+            ];
+            
+            container.innerHTML = \`
+                <div style="padding: 1rem;">
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Weekdays (Mon-Fri):</strong><br>
+                        First exit: \${patterns.weekdays.avgFirstExit}<br>
+                        Last entry: \${patterns.weekdays.avgLastEntry}
+                    </div>
+                    <div>
+                        <strong>Weekends (Sat-Sun):</strong><br>
+                        First exit: \${patterns.weekends.avgFirstExit}<br>
+                        Last entry: \${patterns.weekends.avgLastEntry}
+                    </div>
+                </div>
+            \`;
+        }
+        
+        function renderSeasonalPatternsChart(seasonalStats) {
+            const container = document.getElementById('seasonal-patterns-chart');
+            container.innerHTML = '';
+            
+            let html = '<div style="padding: 1rem;">';
+            for (const [season, stats] of Object.entries(seasonalStats)) {
+                const seasonEmoji = {
+                    spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️'
+                };
+                
+                html += \`
+                    <div style="margin-bottom: 1rem;">
+                        <strong>\${seasonEmoji[season] || ''} \${season.charAt(0).toUpperCase() + season.slice(1)}:</strong><br>
+                        Avg sessions: \${stats.avgDailySessions}<br>
+                        Avg first exit: \${stats.avgFirstExit}
+                    </div>
+                \`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function renderActogram(dailySummaries) {
+            const container = document.getElementById('actogram');
+            container.innerHTML = '';
+            
+            if (!dailySummaries || dailySummaries.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No daily summary data available</p>';
+                return;
+            }
+            
+            // Take last 60 days for better performance
+            const recentDays = dailySummaries.slice(-60);
+            
+            const margin = { top: 20, right: 30, bottom: 40, left: 100 };
+            const width = Math.max(800, container.clientWidth) - margin.left - margin.right;
+            const height = recentDays.length * 15; // 15 pixels per day
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', \`translate(\${margin.left},\${margin.top})\`);
+            
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain([0, 24])
+                .range([0, width]);
+            
+            const yScale = d3.scaleBand()
+                .domain(recentDays.map(d => d.date))
+                .range([0, height])
+                .padding(0.1);
+            
+            // Background for day/night
+            recentDays.forEach((day, i) => {
+                // Night background (6PM to 6AM)
+                g.append('rect')
+                    .attr('x', 0)
+                    .attr('y', yScale(day.date))
+                    .attr('width', xScale(6))
+                    .attr('height', yScale.bandwidth())
+                    .attr('fill', '#e8e8e8');
+                
+                g.append('rect')
+                    .attr('x', xScale(18))
+                    .attr('y', yScale(day.date))
+                    .attr('width', xScale(6))
+                    .attr('height', yScale.bandwidth())
+                    .attr('fill', '#e8e8e8');
+                
+                // Day background (6AM to 6PM)
+                g.append('rect')
+                    .attr('x', xScale(6))
+                    .attr('y', yScale(day.date))
+                    .attr('width', xScale(12))
+                    .attr('height', yScale.bandwidth())
+                    .attr('fill', '#f5f5f5');
+            });
+            
+            // Add activity markers
+            recentDays.forEach(day => {
+                // First exit marker
+                if (day.firstExit) {
+                    const hour = parseTimeToHour(day.firstExit);
+                    if (hour !== null) {
+                        g.append('circle')
+                            .attr('cx', xScale(hour))
+                            .attr('cy', yScale(day.date) + yScale.bandwidth() / 2)
+                            .attr('r', 3)
+                            .attr('fill', '#ff6b6b')
+                            .append('title')
+                            .text(\`\${day.date}: First exit at \${day.firstExit}\`);
+                    }
+                }
+                
+                // Last entry marker
+                if (day.lastEntry) {
+                    const hour = parseTimeToHour(day.lastEntry);
+                    if (hour !== null) {
+                        g.append('circle')
+                            .attr('cx', xScale(hour))
+                            .attr('cy', yScale(day.date) + yScale.bandwidth() / 2)
+                            .attr('r', 3)
+                            .attr('fill', '#4ecdc4')
+                            .append('title')
+                            .text(\`\${day.date}: Last entry at \${day.lastEntry}\`);
+                    }
+                }
+            });
+            
+            // Axes
+            const xAxis = d3.axisBottom(xScale)
+                .tickFormat(d => d + ':00')
+                .ticks(12);
+            
+            g.append('g')
+                .attr('transform', \`translate(0,\${height})\`)
+                .call(xAxis);
+            
+            const yAxis = d3.axisLeft(yScale)
+                .tickFormat(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            
+            g.append('g')
+                .call(yAxis);
+            
+            // Labels
+            g.append('text')
+                .attr('transform', \`translate(\${width / 2}, \${height + 35})\`)
+                .style('text-anchor', 'middle')
+                .text('Hour of Day');
+            
+            g.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left + 20)
+                .attr('x', 0 - (height / 2))
+                .style('text-anchor', 'middle')
+                .text('Date');
+        }
+        
+        function parseTimeToHour(timeStr) {
+            if (!timeStr) return null;
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) return null;
+            const hour = parseInt(parts[0]);
+            const minute = parseInt(parts[1]);
+            return hour + minute / 60;
+        }
     </script>
 </body>
 </html>`;
