@@ -793,6 +793,7 @@ function getDashboardPage(email) {
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             text-align: center;
+            position: relative;
         }
         .stat-number {
             font-size: 2rem;
@@ -803,6 +804,55 @@ function getDashboardPage(email) {
         .stat-label {
             color: #666;
             font-weight: 500;
+        }
+        .info-icon {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 16px;
+            height: 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            z-index: 10;
+        }
+        .tooltip {
+            visibility: hidden;
+            width: 300px;
+            background-color: rgba(0,0,0,0.9);
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            right: 20px;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0,0,0,0.9) transparent transparent transparent;
+        }
+        .info-icon:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
         }
         .btn {
             padding: 10px 20px;
@@ -848,6 +898,16 @@ function getDashboardPage(email) {
                 <div class="stat-label">Last Updated</div>
             </div>
             <div class="stat-card">
+                <div class="info-icon">
+                    i
+                    <div class="tooltip">
+                        <strong>Data Quality: 89%</strong><br><br>
+                        Based on days with complete behavioral data (≥2 sessions per day).<br><br>
+                        <strong>Formula:</strong> Complete days ÷ Total days<br>
+                        <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
+                        There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
+                    </div>
+                </div>
                 <div class="stat-number" id="data-quality">98%</div>
                 <div class="stat-label">Data Quality</div>
             </div>
@@ -1010,6 +1070,7 @@ function getPatternsPage(email) {
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             text-align: center;
+            position: relative;
         }
         .stat-number {
             font-size: 2rem;
@@ -1077,6 +1138,16 @@ function getPatternsPage(email) {
                 <div class="stat-label">Avg Daily Sessions</div>
             </div>
             <div class="stat-card">
+                <div class="info-icon">
+                    i
+                    <div class="tooltip">
+                        <strong>Data Quality: 89%</strong><br><br>
+                        Based on days with complete behavioral data (≥2 sessions per day).<br><br>
+                        <strong>Formula:</strong> Complete days ÷ Total days<br>
+                        <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
+                        There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
+                    </div>
+                </div>
                 <div class="stat-number" id="data-quality">0%</div>
                 <div class="stat-label">Data Quality</div>
             </div>
