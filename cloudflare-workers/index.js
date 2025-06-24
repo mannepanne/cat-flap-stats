@@ -46,8 +46,12 @@ export default {
           return await handleDownloadJson(request, env);
         case '/patterns':
           return await handlePatterns(request, env);
+        case '/circadian':
+          return await handleCircadian(request, env);
         case '/api/analytics':
           return await handleAnalyticsApi(request, env);
+        case '/api/circadian':
+          return await handleCircadianApi(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -658,6 +662,267 @@ function getRecentSessions(sessions, days) {
   return recentSessions;
 }
 
+async function handleCircadian(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getCircadianPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
+async function handleCircadianApi(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    const analyticsData = await env.CAT_FLAP_KV.get('master_dataset.json');
+    if (!analyticsData) {
+      return new Response('No analytics data available', { status: 404 });
+    }
+    
+    const parsedData = JSON.parse(analyticsData);
+    
+    // Generate advanced circadian analytics
+    const circadianData = await generateCircadianAnalysis(parsedData);
+    
+    return new Response(JSON.stringify(circadianData), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300' // 5 minute cache
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching circadian data:', error);
+    return new Response('Circadian analysis failed', { status: 500 });
+  }
+}
+
+// Advanced circadian rhythm analysis
+async function generateCircadianAnalysis(data) {
+  const sessions = [];
+  
+  // Flatten all sessions with timestamps
+  for (const report of data.sessions || []) {
+    if (report.session_data) {
+      for (const session of report.session_data) {
+        if (session.exit_time && session.entry_time) {
+          sessions.push({
+            date: session.date_full,
+            exitTime: session.exit_time,
+            entryTime: session.entry_time,
+            duration: session.duration
+          });
+        }
+      }
+    }
+  }
+  
+  if (sessions.length === 0) {
+    return { error: 'No session data available for circadian analysis' };
+  }
+  
+  // Calculate circadian metrics
+  const polarClockData = calculatePolarClock(sessions);
+  const circadianStrength = calculateCircadianStrength(sessions);
+  const seasonalPhases = calculateSeasonalPhases(sessions);
+  const activityEntropy = calculateActivityEntropy(sessions);
+  const zeitgeberAnalysis = calculateZeitgeberInfluence(sessions);
+  
+  return {
+    metadata: {
+      analysisType: 'circadian_rhythm',
+      sessionCount: sessions.length,
+      dateRange: data.metadata?.dateRange || 'Unknown',
+      generated: new Date().toISOString()
+    },
+    polarClock: polarClockData,
+    circadianMetrics: {
+      strength: circadianStrength,
+      entropy: activityEntropy,
+      zeitgeberInfluence: zeitgeberAnalysis
+    },
+    seasonalAnalysis: seasonalPhases,
+    insights: generateCircadianInsights(circadianStrength, activityEntropy, seasonalPhases)
+  };
+}
+
+function calculatePolarClock(sessions) {
+  const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    exits: 0,
+    entries: 0,
+    totalActivity: 0,
+    seasonalVariation: { spring: 0, summer: 0, autumn: 0, winter: 0 }
+  }));
+  
+  sessions.forEach(session => {
+    const date = new Date(session.date);
+    const season = getSeason(date);
+    const exitHour = parseInt(session.exitTime.split(':')[0]);
+    const entryHour = parseInt(session.entryTime.split(':')[0]);
+    
+    hourlyData[exitHour].exits++;
+    hourlyData[exitHour].totalActivity++;
+    hourlyData[exitHour].seasonalVariation[season]++;
+    
+    hourlyData[entryHour].entries++;
+    hourlyData[entryHour].totalActivity++;
+    hourlyData[entryHour].seasonalVariation[season]++;
+  });
+  
+  return hourlyData;
+}
+
+function calculateCircadianStrength(sessions) {
+  // Calculate how consistently activity occurs at the same times
+  const hourlyActivity = new Array(24).fill(0);
+  
+  sessions.forEach(session => {
+    const exitHour = parseInt(session.exitTime.split(':')[0]);
+    const entryHour = parseInt(session.entryTime.split(':')[0]);
+    hourlyActivity[exitHour]++;
+    hourlyActivity[entryHour]++;
+  });
+  
+  // Calculate amplitude and phase coherence
+  const maxActivity = Math.max(...hourlyActivity);
+  const avgActivity = hourlyActivity.reduce((a, b) => a + b, 0) / 24;
+  const amplitude = (maxActivity - avgActivity) / avgActivity;
+  
+  // Calculate rhythm regularity (lower standard deviation = more regular)
+  const variance = hourlyActivity.reduce((sum, activity) => 
+    sum + Math.pow(activity - avgActivity, 2), 0) / 24;
+  const regularity = 1 / (1 + Math.sqrt(variance) / avgActivity);
+  
+  return {
+    amplitude: Math.round(amplitude * 100) / 100,
+    regularity: Math.round(regularity * 100) / 100,
+    strength: Math.round((amplitude * regularity) * 100) / 100,
+    peakHour: hourlyActivity.indexOf(maxActivity),
+    classification: amplitude > 1.5 ? 'Strong' : amplitude > 0.8 ? 'Moderate' : 'Weak'
+  };
+}
+
+function calculateSeasonalPhases(sessions) {
+  const seasons = { spring: [], summer: [], autumn: [], winter: [] };
+  
+  sessions.forEach(session => {
+    const date = new Date(session.date);
+    const season = getSeason(date);
+    const exitHour = parseInt(session.exitTime.split(':')[0]);
+    seasons[season].push(exitHour);
+  });
+  
+  const seasonalPhases = {};
+  Object.entries(seasons).forEach(([season, hours]) => {
+    if (hours.length > 0) {
+      const avgHour = hours.reduce((a, b) => a + b, 0) / hours.length;
+      const variance = hours.reduce((sum, hour) => sum + Math.pow(hour - avgHour, 2), 0) / hours.length;
+      
+      seasonalPhases[season] = {
+        averagePhase: Math.round(avgHour * 100) / 100,
+        consistency: Math.round((1 / (1 + Math.sqrt(variance))) * 100) / 100,
+        sessionCount: hours.length
+      };
+    }
+  });
+  
+  return seasonalPhases;
+}
+
+function calculateActivityEntropy(sessions) {
+  // Measure predictability vs chaos in activity patterns
+  const hourlyDistribution = new Array(24).fill(0);
+  
+  sessions.forEach(session => {
+    const exitHour = parseInt(session.exitTime.split(':')[0]);
+    hourlyDistribution[exitHour]++;
+  });
+  
+  const total = hourlyDistribution.reduce((a, b) => a + b, 0);
+  const probabilities = hourlyDistribution.map(count => count / total);
+  
+  // Shannon entropy calculation
+  const entropy = -probabilities.reduce((sum, p) => {
+    return p > 0 ? sum + p * Math.log2(p) : sum;
+  }, 0);
+  
+  const maxEntropy = Math.log2(24); // Maximum possible entropy for 24 hours
+  const normalizedEntropy = entropy / maxEntropy;
+  
+  return {
+    entropy: Math.round(entropy * 100) / 100,
+    normalized: Math.round(normalizedEntropy * 100) / 100,
+    predictability: Math.round((1 - normalizedEntropy) * 100) / 100,
+    classification: normalizedEntropy < 0.5 ? 'Highly Predictable' : 
+                   normalizedEntropy < 0.8 ? 'Moderately Predictable' : 'Chaotic'
+  };
+}
+
+function calculateZeitgeberInfluence(sessions) {
+  // Analyze how external time cues (sunrise/sunset) influence behavior
+  const morningActivity = sessions.filter(s => {
+    const hour = parseInt(s.exitTime.split(':')[0]);
+    return hour >= 5 && hour <= 10;
+  }).length;
+  
+  const eveningActivity = sessions.filter(s => {
+    const hour = parseInt(s.exitTime.split(':')[0]);
+    return hour >= 17 && hour <= 22;
+  }).length;
+  
+  const totalActivity = sessions.length;
+  const crepuscularIndex = (morningActivity + eveningActivity) / totalActivity;
+  
+  return {
+    morningActivity: Math.round((morningActivity / totalActivity) * 100),
+    eveningActivity: Math.round((eveningActivity / totalActivity) * 100),
+    crepuscularIndex: Math.round(crepuscularIndex * 100) / 100,
+    classification: crepuscularIndex > 0.6 ? 'Strongly Crepuscular' :
+                   crepuscularIndex > 0.4 ? 'Moderately Crepuscular' : 'Not Crepuscular'
+  };
+}
+
+function getSeason(date) {
+  const month = date.getMonth() + 1;
+  if (month >= 3 && month <= 5) return 'spring';
+  if (month >= 6 && month <= 8) return 'summer';
+  if (month >= 9 && month <= 11) return 'autumn';
+  return 'winter';
+}
+
+function generateCircadianInsights(strength, entropy, seasonal) {
+  const insights = [];
+  
+  if (strength.strength > 0.8) {
+    insights.push(`Sven shows ${strength.classification.toLowerCase()} circadian rhythms with peak activity at ${strength.peakHour}:00.`);
+  }
+  
+  if (entropy.predictability > 0.7) {
+    insights.push(`Highly predictable behavior patterns - you can likely anticipate when Sven will be active!`);
+  } else if (entropy.predictability < 0.3) {
+    insights.push(`Sven's activity patterns are quite variable - he's full of surprises!`);
+  }
+  
+  const seasonalVariation = Object.values(seasonal).map(s => s?.averagePhase || 0);
+  const maxPhase = Math.max(...seasonalVariation);
+  const minPhase = Math.min(...seasonalVariation);
+  if (maxPhase - minPhase > 2) {
+    insights.push(`Significant seasonal adaptation detected - Sven adjusts his schedule by ${Math.round(maxPhase - minPhase)} hours between seasons.`);
+  }
+  
+  return insights;
+}
+
 // GitHub Actions integration
 async function triggerGitHubProcessing(fileId, filename, uploadedBy, env) {
   const githubUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
@@ -935,6 +1200,13 @@ function getDashboardPage(email) {
             <p>View Sven's activity rhythms, peak hours, and seasonal patterns with scientific actogram visualization.</p>
             <br>
             <a href="/patterns" class="btn">View Activity Patterns</a>
+        </div>
+        
+        <div class="card">
+            <h3>🌍 Circadian Rhythm Analysis</h3>
+            <p>Advanced chronobiological analysis of Sven's internal clock, including polar activity visualization, behavioral predictability metrics, and seasonal adaptation patterns.</p>
+            <br>
+            <a href="/circadian" class="btn">Analyze Circadian Rhythms</a>
         </div>
         
         <div class="card">
@@ -1531,6 +1803,459 @@ function getPatternsPage(email) {
             const hour = parseInt(parts[0]);
             const minute = parseInt(parts[1]);
             return hour + minute / 60;
+        }
+    </script>
+</body>
+</html>`;
+}
+
+function getCircadianPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Circadian Rhythm Analysis</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        ${getSharedCSS()}
+        
+        /* Circadian page specific styles */
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .circadian-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .circadian-grid { grid-template-columns: 1fr; }
+        }
+        .polar-clock-container {
+            width: 100%;
+            height: 500px;
+            position: relative;
+            background: radial-gradient(circle, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 50%;
+            margin: 1rem auto;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .metric-sublabel {
+            color: #999;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        .insights-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+        .insights-card h3 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        .insight-item {
+            background: rgba(255,255,255,0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+        .seasonal-analysis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        .season-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .season-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+            font-size: 1.2rem;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .polar-axis {
+            stroke: #999;
+            stroke-width: 1;
+            fill: none;
+        }
+        .polar-grid {
+            stroke: #ddd;
+            stroke-width: 0.5;
+            fill: none;
+        }
+        .hour-label {
+            font-size: 12px;
+            font-weight: 500;
+            fill: #666;
+            text-anchor: middle;
+        }
+        .activity-arc {
+            stroke-width: 8;
+            fill: none;
+            opacity: 0.8;
+        }
+        .exit-arc { stroke: #ff6b6b; }
+        .entry-arc { stroke: #4ecdc4; }
+        .legend-circadian {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+        .legend-item-circadian {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .legend-color-circadian {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h2>🌍 Cat Flap Stats - Circadian Rhythm Analysis</h2>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <span>Welcome, ${email}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            Analyzing Sven's circadian rhythms...
+        </div>
+        
+        <div id="circadian-content" style="display: none;">
+            <!-- Key Metrics -->
+            <div class="metrics-grid" id="circadian-metrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="circadian-strength">0.0</div>
+                    <div class="metric-label">Circadian Strength</div>
+                    <div class="metric-sublabel" id="strength-classification">Calculating...</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="peak-activity-hour">00:00</div>
+                    <div class="metric-label">Peak Activity Hour</div>
+                    <div class="metric-sublabel">Highest activity period</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="predictability">0%</div>
+                    <div class="metric-label">Behavioral Predictability</div>
+                    <div class="metric-sublabel" id="entropy-classification">Calculating...</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="crepuscular-index">0%</div>
+                    <div class="metric-label">Crepuscular Index</div>
+                    <div class="metric-sublabel" id="zeitgeber-classification">Calculating...</div>
+                </div>
+            </div>
+            
+            <!-- Main Visualization -->
+            <div class="circadian-grid">
+                <div class="card">
+                    <h3>🕐 24-Hour Polar Activity Clock</h3>
+                    <div class="legend-circadian">
+                        <div class="legend-item-circadian">
+                            <div class="legend-color-circadian" style="background: #ff6b6b;"></div>
+                            <span>Exits</span>
+                        </div>
+                        <div class="legend-item-circadian">
+                            <div class="legend-color-circadian" style="background: #4ecdc4;"></div>
+                            <span>Entries</span>
+                        </div>
+                    </div>
+                    <div class="polar-clock-container" id="polar-clock"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>🌿 Seasonal Phase Analysis</h3>
+                    <div class="seasonal-analysis" id="seasonal-grid">
+                        <div class="season-card">
+                            <div class="season-icon">🌸</div>
+                            <h4>Spring</h4>
+                            <div class="metric-value" style="font-size: 1.5rem;" id="spring-phase">--:--</div>
+                            <div class="metric-sublabel" id="spring-consistency">--% consistent</div>
+                        </div>
+                        <div class="season-card">
+                            <div class="season-icon">☀️</div>
+                            <h4>Summer</h4>
+                            <div class="metric-value" style="font-size: 1.5rem;" id="summer-phase">--:--</div>
+                            <div class="metric-sublabel" id="summer-consistency">--% consistent</div>
+                        </div>
+                        <div class="season-card">
+                            <div class="season-icon">🍂</div>
+                            <h4>Autumn</h4>
+                            <div class="metric-value" style="font-size: 1.5rem;" id="autumn-phase">--:--</div>
+                            <div class="metric-sublabel" id="autumn-consistency">--% consistent</div>
+                        </div>
+                        <div class="season-card">
+                            <div class="season-icon">❄️</div>
+                            <h4>Winter</h4>
+                            <div class="metric-value" style="font-size: 1.5rem;" id="winter-phase">--:--</div>
+                            <div class="metric-sublabel" id="winter-consistency">--% consistent</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Insights -->
+            <div class="insights-card" id="insights-section">
+                <h3>🧠 Circadian Insights</h3>
+                <div id="insights-content">
+                    <div class="insight-item">Analyzing behavioral patterns...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Load circadian data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCircadianData();
+        });
+        
+        async function loadCircadianData() {
+            try {
+                const response = await fetch('/api/circadian');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('loading').innerHTML = 
+                        '<div style="color: #e74c3c;">⚠️ ' + data.error + '</div>';
+                    return;
+                }
+                
+                // Hide loading and show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('circadian-content').style.display = 'block';
+                
+                // Update metrics
+                updateCircadianMetrics(data);
+                
+                // Create polar clock visualization
+                createPolarClock(data.polarClock);
+                
+                // Update seasonal analysis
+                updateSeasonalAnalysis(data.seasonalAnalysis);
+                
+                // Display insights
+                displayInsights(data.insights);
+                
+            } catch (error) {
+                console.error('Error loading circadian data:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div style="color: #e74c3c;">⚠️ Failed to load circadian analysis. Please try again later.</div>';
+            }
+        }
+        
+        function updateCircadianMetrics(data) {
+            const strength = data.circadianMetrics.strength;
+            const entropy = data.circadianMetrics.entropy;
+            const zeitgeber = data.circadianMetrics.zeitgeberInfluence;
+            
+            document.getElementById('circadian-strength').textContent = strength.strength;
+            document.getElementById('strength-classification').textContent = strength.classification;
+            
+            document.getElementById('peak-activity-hour').textContent = 
+                strength.peakHour.toString().padStart(2, '0') + ':00';
+            
+            document.getElementById('predictability').textContent = entropy.predictability + '%';
+            document.getElementById('entropy-classification').textContent = entropy.classification;
+            
+            document.getElementById('crepuscular-index').textContent = 
+                Math.round(zeitgeber.crepuscularIndex * 100) + '%';
+            document.getElementById('zeitgeber-classification').textContent = zeitgeber.classification;
+        }
+        
+        function createPolarClock(polarData) {
+            const container = document.getElementById('polar-clock');
+            container.innerHTML = ''; // Clear any existing content
+            
+            const size = 400;
+            const radius = size / 2 - 40;
+            const center = size / 2;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', size)
+                .attr('height', size);
+            
+            const g = svg.append('g')
+                .attr('transform', 'translate(' + center + ',' + center + ')');
+            
+            // Draw hour grid lines
+            for (let hour = 0; hour < 24; hour++) {
+                const angle = (hour * 15 - 90) * (Math.PI / 180);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                
+                g.append('line')
+                    .attr('class', 'polar-grid')
+                    .attr('x1', 0)
+                    .attr('y1', 0)
+                    .attr('x2', x)
+                    .attr('y2', y);
+            }
+            
+            // Draw concentric circles
+            const maxActivity = Math.max(...polarData.map(d => d.totalActivity));
+            for (let i = 1; i <= 4; i++) {
+                g.append('circle')
+                    .attr('class', 'polar-grid')
+                    .attr('r', (radius / 4) * i)
+                    .attr('fill', 'none');
+            }
+            
+            // Draw hour labels
+            for (let hour = 0; hour < 24; hour += 3) {
+                const angle = (hour * 15 - 90) * (Math.PI / 180);
+                const labelRadius = radius + 20;
+                const x = Math.cos(angle) * labelRadius;
+                const y = Math.sin(angle) * labelRadius;
+                
+                g.append('text')
+                    .attr('class', 'hour-label')
+                    .attr('x', x)
+                    .attr('y', y + 4)
+                    .text(hour.toString().padStart(2, '0') + ':00');
+            }
+            
+            // Draw activity arcs
+            const angleScale = d3.scaleLinear()
+                .domain([0, 24])
+                .range([0, 2 * Math.PI]);
+            
+            const radiusScale = d3.scaleLinear()
+                .domain([0, maxActivity])
+                .range([20, radius - 20]);
+            
+            // Create arcs for exits and entries
+            polarData.forEach((d, i) => {
+                if (d.exits > 0) {
+                    const exitRadius = radiusScale(d.exits);
+                    const angle = angleScale(d.hour) - Math.PI/2;
+                    
+                    g.append('circle')
+                        .attr('cx', Math.cos(angle) * exitRadius)
+                        .attr('cy', Math.sin(angle) * exitRadius)
+                        .attr('r', 4)
+                        .attr('fill', '#ff6b6b')
+                        .attr('opacity', 0.8);
+                }
+                
+                if (d.entries > 0) {
+                    const entryRadius = radiusScale(d.entries);
+                    const angle = angleScale(d.hour) - Math.PI/2;
+                    
+                    g.append('circle')
+                        .attr('cx', Math.cos(angle) * entryRadius)
+                        .attr('cy', Math.sin(angle) * entryRadius)
+                        .attr('r', 4)
+                        .attr('fill', '#4ecdc4')
+                        .attr('opacity', 0.8);
+                }
+            });
+        }
+        
+        function updateSeasonalAnalysis(seasonalData) {
+            Object.entries(seasonalData).forEach(([season, data]) => {
+                if (data) {
+                    const phaseElement = document.getElementById(season + '-phase');
+                    const consistencyElement = document.getElementById(season + '-consistency');
+                    
+                    if (phaseElement) {
+                        phaseElement.textContent = Math.floor(data.averagePhase).toString().padStart(2, '0') + ':00';
+                    }
+                    if (consistencyElement) {
+                        consistencyElement.textContent = Math.round(data.consistency * 100) + '% consistent';
+                    }
+                }
+            });
+        }
+        
+        function displayInsights(insights) {
+            const container = document.getElementById('insights-content');
+            container.innerHTML = '';
+            
+            if (insights && insights.length > 0) {
+                insights.forEach(insight => {
+                    const item = document.createElement('div');
+                    item.className = 'insight-item';
+                    item.textContent = insight;
+                    container.appendChild(item);
+                });
+            } else {
+                container.innerHTML = '<div class="insight-item">🔍 Gathering insights from Sven\\'s behavioral patterns...</div>';
+            }
         }
     </script>
 </body>
