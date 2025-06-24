@@ -205,6 +205,17 @@ jobs:
         echo "Final CSV size: $(wc -c < master_dataset.csv) bytes"
         echo "Final JSON size: $(wc -c < master_dataset.json) bytes"
         
+    - name: Compute behavioral analytics
+      run: |
+        echo "Computing behavioral analytics and precomputed summaries..."
+        
+        # The JSON rebuild is already done in merge_datasets.py
+        # Now compute and add analytics to the complete JSON dataset
+        python3 .github/scripts/compute_analytics.py
+        
+        echo "Analytics computation completed"
+        echo "Enhanced JSON size: $(wc -c < master_dataset.json) bytes"
+        
     - name: Generate processing report
       run: |
         echo "Generating processing report..."

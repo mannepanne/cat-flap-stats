@@ -185,39 +185,25 @@ def main():
             else:
                 f.write(f'Available columns: {list(final_df.columns)}\n')
     
-    # Handle JSON dataset merging
-    print('Processing JSON dataset...')
+    # Rebuild complete JSON dataset from CSV master
+    print('Rebuilding complete JSON dataset from CSV master...')
     try:
-        new_json = None
-        with open('processed_data.json', 'r') as f:
-            new_json = json.load(f)
+        import subprocess
+        import sys
         
-        if os.path.exists('master_dataset.json'):
-            print('Merging with existing JSON dataset')
-            with open('master_dataset.json', 'r') as f:
-                existing_json = json.load(f)
-            
-            # Simple merge - append new sessions to existing
-            if 'sessions' in existing_json and 'sessions' in new_json:
-                existing_json['sessions'].extend(new_json['sessions'])
-                existing_json['metadata']['total_sessions'] = len(existing_json['sessions'])
-                existing_json['metadata']['last_updated'] = new_json['metadata'].get('generated_at', datetime.now().isoformat())
-            else:
-                # If structure is different, replace entirely
-                existing_json = new_json
-            
-            # Write merged JSON dataset
-            with open('master_dataset.json', 'w') as f:
-                json.dump(existing_json, f, indent=2)
+        # Run the JSON rebuild script
+        result = subprocess.run([sys.executable, '.github/scripts/rebuild_json_dataset.py'], 
+                              capture_output=True, text=True, cwd='.')
+        
+        if result.returncode == 0:
+            print('JSON dataset rebuilt successfully from CSV master')
+            print(result.stdout)
         else:
-            print('Initializing master JSON dataset')
-            with open('master_dataset.json', 'w') as f:
-                json.dump(new_json, f, indent=2)
-        
-        print('JSON dataset processed successfully')
+            print(f'JSON rebuild failed: {result.stderr}')
+            raise Exception(f"JSON rebuild script failed with return code {result.returncode}")
         
     except Exception as e:
-        print(f'Warning: JSON processing failed: {e}')
+        print(f'Error rebuilding JSON dataset: {e}')
         print('Continuing with CSV-only processing')
     
     print('Dataset merge completed successfully')
