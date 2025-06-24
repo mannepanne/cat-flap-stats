@@ -832,7 +832,7 @@ function getDashboardPage(email) {
             padding: 12px;
             position: absolute;
             z-index: 1000;
-            bottom: 125%;
+            top: 125%;
             right: 0;
             opacity: 0;
             transition: opacity 0.3s;
@@ -843,12 +843,12 @@ function getDashboardPage(email) {
         .tooltip::after {
             content: "";
             position: absolute;
-            top: 100%;
+            bottom: 100%;
             right: 20px;
             margin-left: -5px;
             border-width: 5px;
             border-style: solid;
-            border-color: rgba(0,0,0,0.9) transparent transparent transparent;
+            border-color: transparent transparent rgba(0,0,0,0.9) transparent;
         }
         .info-icon:hover .tooltip {
             visibility: visible;
@@ -1109,7 +1109,7 @@ function getPatternsPage(email) {
             padding: 12px;
             position: absolute;
             z-index: 1000;
-            bottom: 125%;
+            top: 125%;
             right: 0;
             opacity: 0;
             transition: opacity 0.3s;
@@ -1120,12 +1120,12 @@ function getPatternsPage(email) {
         .tooltip::after {
             content: "";
             position: absolute;
-            top: 100%;
+            bottom: 100%;
             right: 20px;
             margin-left: -5px;
             border-width: 5px;
             border-style: solid;
-            border-color: rgba(0,0,0,0.9) transparent transparent transparent;
+            border-color: transparent transparent rgba(0,0,0,0.9) transparent;
         }
         .info-icon:hover .tooltip {
             visibility: visible;
