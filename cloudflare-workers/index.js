@@ -2040,21 +2040,69 @@ function getCircadianPage(email) {
             <!-- Key Metrics -->
             <div class="stats-grid" id="circadian-metrics">
                 <div class="stat-card">
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="circadian-strength-tooltip">
+                            <strong>Circadian Strength: 1.2</strong><br><br>
+                            Measures how well-defined Sven's internal clock is.<br><br>
+                            <strong>Calculation:</strong> Amplitude × Regularity<br>
+                            • Amplitude: Peak activity vs average activity<br>
+                            • Regularity: Consistency of timing day-to-day<br><br>
+                            <strong>Scale:</strong> 0.0 (chaotic) to 2.0+ (very strong)<br>
+                            Higher values indicate a cat with predictable daily rhythms, like wild animals.
+                        </div>
+                    </div>
                     <div class="stat-number" id="circadian-strength">0.0</div>
                     <div class="stat-label">Circadian Strength</div>
                     <div class="metric-sublabel" id="strength-classification">Calculating...</div>
                 </div>
                 <div class="stat-card">
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="peak-activity-tooltip">
+                            <strong>Peak Activity Hour: 14:00</strong><br><br>
+                            The hour when Sven is most active throughout the day.<br><br>
+                            <strong>Calculation:</strong> Hour with highest combined exit + entry frequency<br>
+                            • Counts all exits and entries across entire dataset<br>
+                            • Averaged per day to find consistent peak<br><br>
+                            <strong>Interesting fact:</strong> Wild cats are typically most active at dawn (06:00) and dusk (18:00). Sven's pattern shows how domestication affects natural rhythms!
+                        </div>
+                    </div>
                     <div class="stat-number" id="peak-activity-hour">00:00</div>
                     <div class="stat-label">Peak Activity Hour</div>
                     <div class="metric-sublabel">Highest activity period</div>
                 </div>
                 <div class="stat-card">
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="predictability-tooltip">
+                            <strong>Behavioral Predictability: 75%</strong><br><br>
+                            How predictable Sven's daily routine is, based on information theory.<br><br>
+                            <strong>Calculation:</strong> 1 - (Shannon Entropy ÷ Maximum Entropy)<br>
+                            • Shannon entropy measures randomness in hourly activity<br>
+                            • Higher predictability = more routine behavior<br><br>
+                            <strong>Scale:</strong> 0% (completely random) to 100% (perfectly routine)<br>
+                            High predictability means you can anticipate when Sven will be active!
+                        </div>
+                    </div>
                     <div class="stat-number" id="predictability">0%</div>
                     <div class="stat-label">Behavioral Predictability</div>
                     <div class="metric-sublabel" id="entropy-classification">Calculating...</div>
                 </div>
                 <div class="stat-card">
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="crepuscular-tooltip">
+                            <strong>Crepuscular Index: 45%</strong><br><br>
+                            Measures if Sven follows the natural "crepuscular" pattern of being active at dawn and dusk.<br><br>
+                            <strong>Calculation:</strong> (Morning + Evening activity) ÷ Total activity<br>
+                            • Morning: 05:00-10:00 activity<br>
+                            • Evening: 17:00-22:00 activity<br><br>
+                            <strong>Wild cats:</strong> 60%+ (strongly crepuscular)<br>
+                            <strong>House cats:</strong> Often 30-50% (human-influenced)<br>
+                            Shows how much Sven retains his wild instincts!
+                        </div>
+                    </div>
                     <div class="stat-number" id="crepuscular-index">0%</div>
                     <div class="stat-label">Crepuscular Index</div>
                     <div class="metric-sublabel" id="zeitgeber-classification">Calculating...</div>
@@ -2167,15 +2215,74 @@ function getCircadianPage(email) {
             document.getElementById('circadian-strength').textContent = strength.strength;
             document.getElementById('strength-classification').textContent = strength.classification;
             
-            document.getElementById('peak-activity-hour').textContent = 
-                strength.peakHour.toString().padStart(2, '0') + ':00';
+            const peakHourFormatted = strength.peakHour.toString().padStart(2, '0') + ':00';
+            document.getElementById('peak-activity-hour').textContent = peakHourFormatted;
             
             document.getElementById('predictability').textContent = entropy.predictability + '%';
             document.getElementById('entropy-classification').textContent = entropy.classification;
             
-            document.getElementById('crepuscular-index').textContent = 
-                Math.round(zeitgeber.crepuscularIndex * 100) + '%';
+            const crepuscularPercentage = Math.round(zeitgeber.crepuscularIndex * 100);
+            document.getElementById('crepuscular-index').textContent = crepuscularPercentage + '%';
             document.getElementById('zeitgeber-classification').textContent = zeitgeber.classification;
+            
+            // Update tooltips with real data
+            const strengthTooltip = document.getElementById('circadian-strength-tooltip');
+            if (strengthTooltip) {
+                strengthTooltip.innerHTML = 
+                    '<strong>Circadian Strength: ' + strength.strength + '</strong><br><br>' +
+                    'Measures how well-defined Sven\\'s internal clock is.<br><br>' +
+                    '<strong>Calculation:</strong> Amplitude × Regularity<br>' +
+                    '• Amplitude: ' + strength.amplitude + ' (peak vs average activity)<br>' +
+                    '• Regularity: ' + strength.regularity + ' (day-to-day consistency)<br><br>' +
+                    '<strong>Scale:</strong> 0.0 (chaotic) to 2.0+ (very strong)<br>' +
+                    '<strong>Classification:</strong> ' + strength.classification + '<br><br>' +
+                    'Higher values indicate a cat with predictable daily rhythms, like wild animals.';
+            }
+            
+            const peakTooltip = document.getElementById('peak-activity-tooltip');
+            if (peakTooltip) {
+                const wildComparison = strength.peakHour >= 5 && strength.peakHour <= 10 ? 
+                    'This aligns with natural dawn activity!' :
+                    strength.peakHour >= 17 && strength.peakHour <= 22 ?
+                    'This aligns with natural dusk activity!' :
+                    'This shows adaptation to human schedules rather than wild patterns.';
+                    
+                peakTooltip.innerHTML = 
+                    '<strong>Peak Activity Hour: ' + peakHourFormatted + '</strong><br><br>' +
+                    'The hour when Sven is most active throughout the day.<br><br>' +
+                    '<strong>Calculation:</strong> Hour with highest combined exit + entry frequency<br>' +
+                    '• Counts all exits and entries across entire dataset<br>' +
+                    '• Averaged per day to find consistent peak<br><br>' +
+                    '<strong>Comparison:</strong> ' + wildComparison + '<br>' +
+                    '<strong>Wild cats:</strong> Most active at dawn (06:00) and dusk (18:00)';
+            }
+            
+            const predictabilityTooltip = document.getElementById('predictability-tooltip');
+            if (predictabilityTooltip) {
+                predictabilityTooltip.innerHTML = 
+                    '<strong>Behavioral Predictability: ' + entropy.predictability + '%</strong><br><br>' +
+                    'How predictable Sven\\'s daily routine is, based on information theory.<br><br>' +
+                    '<strong>Calculation:</strong> 1 - (Shannon Entropy ÷ Maximum Entropy)<br>' +
+                    '• Shannon entropy: ' + entropy.entropy + ' bits<br>' +
+                    '• Normalized entropy: ' + (entropy.normalized * 100) + '%<br><br>' +
+                    '<strong>Scale:</strong> 0% (completely random) to 100% (perfectly routine)<br>' +
+                    '<strong>Classification:</strong> ' + entropy.classification + '<br><br>' +
+                    'High predictability means you can anticipate when Sven will be active!';
+            }
+            
+            const crepuscularTooltip = document.getElementById('crepuscular-tooltip');
+            if (crepuscularTooltip) {
+                crepuscularTooltip.innerHTML = 
+                    '<strong>Crepuscular Index: ' + crepuscularPercentage + '%</strong><br><br>' +
+                    'Measures if Sven follows the natural "crepuscular" pattern of being active at dawn and dusk.<br><br>' +
+                    '<strong>Breakdown:</strong><br>' +
+                    '• Morning activity (05:00-10:00): ' + zeitgeber.morningActivity + '%<br>' +
+                    '• Evening activity (17:00-22:00): ' + zeitgeber.eveningActivity + '%<br>' +
+                    '• Combined crepuscular: ' + crepuscularPercentage + '%<br><br>' +
+                    '<strong>Classification:</strong> ' + zeitgeber.classification + '<br>' +
+                    '<strong>Wild cats:</strong> 60%+ | <strong>House cats:</strong> 30-50%<br>' +
+                    'Shows how much Sven retains his wild instincts!';
+            }
         }
         
         function createPolarClock(polarData) {
