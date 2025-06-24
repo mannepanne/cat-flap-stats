@@ -680,20 +680,46 @@ async function handleCircadianApi(request, env) {
   const email = await validateAuthToken(authToken, env);
   
   if (!email) {
+    console.log('Circadian API: Unauthorized access attempt');
     return new Response('Unauthorized', { status: 401 });
   }
   
   try {
-    const analyticsData = await env.CAT_FLAP_KV.get('master_dataset.json');
-    if (!analyticsData) {
-      return new Response('No analytics data available', { status: 404 });
+    console.log('Circadian API: Fetching analytics data from GitHub...');
+    // Fetch enhanced JSON dataset with analytics from GitHub (same as analytics API)
+    const jsonUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
+    const response = await fetch(jsonUrl);
+    
+    if (!response.ok) {
+      console.error(`Circadian API: Failed to fetch analytics data from GitHub: ${response.status}`);
+      return new Response(JSON.stringify({ 
+        error: 'Analytics data not available',
+        debug: `GitHub fetch failed with status ${response.status}`
+      }), { 
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     
+    const analyticsData = await response.text();
+    console.log('Circadian API: Analytics data found, length:', analyticsData.length);
     const parsedData = JSON.parse(analyticsData);
+    console.log('Circadian API: Data parsed successfully, keys:', Object.keys(parsedData));
     
     // Generate advanced circadian analytics
     const circadianData = await generateCircadianAnalysis(parsedData);
     
+    if (circadianData.error) {
+      console.log('Circadian API: Analysis returned error:', circadianData.error);
+      return new Response(JSON.stringify(circadianData), {
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        status: 400
+      });
+    }
+    
+    console.log('Circadian API: Analysis completed successfully');
     return new Response(JSON.stringify(circadianData), {
       headers: { 
         'Content-Type': 'application/json',
@@ -701,33 +727,68 @@ async function handleCircadianApi(request, env) {
       }
     });
   } catch (error) {
-    console.error('Error fetching circadian data:', error);
-    return new Response('Circadian analysis failed', { status: 500 });
+    console.error('Circadian API: Error details:', error.message, error.stack);
+    return new Response(JSON.stringify({
+      error: 'Circadian analysis failed',
+      details: error.message
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
 // Advanced circadian rhythm analysis
 async function generateCircadianAnalysis(data) {
+  console.log('Generating circadian analysis, data keys:', Object.keys(data));
   const sessions = [];
   
   // Flatten all sessions with timestamps
-  for (const report of data.sessions || []) {
+  // Check both possible data structures
+  const sessionsSource = data.sessions || data;
+  console.log('Sessions source type:', typeof sessionsSource, 'length:', sessionsSource?.length);
+  
+  for (const report of sessionsSource || []) {
     if (report.session_data) {
+      console.log('Processing report with', report.session_data.length, 'sessions');
       for (const session of report.session_data) {
-        if (session.exit_time && session.entry_time) {
+        // More flexible field name checking
+        const exitTime = session.exit_time || session.Exit_Time || session.exitTime;
+        const entryTime = session.entry_time || session.Entry_Time || session.entryTime;
+        const dateField = session.date_full || session.date || session.Date;
+        
+        if (exitTime && entryTime && dateField) {
           sessions.push({
-            date: session.date_full,
-            exitTime: session.exit_time,
-            entryTime: session.entry_time,
-            duration: session.duration
+            date: dateField,
+            exitTime: exitTime,
+            entryTime: entryTime,
+            duration: session.duration || session.Duration
+          });
+        } else {
+          console.log('Skipping session missing fields:', {
+            hasExit: !!exitTime,
+            hasEntry: !!entryTime,
+            hasDate: !!dateField,
+            sessionKeys: Object.keys(session)
           });
         }
       }
+    } else {
+      console.log('Report missing session_data:', Object.keys(report));
     }
   }
   
+  console.log('Extracted', sessions.length, 'valid sessions for circadian analysis');
+  
   if (sessions.length === 0) {
-    return { error: 'No session data available for circadian analysis' };
+    return { 
+      error: 'No session data available for circadian analysis',
+      debug: {
+        dataKeys: Object.keys(data),
+        sessionsSourceType: typeof sessionsSource,
+        sessionsSourceLength: sessionsSource?.length
+      }
+    };
   }
   
   // Calculate circadian metrics
@@ -1850,30 +1911,11 @@ function getCircadianPage(email) {
             border-radius: 50%;
             margin: 1rem auto;
         }
-        .metrics-grid {
+        .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
-        }
-        .metric-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            text-align: center;
-            border-left: 4px solid #667eea;
-        }
-        .metric-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 0.5rem;
-        }
-        .metric-label {
-            color: #666;
-            font-weight: 500;
-            font-size: 0.9rem;
         }
         .metric-sublabel {
             color: #999;
@@ -1996,25 +2038,25 @@ function getCircadianPage(email) {
         
         <div id="circadian-content" style="display: none;">
             <!-- Key Metrics -->
-            <div class="metrics-grid" id="circadian-metrics">
-                <div class="metric-card">
-                    <div class="metric-value" id="circadian-strength">0.0</div>
-                    <div class="metric-label">Circadian Strength</div>
+            <div class="stats-grid" id="circadian-metrics">
+                <div class="stat-card">
+                    <div class="stat-number" id="circadian-strength">0.0</div>
+                    <div class="stat-label">Circadian Strength</div>
                     <div class="metric-sublabel" id="strength-classification">Calculating...</div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="peak-activity-hour">00:00</div>
-                    <div class="metric-label">Peak Activity Hour</div>
+                <div class="stat-card">
+                    <div class="stat-number" id="peak-activity-hour">00:00</div>
+                    <div class="stat-label">Peak Activity Hour</div>
                     <div class="metric-sublabel">Highest activity period</div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="predictability">0%</div>
-                    <div class="metric-label">Behavioral Predictability</div>
+                <div class="stat-card">
+                    <div class="stat-number" id="predictability">0%</div>
+                    <div class="stat-label">Behavioral Predictability</div>
                     <div class="metric-sublabel" id="entropy-classification">Calculating...</div>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="crepuscular-index">0%</div>
-                    <div class="metric-label">Crepuscular Index</div>
+                <div class="stat-card">
+                    <div class="stat-number" id="crepuscular-index">0%</div>
+                    <div class="stat-label">Crepuscular Index</div>
                     <div class="metric-sublabel" id="zeitgeber-classification">Calculating...</div>
                 </div>
             </div>
@@ -2042,25 +2084,25 @@ function getCircadianPage(email) {
                         <div class="season-card">
                             <div class="season-icon">🌸</div>
                             <h4>Spring</h4>
-                            <div class="metric-value" style="font-size: 1.5rem;" id="spring-phase">--:--</div>
+                            <div class="stat-number" style="font-size: 1.5rem;" id="spring-phase">--:--</div>
                             <div class="metric-sublabel" id="spring-consistency">--% consistent</div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">☀️</div>
                             <h4>Summer</h4>
-                            <div class="metric-value" style="font-size: 1.5rem;" id="summer-phase">--:--</div>
+                            <div class="stat-number" style="font-size: 1.5rem;" id="summer-phase">--:--</div>
                             <div class="metric-sublabel" id="summer-consistency">--% consistent</div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">🍂</div>
                             <h4>Autumn</h4>
-                            <div class="metric-value" style="font-size: 1.5rem;" id="autumn-phase">--:--</div>
+                            <div class="stat-number" style="font-size: 1.5rem;" id="autumn-phase">--:--</div>
                             <div class="metric-sublabel" id="autumn-consistency">--% consistent</div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">❄️</div>
                             <h4>Winter</h4>
-                            <div class="metric-value" style="font-size: 1.5rem;" id="winter-phase">--:--</div>
+                            <div class="stat-number" style="font-size: 1.5rem;" id="winter-phase">--:--</div>
                             <div class="metric-sublabel" id="winter-consistency">--% consistent</div>
                         </div>
                     </div>
