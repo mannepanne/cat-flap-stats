@@ -37,7 +37,7 @@ cat-flap-stats/
 │   └── README.md                      # Deployment guide
 ├── dataset_backups/                   # Timestamped dataset backups
 ├── SPECIFICATIONS/                    # Project documentation
-│   └── OnePagerCatFlapStatsDataProcessor.md
+│   └── OnePagerRequirements.md
 ├── SAMPLEDATA/                        # Sample PDF files for testing
 ├── SAMPLE_TESTDATA/                   # Test data PDFs (gitignored)
 ├── SAMPLE_VALIDATIONDATA/             # Validation data and golden datasets (gitignored)
@@ -138,7 +138,7 @@ Each extracted session includes:
 
 ## Documentation
 
-See `SPECIFICATIONS/OnePagerCatFlapStatsDataProcessor.md` for comprehensive project documentation including:
+See `SPECIFICATIONS/OnePagerRequirements.md` for comprehensive project documentation including:
 - **Phase 2 completion status** with live production system details
 - **Architecture documentation** for CloudFlare + GitHub Actions hybrid approach
 - **Detailed extraction rules** and mathematically precise algorithms
@@ -191,4 +191,4 @@ python -m pytest test_backup_system.py -v
 
 ---
 
-*For detailed project status, architecture decisions, and user story completion status, see the comprehensive PRD at `SPECIFICATIONS/OnePagerCatFlapStatsDataProcessor.md`*
+*For detailed project status, architecture decisions, and user story completion status, see the comprehensive PRD at `SPECIFICATIONS/OnePagerRequirements.md`*
