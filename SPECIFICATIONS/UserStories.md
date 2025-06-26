@@ -5,6 +5,8 @@
 
 This document contains all user stories for the Cat Flap Stats project, organized by phase and implementation status.
 
+**IMPORTANT:** When updating this document, whether you are updating existing user stories or adding new ones, never ever change the ID numbering (e.g. US-001) of an existing user story! If you do you will break references from other documents relying on the numbering to stay the same. When adding new user stories, ALWAYS assign an ID number in sequential order incrementally increased from the highest existing ID. You do NOT need to order user stories in this document by ID number order, feel free to order them and organise them under different sub headings in any logical way you see fit if you think it increases readability of the document.
+
 ---
 
 ## Phase 1: Data Foundation (✅ COMPLETE)
