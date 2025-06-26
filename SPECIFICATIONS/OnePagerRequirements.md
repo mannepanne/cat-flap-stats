@@ -66,11 +66,33 @@ With V1.0 establishing a robust data foundation, Phase 2 focuses on scientifical
 **Target User Stories:** US-015, US-016
 
 **🎯 Step 3: Behavioral Annotation System (NEXT STEP)**
-- JSON-based annotation storage for health/environmental events
-- Simple web interface for adding date-range annotations
-- Color-coded visualization overlays on all charts
-- Filter capability to include/exclude annotated periods
-- *Estimated Duration: 1 week*
+*Estimated Duration: 1 week*
+
+**Data Storage & Structure:**
+- Separate `annotations.json` file with annotation objects
+- Structure: `{id, startDate, endDate, category, title, description, createdBy, createdAt, color}`
+- Categories: Health, Environment, Travel, Food, Other
+- User attribution via existing authentication system (Magnus/Wendy emails)
+
+**User Interface (/annotations route):**
+- New `/annotations` route for annotation management
+- Add form: calendar picker for start/end dates, category dropdown, description text
+- Paginated list of existing annotations (newest first)
+- Edit/delete functionality for existing annotations
+- Material UI color scheme: Health(red), Environment(green), Travel(blue), Food(orange), Other(grey)
+
+**Visualization Integration:**
+- Speech bubble icons (💬) placed on annotation start dates in all time-based charts
+- Color-coded by category using consistent Material UI colors
+- Hover tooltips showing: category, date range, description, created by user
+- Clickable icons for potential editing capability
+- Positioned above timeline on actogram and circadian visualizations
+
+**Filtering & Analysis:**
+- Show/hide annotated periods functionality
+- Filter annotations by category and user
+- Correlation analysis between annotations and behavior changes
+- Integration with existing /patterns and /circadian endpoints
 
 **Step 4: Seasonal Pattern Detection**
 - Implement seasonal baseline comparison (Spring/Summer/Autumn/Winter)
