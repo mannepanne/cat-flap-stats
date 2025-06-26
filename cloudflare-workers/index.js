@@ -1282,6 +1282,13 @@ function getDashboardPage(email) {
         </div>
         
         <div class="card">
+            <h3>📝 Behavioral Annotations</h3>
+            <p>Add, view, and manage behavioral annotations to track contextual events that might influence Sven's behavior patterns.</p>
+            <br>
+            <a href="/annotations" class="btn">Manage Annotations</a>
+        </div>
+        
+        <div class="card">
             <h3>Download Dataset</h3>
             <p>Download the complete dataset in CSV or JSON format for analysis.</p>
             <br>
