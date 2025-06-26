@@ -7,7 +7,7 @@
 - [Project development guidelines](../CLAUDE.md)
 
 ## Executive summary
-A Python-based data extraction tool that scrapes cat flap usage statistics from SURE Petcare PDF reports, processes and concatenates the data for analysis, enabling personal insights into pet behavior patterns and seasonal trends. The tool will transform weekly PDF reports into consolidated datasets suitable for analysis in PowerBI, Tableau, or similar visualization platforms.
+A Python-based data extraction tool that scrapes cat flap usage statistics from SURE Petcare PDF reports, processes and concatenates the data for analysis, enabling personal insights into pet behavior patterns and seasonal trends. The tool will transform weekly PDF reports into consolidated downloadable datasets which will be used to present comprehensive historical analysis of Sven's behavior patterns including seasonal and routine changes.
 
 ## Description: What is this about?
 Creating a personal data processing pipeline to extract cat flap usage data from weekly PDF reports, transform it into analyzable format, and enable comprehensive historical analysis of Sven's behavior patterns including seasonal and routine changes. The project focuses on liberating data trapped in individual PDF files and making it accessible for trend analysis and pattern discovery.
@@ -32,11 +32,11 @@ Personal frustration with valuable data being inaccessible for analysis, desire 
 Magnus and Wendy as primary personal users, not intended for broader distribution or commercial use. This is a personal tool to solve a specific household data analysis need.
 
 ## Success: What does the ideal outcome look like?
-A consolidated dataset spanning the full date range that can be imported into PowerBI, Tableau, or other analysis tools for pattern discovery and visualization, enabling month-on-month and season-on-season comparisons.
+A consolidated dataset spanning the full date range that can be downloaded from the Cat Flap Stats website and if so desired imported into PowerBI, Tableau, or other analysis tools for pattern discovery and visualisation, enabling month-on-month and season-on-season comparisons. Once the dataset is available, in following phases visualisations and analysis will be presented in the Cat Flap Stats website.
 
 **Goals:**
 - Phase 1: Reliable PDF data extraction and concatenation into analyzable format with proper handling of data gaps
-- Phase 2: Explore dashboard options using PowerBI/Tableau for seasonal and routine pattern analysis
+- Phase 2: Explore dashboard options for seasonal and routine pattern analysis
 
 **Non goals / not in scope:**
 - Custom dashboard development in initial phase
@@ -124,16 +124,23 @@ Leisurely development over several weeks/months
 Solo developer effort (Claude) with Magnus providing feedback, testing, and system configuration support
 
 **Suggested phases:**
-- Phase 1: Environment setup and PDF analysis
-- Phase 2: Data extraction and processing
-- Phase 3: Data validation and output formatting
-- Phase 4: Dashboard exploration
+- Phase 1: Environment setup and PDF analysis, Data extraction and processing, Data validation and output formatting
+- Phase 2: Initial website build, Dashboard exploration
 
 **Key milestones:**
-1. Set up PDF reading tools and environment
-2. Data structure analysis and extraction prototype
-3. Full dataset processing and validation
-4. Dashboard exploration with PowerBI/Tableau
+1. ✅ Set up PDF reading tools and environment
+2. ✅ Data structure analysis and extraction prototype
+3. ✅ Full dataset processing and validation
+4. ✅ Design and build of simple website to host upload UI and future content
+5. IN PROGRESS: Dashboard explorations and visualisations presented in the website
+
+## Questions: Any known unknowns? ✅ ANSWERED
+- ✅ **PDF library choice:** pdfplumber works excellently for extracting structured tables and text
+- ✅ **Data structure:** Very consistent 2-3 page format with main data table on page 2 titled "Last 7 days"
+- ✅ **Table structure:** 7-day table with Date header row, Left-Entered times, Duration, Total Entries, and Time Outside rows
+- ✅ **Additional extractable data:** Report date, pet info (age/weight changes), monthly summaries, averages
+- ✅ **Environment:** Python 3.13 virtual environment with pdfplumber, PyPDF2, pandas, tabula-py installed
+- ✅ **Sample analysis:** 5 PDF samples analyzed showing consistent format across different seasons
 
 ## Environment and Technology Stack ✅ ESTABLISHED
 
@@ -207,9 +214,9 @@ python -m pytest test_cat_flap_extractor.py::TestIntegrationWithValidationData -
 
 **✅ PHASE 1 COMPLETE:** Robust PDF extractor with comprehensive testing framework
 
-**🎉 PHASE 2 COMPLETE: FULLY AUTOMATED INCREMENTAL DATASET UPDATES**
+**🎉 FULLY AUTOMATED INCREMENTAL DATASET UPDATES**
 
-Phase 2 has been successfully implemented with a complete end-to-end automated PDF processing pipeline using the hybrid CloudFlare + GitHub Actions architecture.
+Phase 1 has been successfully implemented with a complete end-to-end automated PDF processing pipeline using the hybrid CloudFlare + GitHub Actions architecture.
 
 **Live Production System:**
 - **Web Interface:** https://cat-flap-stats.herrings.workers.dev
@@ -263,21 +270,13 @@ Phase 2 has been successfully implemented with a complete end-to-end automated P
 
 With the complete automated processing pipeline now operational, the next logical phase is **data analysis and visualization**:
 
-**🚀 PHASE 3: ANALYSIS & VISUALIZATION TOOLS**
-- PowerBI/Tableau integration for dashboard creation
+**🚀 PHASE 2: ANALYSIS & VISUALIZATION TOOLS**
+- Website build to support dashboard creation
 - Seasonal pattern analysis and trend identification
 - Daily routine visualization and behavior change detection
 - Data quality reporting and completeness metrics
 
 The robust foundation is now in place for comprehensive cat behavior analysis with a fully automated, scalable, and maintainable data processing pipeline.
-
-## Questions: Any known unknowns? ✅ ANSWERED
-- ✅ **PDF library choice:** pdfplumber works excellently for extracting structured tables and text
-- ✅ **Data structure:** Very consistent 2-3 page format with main data table on page 2 titled "Last 7 days"
-- ✅ **Table structure:** 7-day table with Date header row, Left-Entered times, Duration, Total Entries, and Time Outside rows
-- ✅ **Additional extractable data:** Report date, pet info (age/weight changes), monthly summaries, averages
-- ✅ **Environment:** Python 3.13 virtual environment with pdfplumber, PyPDF2, pandas, tabula-py installed
-- ✅ **Sample analysis:** 5 PDF samples analyzed showing consistent format across different seasons
 
 ## User story narrative
 
@@ -395,7 +394,7 @@ The robust foundation is now in place for comprehensive cat behavior analysis wi
 
 **< user_story >**
 - ID: US-015
-- Title: Behavioral Annotation System  
+- Title: Behavioral Annotation System
 - Description: As Sven's human, I want to annotate time periods with contextual information (health events, travel, environmental changes) so that I can correlate behavioral changes with real-world events
 - Acceptance criteria: Simple interface to add date-range annotations with categories (health, environment, schedule), visual annotation overlays on all behavioral visualizations, filter capability to include/exclude annotated periods, correlation analysis between annotations and behavior changes
 - Implementation Notes: JSON-based annotation storage, color-coded visualization overlays, integration with all analytics features
@@ -533,8 +532,8 @@ These rules achieve 100% accuracy when tested against manually corrected validat
 
 ## 🎉 VERSION 1.0 RELEASE STATUS
 
-**Release Date:** June 23, 2025  
-**Release Tag:** `v1.0`  
+**Release Date:** June 23, 2025
+**Release Tag:** `v1.0`
 **Status:** **PRODUCTION-READY SYSTEM COMPLETE**
 
 ### Major Milestone Achieved
@@ -759,7 +758,7 @@ If dataset grows beyond ~50,000 sessions or query complexity increases significa
 
 **Navigation Structure:**
 ```
-Dashboard (current stats) → 
+Dashboard (current stats) →
 ├── Patterns (New)
 │   ├── Activity Rhythm (Actogram + Peak Hours)
 │   ├── Daily Routine (Consistency tracking)
