@@ -1,0 +1,49 @@
+name: Update Annotations
+
+on:
+  repository_dispatch:
+    types: [annotation_update]
+
+jobs:
+  update-annotations:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Update annotations.json
+      run: |
+        echo '${{ github.event.client_payload.annotations }}' | jq '.' > annotations.json
+        
+        # Verify the JSON is valid
+        if ! jq empty annotations.json; then
+          echo "Error: Invalid JSON in annotations"
+          exit 1
+        fi
+        
+        echo "Updated annotations.json with $(jq length annotations.json) annotations"
+    
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes
+        if git diff --quiet annotations.json; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git add annotations.json
+        git commit -m "📝 Update annotations via web interface
+
+        Updated: ${{ github.event.client_payload.timestamp }}
+        
+        🤖 Generated with [Claude Code](https://claude.ai/code)
+        
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+        
+        git push
