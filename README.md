@@ -10,7 +10,7 @@ A complete automated pipeline for processing cat flap usage statistics from SURE
 
 **Web Interface:** https://cat-flap-stats.herrings.workers.dev
 - Upload PDFs through secure web interface
-- Magic link authentication (magnus.hultberg@gmail.com, hellowendy.wong@gmail.com)
+- Magic link authentication
 - Automated processing with email notifications
 
 ## Project Structure
