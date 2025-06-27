@@ -1567,26 +1567,47 @@ function getPatternsPage(email) {
         let analyticsData = null;
         let annotationsData = [];
         
-        // Load analytics and annotations data
-        Promise.all([
-            fetch('/api/analytics').then(response => response.json()),
-            fetch('/api/annotations').then(response => response.json())
-        ])
-        .then(([analyticsResponse, annotationsResponse]) => {
-            analyticsData = analyticsResponse;
-            annotationsData = annotationsResponse;
-            updateSummaryStats(analyticsResponse);
-            renderPeakHoursChart(analyticsResponse.precomputed.peakHours);
-            renderWeekdayPatternsChart(analyticsResponse.precomputed.weekdayPatterns);
-            renderSeasonalPatternsChart(analyticsResponse.precomputed.seasonalStats);
-            renderActogram(analyticsResponse.precomputed.dailySummaries, annotationsData);
-        })
-        .catch(error => {
-            console.error('Error loading data:', error);
-            document.querySelectorAll('.loading').forEach(el => {
-                el.textContent = 'Error loading data. Please try again later.';
+        // Load analytics data first (critical)
+        console.log('Starting to load analytics data...');
+        fetch('/api/analytics')
+            .then(response => {
+                console.log('Analytics response received:', response.status);
+                if (!response.ok) {
+                    throw new Error('Analytics API returned ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Analytics data parsed successfully:', data);
+                analyticsData = data;
+                updateSummaryStats(data);
+                renderPeakHoursChart(data.precomputed.peakHours);
+                renderWeekdayPatternsChart(data.precomputed.weekdayPatterns);
+                renderSeasonalPatternsChart(data.precomputed.seasonalStats);
+                
+                // Load annotations separately (optional)
+                console.log('Loading annotations...');
+                fetch('/api/annotations')
+                    .then(response => {
+                        console.log('Annotations response received:', response.status);
+                        return response.json();
+                    })
+                    .then(annotations => {
+                        console.log('Annotations loaded:', annotations.length, 'annotations');
+                        annotationsData = annotations;
+                        renderActogram(data.precomputed.dailySummaries, annotations);
+                    })
+                    .catch(error => {
+                        console.warn('Error loading annotations, rendering actogram without annotations:', error);
+                        renderActogram(data.precomputed.dailySummaries, []);
+                    });
+            })
+            .catch(error => {
+                console.error('Error loading analytics data:', error);
+                document.querySelectorAll('.loading').forEach(el => {
+                    el.textContent = 'Error loading data. Please try again later.';
+                });
             });
-        });
         
         function updateSummaryStats(data) {
             const totalDaysAnalyzed = data.precomputed.dailySummaries.length;
@@ -1876,36 +1897,51 @@ function getPatternsPage(email) {
                             .style('fill', '#666')
                             .text('💬');
                         
-                        // Add hover tooltip
+                        // Add interactive hover tooltip
                         marker.on('mouseenter', function(event) {
                             const tooltip = d3.select('body').append('div')
                                 .attr('class', 'd3-tooltip')
                                 .style('left', (event.pageX + 10) + 'px')
-                                .style('top', (event.pageY - 10) + 'px');
+                                .style('top', (event.pageY - 10) + 'px')
+                                .style('max-width', '400px')
+                                .style('padding', '12px')
+                                .style('pointer-events', 'auto'); // Allow interactions within tooltip
                             
                             let tooltipContent = '<strong>Annotations on ' + new Date(date).toLocaleDateString() + ':</strong><br><br>';
                             dayAnnotations.forEach(annotation => {
                                 const endDate = annotation.endDate !== annotation.startDate ? 
                                     ' to ' + new Date(annotation.endDate).toLocaleDateString() : '';
                                 const createdBy = annotation.createdBy.includes('magnus') ? 'Magnus' : 'Wendy';
-                                tooltipContent += '<strong>' + annotation.title + '</strong><br>';
-                                tooltipContent += 'Category: ' + annotation.category + '<br>';
-                                tooltipContent += 'Date: ' + new Date(annotation.startDate).toLocaleDateString() + endDate + '<br>';
+                                
+                                tooltipContent += '<div style="background: rgba(255,255,255,0.1); padding: 8px; margin-bottom: 8px; border-radius: 4px;">';
+                                tooltipContent += '<div style="display: flex; justify-content: space-between; align-items: flex-start;">';
+                                tooltipContent += '<div style="flex: 1;">';
+                                // Escape HTML content to prevent syntax errors
+                                const escapeHtml = (text) => text.replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                
+                                tooltipContent += '<strong>' + escapeHtml(annotation.title) + '</strong><br>';
+                                tooltipContent += '<span style="font-size: 11px; opacity: 0.8;">Category: ' + escapeHtml(annotation.category) + '</span><br>';
+                                tooltipContent += '<span style="font-size: 11px; opacity: 0.8;">Date: ' + new Date(annotation.startDate).toLocaleDateString() + endDate + '</span><br>';
                                 if (annotation.description) {
-                                    tooltipContent += 'Description: ' + annotation.description + '<br>';
+                                    const shortDesc = annotation.description.length > 50 ? 
+                                        annotation.description.substring(0, 50) + '...' : annotation.description;
+                                    tooltipContent += '<span style="font-size: 11px; opacity: 0.8;">' + escapeHtml(shortDesc) + '</span><br>';
                                 }
-                                tooltipContent += 'Added by: ' + createdBy + '<br><br>';
+                                tooltipContent += '<span style="font-size: 10px; opacity: 0.6;">Added by: ' + escapeHtml(createdBy) + '</span>';
+                                tooltipContent += '</div>';
+                                tooltipContent += '<button onclick="editAnnotationFromTooltip(\\'' + annotation.id + '\\')" style="background: #2e7d32; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 10px; cursor: pointer; margin-left: 8px;">Edit</button>';
+                                tooltipContent += '</div></div>';
                             });
-                            tooltipContent += '<em>Click to edit annotations</em>';
                             
                             tooltip.html(tooltipContent);
                         })
-                        .on('mouseleave', function() {
-                            d3.selectAll('.d3-tooltip').remove();
-                        })
-                        .on('click', function() {
-                            // Redirect to annotations page
-                            window.location.href = '/annotations';
+                        .on('mouseleave', function(event) {
+                            // Add small delay to allow clicking edit buttons
+                            setTimeout(() => {
+                                if (!event.relatedTarget || !event.relatedTarget.closest('.d3-tooltip')) {
+                                    d3.selectAll('.d3-tooltip').remove();
+                                }
+                            }, 100);
                         });
                     }
                 });
@@ -1948,6 +1984,11 @@ function getPatternsPage(email) {
             const minute = parseInt(parts[1]);
             return hour + minute / 60;
         }
+        
+        // Global function for editing annotations from tooltip
+        window.editAnnotationFromTooltip = function(annotationId) {
+            window.location.href = '/annotations?edit=' + annotationId;
+        };
     </script>
 </body>
 </html>`;
@@ -3158,6 +3199,19 @@ function getAnnotationsPage(email) {
         document.addEventListener('DOMContentLoaded', function() {
             loadAnnotations();
             
+            // Check for edit parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            if (editId) {
+                // Wait for annotations to load, then auto-populate form
+                setTimeout(() => {
+                    const annotation = annotations.find(a => a.id === editId);
+                    if (annotation) {
+                        populateFormForEdit(annotation);
+                    }
+                }, 500);
+            }
+            
             // Set default end date to start date when start date changes
             document.getElementById('startDate').addEventListener('change', function() {
                 const endDate = document.getElementById('endDate');
@@ -3310,10 +3364,7 @@ function getAnnotationsPage(email) {
             renderAnnotations();
         }
 
-        function editAnnotation(id) {
-            const annotation = annotations.find(a => a.id === id);
-            if (!annotation) return;
-            
+        function populateFormForEdit(annotation) {
             // Populate form
             document.getElementById('startDate').value = annotation.startDate;
             document.getElementById('endDate').value = annotation.endDate;
@@ -3321,11 +3372,23 @@ function getAnnotationsPage(email) {
             document.getElementById('title').value = annotation.title;
             document.getElementById('description').value = annotation.description || '';
             
-            editingId = id;
+            editingId = annotation.id;
             document.getElementById('cancelEdit').style.display = 'inline-block';
             
-            // Scroll to form
+            // Scroll to form and clear URL parameter
             document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+            
+            // Clear the edit parameter from URL without page reload
+            const url = new URL(window.location);
+            url.searchParams.delete('edit');
+            window.history.replaceState({}, '', url);
+        }
+
+        function editAnnotation(id) {
+            const annotation = annotations.find(a => a.id === id);
+            if (!annotation) return;
+            
+            populateFormForEdit(annotation);
         }
 
         async function deleteAnnotation(id) {

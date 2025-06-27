@@ -517,6 +517,146 @@ Production Web App (cloudflare-workers/index.js - 29,685+ tokens) →
 - **Real-time**: Immediate analytics updates when PDFs processed
 - **Integration**: Seamless CloudFlare Workers ↔ GitHub Actions communication
 
+## Behavioral Annotation System (Phase 2.2 Implementation)
+
+### Architecture Overview
+The behavioral annotation system provides contextual event tracking overlaid on cat flap activity data. Implemented as a full-stack feature with data persistence, web interface, and visualization integration.
+
+### Data Architecture
+
+#### Storage Strategy
+- **Primary Storage**: CloudFlare KV for immediate UI responsiveness
+- **Persistent Storage**: `annotations.json` in GitHub repository for version control
+- **Sync Mechanism**: GitHub Actions workflow triggered by API operations
+
+#### Data Structure
+```json
+{
+  "id": "uuid-string",
+  "startDate": "YYYY-MM-DD",
+  "endDate": "YYYY-MM-DD", 
+  "category": "health|environment|travel|food|other",
+  "title": "Human-readable title",
+  "description": "Optional detailed description",
+  "createdBy": "magnus.hultberg@gmail.com|hellowendy.wong@gmail.com",
+  "createdAt": "ISO-8601-timestamp",
+  "updatedAt": "ISO-8601-timestamp",
+  "color": "#hex-color"
+}
+```
+
+### API Implementation
+
+#### Endpoints (`/api/annotations`)
+- **GET**: Fetch all annotations (KV → GitHub fallback)
+- **POST**: Create new annotation (validate → KV → GitHub sync)
+- **PUT**: Update existing annotation (validate → KV → GitHub sync)
+- **DELETE**: Remove annotation (KV → GitHub sync)
+
+#### Authentication Integration
+- Uses existing magic link auth system
+- User attribution based on authenticated email
+- Authorized users: Magnus & Wendy only
+
+#### Validation Rules
+- Required fields: startDate, endDate, category, title
+- Date validation: startDate ≤ endDate
+- Category validation: Must be one of 5 predefined categories
+- Content length limits: title (100 chars), description (500 chars)
+
+### Web Interface (`/annotations`)
+
+#### User Experience Flow
+1. **Navigation**: Accessible from dashboard and patterns page
+2. **Form Interface**: Calendar pickers, category dropdown with icons, text inputs
+3. **List Management**: Paginated view (10 per page), newest first
+4. **Edit Workflow**: Click edit → populate form → save → refresh list
+5. **Visual Feedback**: Success/error messages, loading states
+
+#### Form Features
+- **Auto-completion**: End date defaults to start date
+- **Category Icons**: Health(🏥), Environment(🌱), Travel(✈️), Food(🍽️), Other(📝)
+- **Validation**: Client-side + server-side validation
+- **URL-based Editing**: Support for `?edit=annotation-id` parameter
+
+#### Styling Integration
+- **Consistent Design**: Matches dashboard page styling
+- **Responsive Layout**: Mobile-friendly form and list views
+- **Material UI Colors**: Category-based color coding throughout
+
+### Visualization Integration
+
+#### Actogram Timeline Integration
+- **Marker Placement**: Speech bubble icons (💬) at annotation start dates
+- **Positioning Strategy**: 1:00 AM placement to avoid activity marker crowding
+- **Grouping Logic**: Multiple annotations per date grouped under single marker
+
+#### Interactive Features
+- **Hover Tooltips**: Rich content display with all annotation details
+- **Click-to-Edit**: Individual edit buttons in tooltips
+- **Direct Navigation**: Seamless flow from visualization to editing form
+- **Content Escaping**: HTML/JavaScript injection protection
+
+#### Technical Implementation
+- **D3.js Integration**: Native integration with existing timeline visualization
+- **Performance**: Annotations loaded separately to not block main analytics
+- **Error Handling**: Graceful degradation if annotations fail to load
+
+### GitHub Integration
+
+#### Workflow Automation (`.github/workflows/update-annotations.yml`)
+- **Trigger**: Repository dispatch events from CloudFlare Workers
+- **Validation**: JSON structure validation before commit
+- **Commit Strategy**: Descriptive messages with metadata
+- **Error Handling**: Validation failures prevent commits
+
+#### Version Control Benefits
+- **History Tracking**: Full audit trail of annotation changes
+- **Backup Strategy**: Automatic version control backup
+- **Rollback Capability**: Git history enables easy restoration
+- **Collaboration**: Multiple user attribution and tracking
+
+### Performance Considerations
+
+#### Loading Strategy
+1. **Critical Path**: Analytics data loads first (charts render immediately)
+2. **Progressive Enhancement**: Annotations load separately and enhance existing visualizations
+3. **Caching**: KV storage provides sub-100ms annotation access
+4. **Fallback**: GitHub raw file access if KV unavailable
+
+#### Scalability Features
+- **Pagination**: 10 annotations per page prevents UI performance issues
+- **Efficient Rendering**: Only visible actogram dates processed for markers
+- **Memory Management**: Tooltip cleanup prevents memory leaks
+- **Debounced Operations**: Form submission protection against rapid clicks
+
+### Security Implementation
+
+#### Data Protection
+- **Authentication Required**: All operations require valid session
+- **User Attribution**: All annotations tagged with creator identity  
+- **Input Sanitization**: HTML escaping prevents XSS attacks
+- **CSRF Protection**: Form-based submissions with validation
+
+#### Access Control
+- **Authorized Users Only**: Limited to Magnus and Wendy emails
+- **Operation Logging**: All CRUD operations logged in CloudFlare
+- **Rate Limiting**: Inherent through authentication requirements
+
+### Testing Strategy
+
+#### Integration Points Tested
+- **API Endpoints**: CRUD operations validation
+- **Form Functionality**: Client-side validation and submission
+- **Visualization**: D3.js marker rendering and interaction
+- **Data Flow**: KV ↔ GitHub synchronization
+
+#### Error Scenarios Covered
+- **Invalid Data**: Malformed dates, missing required fields
+- **Authentication Failures**: Unauthorized access attempts  
+- **Network Failures**: KV unavailable, GitHub API errors
+- **JavaScript Errors**: Tooltip rendering with special characters
+
 ## Quality Assurance (Production-Grade)
 
 ### Comprehensive Testing Strategy
