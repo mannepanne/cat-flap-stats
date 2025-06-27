@@ -1,3 +1,5 @@
+![ScreenShot](https://github.com/mannepanne/cat-flap-stats/blob/main/favicons/scr_circadian.png?raw=true)
+
 # Cat Flap Stats Data Processor
 
 ## 🎉 Version 1.0 Complete - Production-Ready System
@@ -62,7 +64,7 @@ cat-flap-stats/
    ```bash
    # Activate virtual environment (REQUIRED)
    source venv/bin/activate
-   
+
    # Install dependencies if needed
    pip install -r requirements.txt
    ```
@@ -172,8 +174,8 @@ python -m pytest test_backup_system.py -v
 
 **🎉 Version 1.0 Complete - Major Milestone Achieved!**
 
-**✅ Phase 1 Complete**: Robust PDF extractor with comprehensive testing framework  
-**✅ Phase 2 Complete**: Fully automated incremental dataset updates  
+**✅ Phase 1 Complete**: Robust PDF extractor with comprehensive testing framework
+**✅ Phase 2 Complete**: Fully automated incremental dataset updates
 **✅ V1.0 Release**: Production-ready system with robust data extraction and basic web dashboard
 
 ### V1.0 Achievements:
