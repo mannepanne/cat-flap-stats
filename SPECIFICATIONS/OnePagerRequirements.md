@@ -100,12 +100,51 @@ With V1.0 establishing a robust data foundation, Phase 2 focuses on scientifical
 - Correlation analysis between annotations and behavior changes
 - Integration with existing /patterns and /circadian endpoints
 
-**Step 4: Seasonal Pattern Detection**
-- Implement seasonal baseline comparison (Spring/Summer/Autumn/Winter)
-- Statistical significance testing for seasonal differences
-- Overlay visualization showing seasonal pattern shifts
-- 4+ week period analysis per chronobiology research standards
-- *Estimated Duration: 2 weeks*
+**🎯 Step 4: Seasonal Pattern Detection (NEXT PRIORITY)**
+*Estimated Duration: 1.5 weeks*
+
+**Core Hypotheses to Test:**
+- Sven stays outdoors for longer durations during summer months
+- Activity frequency varies significantly between seasons (more indoor time in winter)
+- Activity timing shifts correlate with seasonal daylight changes
+
+**Data Analysis Framework:**
+- **Season Definition**: UK South meteorological seasons (Spring: Mar-May, Summer: Jun-Aug, Autumn: Sep-Nov, Winter: Dec-Feb)
+- **Statistical Testing**: p-value < 0.05 for significance (configurable)
+- **Data Requirements**: 30 days minimum (with warnings), 60+ days preferred, 75+ days ideal
+- **Available Data**: ~505 days covering 5 complete seasons + 2 partial seasons
+
+**Backend Implementation:**
+- Add seasonal categorization to analytics pipeline (`compute_analytics.py`)
+- Calculate frequency and duration statistics per season
+- Statistical significance testing framework for seasonal comparisons
+- Season completeness scoring and confidence indicators
+- Integration with existing precomputed analytics structure
+
+**Frontend Implementation (/seasonal route):**
+- New `/seasonal` page with dashboard-consistent styling
+- Navigation integration across all pages (Dashboard/Patterns/Circadian/Seasonal/Annotations)
+- **Priority Visualizations:**
+  1. **Seasonal Heatmap**: Activity frequency and duration by month/week with clear seasonal boundaries
+  2. **Overlay Actogram**: Multiple seasons displayed on same timeline for direct comparison
+- **Statistics Summary**: Frequency and duration averages per season with significance indicators
+- **Data Quality Indicators**: Clear labeling of partial vs complete seasons
+- **Annotation Integration**: All annotation markers on timeline-based visualizations
+- **Responsive Design**: Mobile-friendly layout following established patterns
+
+**Success Criteria:**
+- Visual confirmation of duration hypothesis (longer summer outdoor sessions)
+- Statistical validation of seasonal frequency differences
+- Clear identification of partial season data limitations
+- Professional presentation with scientific rigor
+- Seamless integration with existing annotation system
+
+**Future Enhancement Pipeline:**
+- **Step 4.2**: Timing analysis (dawn/dusk activity shifts with seasonal daylight)
+- **Step 4.3**: Year-over-year seasonal comparison (2024 vs 2025 patterns)
+- **Step 4.4**: Weather API integration for environmental correlation
+- **Step 4.5**: Interactive drill-down functionality and custom date ranges
+- **Step 4.6**: Advanced visualizations (polar charts, box plots, trend analysis)
 
 ### Phase 2.3: Advanced Health Monitoring (Priority 3)
 **Target User Stories:** US-017, US-018
@@ -229,7 +268,7 @@ A comprehensive data processing and analytics platform that:
 
 **✅ Contextual Analytics (Priority 2) - PHASE 2.2 COMPLETE**
 - **US-015** Behavioral Annotation System - ✅ COMPLETE
-- **US-016** Seasonal Pattern Detection - *Next Priority*
+- **US-016** Seasonal Pattern Detection - 🎯 NEXT PRIORITY (Step 4)
 
 **Advanced Health Monitoring (Priority 3)**
 - **US-017** Anomaly Detection and Health Monitoring - *Pending*
