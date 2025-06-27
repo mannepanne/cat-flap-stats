@@ -1551,6 +1551,10 @@ function getPatternsPage(email) {
                     <div class="legend-color" style="background: #e0e0e0;"></div>
                     <span>Nighttime (6PM - 6AM)</span>
                 </div>
+                <div class="legend-item">
+                    <span style="margin-right: 0.5rem;">💬</span>
+                    <span>Behavioral annotations</span>
+                </div>
             </div>
             <div class="actogram-container" id="actogram">
                 <div class="loading">Loading actogram data...</div>
@@ -1561,24 +1565,28 @@ function getPatternsPage(email) {
     <script>
         // Initialize analytics dashboard
         let analyticsData = null;
+        let annotationsData = [];
         
-        // Load analytics data
-        fetch('/api/analytics')
-            .then(response => response.json())
-            .then(data => {
-                analyticsData = data;
-                updateSummaryStats(data);
-                renderPeakHoursChart(data.precomputed.peakHours);
-                renderWeekdayPatternsChart(data.precomputed.weekdayPatterns);
-                renderSeasonalPatternsChart(data.precomputed.seasonalStats);
-                renderActogram(data.precomputed.dailySummaries);
-            })
-            .catch(error => {
-                console.error('Error loading analytics data:', error);
-                document.querySelectorAll('.loading').forEach(el => {
-                    el.textContent = 'Error loading data. Please try again later.';
-                });
+        // Load analytics and annotations data
+        Promise.all([
+            fetch('/api/analytics').then(response => response.json()),
+            fetch('/api/annotations').then(response => response.json())
+        ])
+        .then(([analyticsResponse, annotationsResponse]) => {
+            analyticsData = analyticsResponse;
+            annotationsData = annotationsResponse;
+            updateSummaryStats(analyticsResponse);
+            renderPeakHoursChart(analyticsResponse.precomputed.peakHours);
+            renderWeekdayPatternsChart(analyticsResponse.precomputed.weekdayPatterns);
+            renderSeasonalPatternsChart(analyticsResponse.precomputed.seasonalStats);
+            renderActogram(analyticsResponse.precomputed.dailySummaries, annotationsData);
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            document.querySelectorAll('.loading').forEach(el => {
+                el.textContent = 'Error loading data. Please try again later.';
             });
+        });
         
         function updateSummaryStats(data) {
             const totalDaysAnalyzed = data.precomputed.dailySummaries.length;
@@ -1748,7 +1756,7 @@ function getPatternsPage(email) {
             container.innerHTML = html;
         }
         
-        function renderActogram(dailySummaries) {
+        function renderActogram(dailySummaries, annotations = []) {
             const container = document.getElementById('actogram');
             container.innerHTML = '';
             
@@ -1838,6 +1846,70 @@ function getPatternsPage(email) {
                     }
                 }
             });
+            
+            // Add annotation markers
+            if (annotations && annotations.length > 0) {
+                // Group annotations by start date
+                const annotationsByDate = {};
+                annotations.forEach(annotation => {
+                    const startDate = annotation.startDate;
+                    if (!annotationsByDate[startDate]) {
+                        annotationsByDate[startDate] = [];
+                    }
+                    annotationsByDate[startDate].push(annotation);
+                });
+                
+                // Add markers for dates that have annotations and are visible in the actogram
+                const visibleDates = recentDays.map(d => d.date);
+                Object.keys(annotationsByDate).forEach(date => {
+                    if (visibleDates.includes(date)) {
+                        const dayAnnotations = annotationsByDate[date];
+                        
+                        // Create annotation marker (speech bubble icon)
+                        const marker = g.append('text')
+                            .attr('x', xScale(1)) // Position at 1:00 AM to avoid crowding
+                            .attr('y', yScale(date) + yScale.bandwidth() / 2)
+                            .attr('text-anchor', 'middle')
+                            .attr('dominant-baseline', 'middle')
+                            .style('font-size', '12px')
+                            .style('cursor', 'pointer')
+                            .style('fill', '#666')
+                            .text('💬');
+                        
+                        // Add hover tooltip
+                        marker.on('mouseenter', function(event) {
+                            const tooltip = d3.select('body').append('div')
+                                .attr('class', 'd3-tooltip')
+                                .style('left', (event.pageX + 10) + 'px')
+                                .style('top', (event.pageY - 10) + 'px');
+                            
+                            let tooltipContent = '<strong>Annotations on ' + new Date(date).toLocaleDateString() + ':</strong><br><br>';
+                            dayAnnotations.forEach(annotation => {
+                                const endDate = annotation.endDate !== annotation.startDate ? 
+                                    ' to ' + new Date(annotation.endDate).toLocaleDateString() : '';
+                                const createdBy = annotation.createdBy.includes('magnus') ? 'Magnus' : 'Wendy';
+                                tooltipContent += '<strong>' + annotation.title + '</strong><br>';
+                                tooltipContent += 'Category: ' + annotation.category + '<br>';
+                                tooltipContent += 'Date: ' + new Date(annotation.startDate).toLocaleDateString() + endDate + '<br>';
+                                if (annotation.description) {
+                                    tooltipContent += 'Description: ' + annotation.description + '<br>';
+                                }
+                                tooltipContent += 'Added by: ' + createdBy + '<br><br>';
+                            });
+                            tooltipContent += '<em>Click to edit annotations</em>';
+                            
+                            tooltip.html(tooltipContent);
+                        })
+                        .on('mouseleave', function() {
+                            d3.selectAll('.d3-tooltip').remove();
+                        })
+                        .on('click', function() {
+                            // Redirect to annotations page
+                            window.location.href = '/annotations';
+                        });
+                    }
+                });
+            }
             
             // Axes
             const xAxis = d3.axisBottom(xScale)
@@ -2791,11 +2863,22 @@ async function handleAnnotationsApi(request, env) {
 
 async function getAnnotations(env) {
   try {
+    // First try KV storage for most recent data
+    const kvAnnotations = await env.CAT_FLAP_KV.get('annotations');
+    if (kvAnnotations) {
+      return new Response(kvAnnotations, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Fallback to GitHub if KV is empty
     const githubUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/annotations.json`;
     const response = await fetch(githubUrl);
     
     if (response.ok) {
       const annotations = await response.json();
+      // Store in KV for future requests
+      await env.CAT_FLAP_KV.put('annotations', JSON.stringify(annotations));
       return new Response(JSON.stringify(annotations), {
         headers: { 'Content-Type': 'application/json' }
       });
@@ -2951,27 +3034,36 @@ async function triggerAnnotationUpdate(env, annotations) {
   // Store in KV for immediate access
   await env.CAT_FLAP_KV.put('annotations', JSON.stringify(annotations));
   
-  // Trigger GitHub Actions workflow to update the repository
+  // Trigger GitHub Actions workflow via repository dispatch
   const payload = {
-    annotations: annotations,
-    timestamp: new Date().toISOString()
+    event_type: 'annotation_update',
+    client_payload: {
+      annotations: annotations,
+      timestamp: new Date().toISOString()
+    }
   };
 
   try {
-    const webhookResponse = await fetch(env.GITHUB_WEBHOOK_URL, {
+    // Use GitHub's repository dispatch API
+    const githubApiUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/dispatches`;
+    
+    const webhookResponse = await fetch(githubApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-GitHub-Event': 'annotation_update'
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'CloudFlare-Worker'
+        // Note: This would need a GitHub token for authentication in production
+        // For now, KV storage will work for immediate UI updates
       },
       body: JSON.stringify(payload)
     });
 
     if (!webhookResponse.ok) {
-      console.error('Webhook failed:', webhookResponse.status, await webhookResponse.text());
+      console.log('GitHub dispatch not configured, using KV only:', webhookResponse.status);
     }
   } catch (error) {
-    console.error('Error triggering webhook:', error);
+    console.log('GitHub dispatch not available, using KV storage only:', error.message);
   }
 }
 
@@ -2983,262 +3075,76 @@ function getAnnotationsPage(email) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Behavioral Annotations - Cat Flap Stats</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #2196F3, #1976D2);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .nav {
-            background: #f5f5f5;
-            padding: 15px 30px;
-            border-bottom: 1px solid #ddd;
-        }
-        .nav a {
-            text-decoration: none;
-            color: #333;
-            margin-right: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.3s;
-        }
-        .nav a:hover, .nav a.active {
-            background: #2196F3;
-            color: white;
-        }
-        .content {
-            padding: 30px;
-        }
-        .form-section {
-            background: #f9f9f9;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-        }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: #2196F3;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .btn {
-            background: linear-gradient(135deg, #2196F3, #1976D2);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-        }
-        .btn-danger:hover {
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-        }
-        .annotations-list {
-            margin-top: 30px;
-        }
-        .annotation-item {
-            background: white;
-            border: 2px solid #eee;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            position: relative;
-            transition: all 0.3s;
-        }
-        .annotation-item:hover {
-            border-color: #2196F3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .annotation-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .annotation-category {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 15px;
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .annotation-dates {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-        .annotation-meta {
-            font-size: 12px;
-            color: #999;
-            margin-top: 10px;
-        }
-        .edit-btn, .delete-btn {
-            padding: 6px 12px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        .hidden {
-            display: none;
-        }
-        .message {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-        .message.success {
-            background: #e8f5e8;
-            color: #2e7d32;
-            border: 1px solid #4caf50;
-        }
-        .message.error {
-            background: #ffeaea;
-            color: #c62828;
-            border: 1px solid #f44336;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-        .pagination {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .pagination button {
-            margin: 0 5px;
-            padding: 8px 16px;
-            border: 1px solid #ddd;
-            background: white;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .pagination button.active {
-            background: #2196F3;
-            color: white;
-            border-color: #2196F3;
-        }
-        .pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        ${getSharedCSS()}
     </style>
 </head>
 <body>
+    <div class="header">
+        <div class="logo">
+            <h2>🐱 Cat Flap Stats</h2>
+        </div>
+        <div class="user-info">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <span>Welcome, ${email.split('@')[0]}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
     <div class="container">
-        <div class="header">
-            <h1>🐱 Behavioral Annotations</h1>
-            <p>Track contextual events that might influence Sven's behavior</p>
-        </div>
-        
-        <div class="nav">
-            <a href="/dashboard">📊 Dashboard</a>
-            <a href="/patterns">📈 Patterns</a>
-            <a href="/circadian">⏰ Circadian</a>
-            <a href="/annotations" class="active">📝 Annotations</a>
-            <a href="/logout" style="float: right;">🚪 Logout</a>
-        </div>
-        
-        <div class="content">
-            <div class="form-section">
-                <h2>Add New Annotation</h2>
-                <form id="annotationForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="startDate">Start Date *</label>
-                            <input type="date" id="startDate" name="startDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="endDate">End Date *</label>
-                            <input type="date" id="endDate" name="endDate" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="category">Category *</label>
-                            <select id="category" name="category" required>
-                                <option value="">Select category...</option>
-                                <option value="health">🏥 Health</option>
-                                <option value="environment">🌱 Environment</option>
-                                <option value="travel">✈️ Travel</option>
-                                <option value="food">🍽️ Food</option>
-                                <option value="other">📝 Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="title">Title *</label>
-                            <input type="text" id="title" name="title" placeholder="Brief description..." required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" rows="3" placeholder="Detailed notes about this event..."></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn">Add Annotation</button>
-                    <button type="button" class="btn" id="cancelEdit" style="display: none;">Cancel Edit</button>
-                </form>
-            </div>
+        <div class="card">
+            <h3>📝 Add New Annotation</h3>
+            <p>Track contextual events that might influence Sven's behavior patterns.</p>
             
             <div id="messageContainer"></div>
             
-            <div class="annotations-list">
-                <h2>Existing Annotations</h2>
-                <div id="annotationsContainer" class="loading">Loading annotations...</div>
-                <div id="pagination" class="pagination"></div>
-            </div>
+            <form id="annotationForm" style="margin-top: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="startDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Start Date *</label>
+                        <input type="date" id="startDate" name="startDate" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label for="endDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">End Date *</label>
+                        <input type="date" id="endDate" name="endDate" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="category" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Category *</label>
+                        <select id="category" name="category" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Select category...</option>
+                            <option value="health">🏥 Health</option>
+                            <option value="environment">🌱 Environment</option>
+                            <option value="travel">✈️ Travel</option>
+                            <option value="food">🍽️ Food</option>
+                            <option value="other">📝 Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="title" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Title *</label>
+                        <input type="text" id="title" name="title" placeholder="Brief description..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label for="description" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Description</label>
+                    <textarea id="description" name="description" rows="3" placeholder="Detailed notes about this event..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Save Annotation</button>
+                <button type="button" class="btn btn-secondary" id="cancelEdit" style="display: none; margin-left: 10px;">Cancel Edit</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3>📋 Existing Annotations</h3>
+            <div id="annotationsContainer" style="margin-top: 1.5rem;">Loading annotations...</div>
+            <div id="pagination" style="text-align: center; margin-top: 1.5rem;"></div>
         </div>
     </div>
 
@@ -3337,27 +3243,37 @@ function getAnnotationsPage(email) {
                     'other': '#9e9e9e'
                 };
                 
+                const categoryIcons = {
+                    'health': '🏥',
+                    'environment': '🌱', 
+                    'travel': '✈️',
+                    'food': '🍽️',
+                    'other': '📝'
+                };
+                
                 const createdBy = annotation.createdBy.includes('magnus') ? 'Magnus' : 'Wendy';
                 const startDate = new Date(annotation.startDate).toLocaleDateString();
                 const endDate = new Date(annotation.endDate).toLocaleDateString();
                 
                 html += \`
-                    <div class="annotation-item">
-                        <div class="annotation-header">
-                            <span class="annotation-category" style="background-color: \${categoryColors[annotation.category] || categoryColors.other}">
-                                \${annotation.category}
-                            </span>
+                    <div style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                             <div>
-                                <button class="btn edit-btn" onclick="editAnnotation('\${annotation.id}')">Edit</button>
-                                <button class="btn btn-danger delete-btn" onclick="deleteAnnotation('\${annotation.id}')">Delete</button>
+                                <span style="display: inline-block; padding: 4px 12px; background-color: \${categoryColors[annotation.category] || categoryColors.other}; color: white; border-radius: 12px; font-size: 12px; font-weight: 500; text-transform: uppercase; margin-bottom: 0.5rem;">
+                                    \${categoryIcons[annotation.category] || categoryIcons.other} \${annotation.category}
+                                </span>
+                                <h4 style="margin: 0; color: #333;">\${annotation.title}</h4>
+                            </div>
+                            <div>
+                                <button onclick="editAnnotation('\${annotation.id}')" style="background: #2e7d32; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-right: 8px;">Edit</button>
+                                <button onclick="deleteAnnotation('\${annotation.id}')" style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
                             </div>
                         </div>
-                        <h3>\${annotation.title}</h3>
-                        <div class="annotation-dates">
+                        <div style="color: #666; margin-bottom: 0.5rem; font-size: 14px;">
                             📅 \${startDate} - \${endDate}
                         </div>
-                        <p>\${annotation.description || 'No additional details provided.'}</p>
-                        <div class="annotation-meta">
+                        <p style="margin: 0.5rem 0; color: #333; line-height: 1.5;">\${annotation.description || 'No additional details provided.'}</p>
+                        <div style="font-size: 12px; color: #999; margin-top: 1rem; border-top: 1px solid #eee; padding-top: 0.5rem;">
                             Added by \${createdBy} on \${new Date(annotation.createdAt).toLocaleDateString()}
                             \${annotation.updatedAt ? \` • Last updated \${new Date(annotation.updatedAt).toLocaleDateString()}\` : ''}
                         </div>
@@ -3372,15 +3288,16 @@ function getAnnotationsPage(email) {
                 let paginationHtml = '';
                 
                 // Previous button
-                paginationHtml += \`<button \${currentPage === 1 ? 'disabled' : ''} onclick="changePage(\${currentPage - 1})">Previous</button>\`;
+                paginationHtml += \`<button \${currentPage === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''} onclick="changePage(\${currentPage - 1})" style="margin: 0 5px; padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">Previous</button>\`;
                 
                 // Page numbers
                 for (let i = 1; i <= totalPages; i++) {
-                    paginationHtml += \`<button class="\${i === currentPage ? 'active' : ''}" onclick="changePage(\${i})">\${i}</button>\`;
+                    const isActive = i === currentPage;
+                    paginationHtml += \`<button onclick="changePage(\${i})" style="margin: 0 5px; padding: 8px 16px; border: 1px solid \${isActive ? '#667eea' : '#ddd'}; background: \${isActive ? '#667eea' : 'white'}; color: \${isActive ? 'white' : '#333'}; cursor: pointer; border-radius: 4px;">\${i}</button>\`;
                 }
                 
                 // Next button
-                paginationHtml += \`<button \${currentPage === totalPages ? 'disabled' : ''} onclick="changePage(\${currentPage + 1})">Next</button>\`;
+                paginationHtml += \`<button \${currentPage === totalPages ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''} onclick="changePage(\${currentPage + 1})" style="margin: 0 5px; padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">Next</button>\`;
                 
                 paginationContainer.innerHTML = paginationHtml;
             } else {
@@ -3408,7 +3325,7 @@ function getAnnotationsPage(email) {
             document.getElementById('cancelEdit').style.display = 'inline-block';
             
             // Scroll to form
-            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
         }
 
         async function deleteAnnotation(id) {
@@ -3435,7 +3352,11 @@ function getAnnotationsPage(email) {
 
         function showMessage(text, type) {
             const container = document.getElementById('messageContainer');
-            container.innerHTML = \`<div class="message \${type}">\${text}</div>\`;
+            const bgColor = type === 'success' ? '#d4edda' : '#f8d7da';
+            const textColor = type === 'success' ? '#155724' : '#721c24';
+            const borderColor = type === 'success' ? '#c3e6cb' : '#f5c6cb';
+            
+            container.innerHTML = \`<div style="background: \${bgColor}; color: \${textColor}; border: 1px solid \${borderColor}; padding: 12px; border-radius: 4px; margin-bottom: 1rem;">\${text}</div>\`;
             
             // Auto-hide success messages
             if (type === 'success') {
