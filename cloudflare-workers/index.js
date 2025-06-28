@@ -2059,10 +2059,13 @@ function getPatternsPage(email) {
                             .style('fill', markerColor)
                             .text('⚕️');
                         
-                        // Add interactive hover tooltip
+                        // Add interactive hover tooltip with improved handling
                         marker.on('mouseenter', function(event) {
+                            // Clear any existing tooltips first
+                            d3.selectAll('.d3-tooltip').remove();
+                            
                             const tooltip = d3.select('body').append('div')
-                                .attr('class', 'd3-tooltip')
+                                .attr('class', 'd3-tooltip health-tooltip')
                                 .style('left', (event.pageX + 10) + 'px')
                                 .style('top', (event.pageY - 10) + 'px')
                                 .style('max-width', '400px')
@@ -2098,11 +2101,22 @@ function getPatternsPage(email) {
                             tooltip.html(tooltipContent);
                         })
                         .on('mouseleave', function(event) {
+                            // Improved debouncing: only remove tooltip if moving to non-health elements
                             setTimeout(() => {
-                                if (!event.relatedTarget || !event.relatedTarget.closest('.d3-tooltip')) {
-                                    d3.selectAll('.d3-tooltip').remove();
+                                const relatedTarget = event.relatedTarget;
+                                
+                                // Don't remove if moving to tooltip itself or another health marker
+                                if (relatedTarget && (
+                                    relatedTarget.closest('.d3-tooltip') || 
+                                    relatedTarget.closest('.health-tooltip') ||
+                                    (relatedTarget.textContent === '⚕️')
+                                )) {
+                                    return;
                                 }
-                            }, 100);
+                                
+                                // Remove only health tooltips to avoid conflicts with annotation tooltips
+                                d3.selectAll('.health-tooltip').remove();
+                            }, 150);
                         })
                         .on('click', function() {
                             // Navigate to health page for detailed analysis
