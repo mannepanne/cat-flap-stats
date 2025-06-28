@@ -52,6 +52,8 @@ export default {
           return await handleSeasonal(request, env);
         case '/health':
           return await handleHealth(request, env);
+        case '/quality':
+          return await handleDataQuality(request, env);
         case '/annotations':
           return await handleAnnotations(request, env);
         case '/api/annotations':
@@ -780,6 +782,19 @@ async function handleHealth(request, env) {
   }
   
   return new Response(getHealthPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
+async function handleDataQuality(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getDataQualityPage(email), {
     headers: { 'Content-Type': 'text/html' }
   });
 }
@@ -5146,6 +5161,107 @@ ${getSharedCSS()}
                 return \`\${Math.round(minutes)}m\`;
             }
         }
+    </script>
+</body>
+</html>`;
+}
+
+function getDataQualityPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Data Quality</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+${getSharedCSS()}
+        
+        /* Data Quality page specific styles */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .quality-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .quality-grid { grid-template-columns: 1fr; }
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196f3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    ${getSharedHeader(email, 'quality')}
+    
+    <div class="container">
+        <div class="card">
+            <h1>📊 Data Quality Dashboard</h1>
+            <p class="subtitle">Comprehensive analysis of data completeness and reliability</p>
+        </div>
+        
+        <div class="quality-grid">
+            <div class="card">
+                <h2>📈 Data Completeness</h2>
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading data completeness analysis...</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📅 Sunday Truncation Impact</h2>
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Analyzing Sunday data truncation effects...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>🎯 Single Timestamp Confidence</h2>
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Calculating timestamp confidence scores...</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Processing Report Trends</h2>
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading processing validation metrics...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Data Quality Dashboard loaded');
+        // Data quality analysis will be implemented incrementally
     </script>
 </body>
 </html>`;
