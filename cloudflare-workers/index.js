@@ -1801,11 +1801,15 @@ function getPatternsPage(email) {
                     spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️'
                 };
                 
+                // Handle both old and new seasonal data formats
+                const avgSessions = stats.frequency_metrics?.avg_daily_sessions || stats.avgDailySessions || 'N/A';
+                const avgFirstExit = stats.timing_metrics?.avg_first_exit || stats.avgFirstExit || 'N/A';
+                
                 html += \`
                     <div style="margin-bottom: 1rem;">
                         <strong>\${seasonEmoji[season] || ''} \${season.charAt(0).toUpperCase() + season.slice(1)}:</strong><br>
-                        Avg sessions: \${stats.avgDailySessions}<br>
-                        Avg first exit: \${stats.avgFirstExit}
+                        Avg sessions: \${typeof avgSessions === 'number' ? avgSessions.toFixed(1) : avgSessions}<br>
+                        Avg first exit: \${avgFirstExit}
                     </div>
                 \`;
             }
