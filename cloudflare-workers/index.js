@@ -629,7 +629,7 @@ async function handleAnalyticsApi(request, env) {
     const dashboardData = {
       metadata: parsedData.metadata,
       precomputed: parsedData.precomputed,
-      // Include recent sessions for detailed view (last 30 days)
+      // Include recent sessions for detailed view (last 30 days) - handle both formats
       recentSessions: getRecentSessions(parsedData.sessions, 30)
     };
     
@@ -650,22 +650,33 @@ function getRecentSessions(sessions, days) {
   cutoffDate.setDate(cutoffDate.getDate() - days);
   const cutoffString = cutoffDate.toISOString().split('T')[0];
   
-  const recentSessions = [];
-  for (const report of sessions) {
-    if (report.session_data) {
-      const filteredSessions = report.session_data.filter(session => 
-        session.date_full >= cutoffString
-      );
-      if (filteredSessions.length > 0) {
-        recentSessions.push({
-          ...report,
-          session_data: filteredSessions
-        });
-      }
-    }
+  // Handle both old format (array of reports) and new format (dict or other)
+  if (!sessions) {
+    return [];
   }
   
-  return recentSessions;
+  // If sessions is an array (old format), process as before
+  if (Array.isArray(sessions)) {
+    const recentSessions = [];
+    for (const report of sessions) {
+      if (report.session_data) {
+        const filteredSessions = report.session_data.filter(session => 
+          session.date_full >= cutoffString
+        );
+        if (filteredSessions.length > 0) {
+          recentSessions.push({
+            ...report,
+            session_data: filteredSessions
+          });
+        }
+      }
+    }
+    return recentSessions;
+  }
+  
+  // For new format (dict or other), return empty for now
+  // The seasonal page doesn't need recent sessions data
+  return [];
 }
 
 async function handleCircadian(request, env) {
