@@ -5216,7 +5216,21 @@ ${getSharedCSS()}
     </style>
 </head>
 <body>
-    ${getSharedHeader(email, 'quality')}
+    <div class="header">
+        <div class="logo">
+            <h2>📊 Cat Flap Stats - Data Quality</h2>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
+            <a href="/health" class="btn btn-secondary">Health</a>
+            <a href="/annotations" class="btn btn-secondary">Annotations</a>
+            <span>Welcome, ${email}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
     
     <div class="container">
         <div class="card">
