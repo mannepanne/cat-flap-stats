@@ -250,11 +250,31 @@ class CatFlapAnalytics:
         
         # Add statistical comparisons between seasons
         if scipy_available:
-            seasonal_data['comparisons'] = self._compute_seasonal_comparisons(seasonal_data)
+            comparisons = self._compute_seasonal_comparisons(seasonal_data)
+            seasonal_data['comparisons'] = self._make_json_serializable(comparisons)
         else:
             seasonal_data['comparisons'] = {'note': 'Statistical comparisons require scipy package'}
         
-        return seasonal_data
+        return self._make_json_serializable(seasonal_data)
+    
+    def _make_json_serializable(self, obj):
+        """Convert numpy types to Python types for JSON serialization"""
+        if hasattr(obj, 'item'):  # numpy scalar
+            return obj.item()
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        elif isinstance(obj, (np.integer, int)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, float)):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: self._make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._make_json_serializable(v) for v in obj]
+        else:
+            return obj
     
     def _compute_season_summary(self, season_df, season_year):
         """Compute summary statistics for a specific season-year"""
