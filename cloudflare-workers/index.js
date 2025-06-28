@@ -5213,6 +5213,41 @@ ${getSharedCSS()}
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .quality-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .quality-metric:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-weight: 500;
+            color: #333;
+        }
+        .metric-value {
+            font-weight: 600;
+            color: #2196f3;
+        }
+        .metric-impact {
+            color: #ff9800;
+            font-size: 0.9rem;
+        }
+        .day-analysis {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .day-name { font-weight: 500; }
+        .sessions-count { text-align: center; }
+        .entry-only { text-align: center; color: #ff5722; }
+        .impact-high { color: #f44336; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -5249,9 +5284,11 @@ ${getSharedCSS()}
             
             <div class="card">
                 <h2>📅 Sunday Truncation Impact</h2>
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <p>Analyzing Sunday data truncation effects...</p>
+                <div id="sunday-analysis">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Analyzing Sunday data truncation effects...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -5275,7 +5312,127 @@ ${getSharedCSS()}
 
     <script>
         console.log('Data Quality Dashboard loaded');
-        // Data quality analysis will be implemented incrementally
+        
+        // Load Sunday truncation analysis
+        async function loadSundayAnalysis() {
+            try {
+                const response = await fetch('/api/dataset');
+                const data = await response.json();
+                
+                // Analyze Sunday truncation from dataset
+                const analysis = analyzeSundayTruncation(data);
+                displaySundayAnalysis(analysis);
+            } catch (error) {
+                console.error('Error loading Sunday analysis:', error);
+                document.getElementById('sunday-analysis').innerHTML = '<p>Error loading Sunday analysis</p>';
+            }
+        }
+        
+        function analyzeSundayTruncation(data) {
+            // Process the dataset to analyze Sunday truncation
+            const sessions = [];
+            
+            // Handle both old and new data formats
+            if (data.sessions) {
+                // New format with sessions array
+                for (const report of data.sessions) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            }
+            
+            // Analyze by day of week
+            const dayStats = {};
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            // Initialize stats
+            dayNames.forEach(day => {
+                dayStats[day] = { total: 0, entryOnly: 0 };
+            });
+            
+            sessions.forEach(session => {
+                const date = new Date(session.date_full || session.Date);
+                const dayName = dayNames[date.getDay()];
+                
+                dayStats[dayName].total++;
+                
+                // Check for entry-only sessions (missing exit_time)
+                const exitTime = session.exit_time || session.Exit_Time;
+                if (!exitTime || exitTime === '' || exitTime === 'nan') {
+                    dayStats[dayName].entryOnly++;
+                }
+            });
+            
+            // Calculate percentages and impact
+            const results = {};
+            dayNames.forEach(day => {
+                const stats = dayStats[day];
+                results[day] = {
+                    total: stats.total,
+                    entryOnly: stats.entryOnly,
+                    percentage: stats.total > 0 ? (stats.entryOnly / stats.total * 100) : 0
+                };
+            });
+            
+            // Calculate Sunday impact
+            const sundayPct = results.Sunday.percentage;
+            const otherDaysAvg = dayNames
+                .filter(day => day !== 'Sunday')
+                .reduce((sum, day) => sum + results[day].percentage, 0) / 6;
+            
+            return {
+                dayStats: results,
+                sundayImpact: sundayPct - otherDaysAvg,
+                totalAffected: results.Sunday.entryOnly
+            };
+        }
+        
+        function displaySundayAnalysis(analysis) {
+            const container = document.getElementById('sunday-analysis');
+            
+            const html = \`
+                <div class="quality-metric">
+                    <span class="metric-label">Sunday Entry-Only Sessions</span>
+                    <span class="metric-value">\${analysis.dayStats.Sunday.percentage.toFixed(1)}%</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">Other Days Average</span>
+                    <span class="metric-value">\${(Object.keys(analysis.dayStats)
+                        .filter(day => day !== 'Sunday')
+                        .reduce((sum, day) => sum + analysis.dayStats[day].percentage, 0) / 6).toFixed(1)}%</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">Sunday Impact</span>
+                    <span class="metric-impact \${analysis.sundayImpact > 5 ? 'impact-high' : ''}">
+                        +\${analysis.sundayImpact.toFixed(1)} percentage points
+                    </span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">Total Affected Sunday Sessions</span>
+                    <span class="metric-value">\${analysis.totalAffected}</span>
+                </div>
+                
+                <h4 style="margin: 1rem 0 0.5rem 0;">Daily Breakdown:</h4>
+                \${Object.keys(analysis.dayStats).map(day => {
+                    const stats = analysis.dayStats[day];
+                    const pct = stats.percentage;
+                    const isHigh = pct > 10;
+                    return \`
+                        <div class="day-analysis">
+                            <div class="day-name">\${day}</div>
+                            <div class="sessions-count">\${stats.total} sessions</div>
+                            <div class="entry-only \${isHigh ? 'impact-high' : ''}">\${stats.entryOnly} entry-only (\${pct.toFixed(1)}%)</div>
+                        </div>
+                    \`;
+                }).join('')}
+            \`;
+            
+            container.innerHTML = html;
+        }
+        
+        // Load analysis on page load
+        loadSundayAnalysis();
     </script>
 </body>
 </html>`;
