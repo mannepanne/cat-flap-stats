@@ -1637,12 +1637,15 @@ function getPatternsPage(email) {
         
         // Global click handler to close tooltips when clicking outside
         document.addEventListener('click', function(event) {
-            // Don't close if clicking on a health marker or inside a tooltip
-            if (event.target.textContent === '⚕️' || event.target.closest('.d3-tooltip')) {
+            // Don't close if clicking on markers or inside tooltips
+            if (event.target.textContent === '⚕️' || 
+                event.target.textContent === '💬' || 
+                event.target.closest('.d3-tooltip')) {
                 return;
             }
-            // Close all health tooltips
+            // Close all tooltips
             d3.selectAll('.health-tooltip').remove();
+            d3.selectAll('.annotation-tooltip').remove();
         });
         
         // Load analytics data first (critical)
@@ -1981,10 +1984,13 @@ function getPatternsPage(email) {
                             .style('fill', '#666')
                             .text('💬');
                         
-                        // Add interactive hover tooltip
+                        // Add interactive hover tooltip with improved handling
                         marker.on('mouseenter', function(event) {
+                            // Clear any existing annotation tooltips first
+                            d3.selectAll('.annotation-tooltip').remove();
+                            
                             const tooltip = d3.select('body').append('div')
-                                .attr('class', 'd3-tooltip')
+                                .attr('class', 'd3-tooltip annotation-tooltip')
                                 .style('left', (event.pageX + 10) + 'px')
                                 .style('top', (event.pageY - 10) + 'px')
                                 .style('max-width', '400px')
@@ -2018,14 +2024,35 @@ function getPatternsPage(email) {
                             });
                             
                             tooltip.html(tooltipContent);
+                            
+                            // Add mouseleave handler to tooltip itself
+                            tooltip.on('mouseleave', function(tooltipEvent) {
+                                setTimeout(() => {
+                                    // Check if mouse moved back to an annotation marker
+                                    const hoveredElement = document.elementFromPoint(tooltipEvent.clientX, tooltipEvent.clientY);
+                                    if (!hoveredElement || hoveredElement.textContent !== '💬') {
+                                        d3.selectAll('.annotation-tooltip').remove();
+                                    }
+                                }, 100);
+                            });
                         })
                         .on('mouseleave', function(event) {
-                            // Add small delay to allow clicking edit buttons
+                            // Improved debouncing: only remove tooltip if moving to non-annotation elements
                             setTimeout(() => {
-                                if (!event.relatedTarget || !event.relatedTarget.closest('.d3-tooltip')) {
-                                    d3.selectAll('.d3-tooltip').remove();
+                                const relatedTarget = event.relatedTarget;
+                                
+                                // Don't remove if moving to tooltip itself or another annotation marker
+                                if (relatedTarget && (
+                                    relatedTarget.closest('.d3-tooltip') || 
+                                    relatedTarget.closest('.annotation-tooltip') ||
+                                    (relatedTarget.textContent === '💬')
+                                )) {
+                                    return;
                                 }
-                            }, 100);
+                                
+                                // Remove only annotation tooltips to avoid conflicts with health tooltips
+                                d3.selectAll('.annotation-tooltip').remove();
+                            }, 150);
                         });
                     }
                 });
