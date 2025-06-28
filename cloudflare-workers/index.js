@@ -50,6 +50,8 @@ export default {
           return await handleCircadian(request, env);
         case '/seasonal':
           return await handleSeasonal(request, env);
+        case '/health':
+          return await handleHealth(request, env);
         case '/annotations':
           return await handleAnnotations(request, env);
         case '/api/annotations':
@@ -765,6 +767,19 @@ async function handleSeasonal(request, env) {
   }
   
   return new Response(getSeasonalPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
+async function handleHealth(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getHealthPage(email), {
     headers: { 'Content-Type': 'text/html' }
   });
 }
@@ -1604,6 +1619,10 @@ function getPatternsPage(email) {
                     <span style="margin-right: 0.5rem;">💬</span>
                     <span>Behavioral annotations</span>
                 </div>
+                <div class="legend-item">
+                    <span style="margin-right: 0.5rem;">⚕️</span>
+                    <span>Health anomalies</span>
+                </div>
             </div>
             <div class="actogram-container" id="actogram">
                 <div class="loading">Loading actogram data...</div>
@@ -1644,11 +1663,13 @@ function getPatternsPage(email) {
                     .then(annotations => {
                         console.log('Annotations loaded:', annotations.length, 'annotations');
                         annotationsData = annotations;
-                        renderActogram(data.precomputed.dailySummaries, annotations);
+                        const healthAnomalies = data.precomputed.durationAnomalies ? data.precomputed.durationAnomalies.anomalies : [];
+                        renderActogram(data.precomputed.dailySummaries, annotations, healthAnomalies);
                     })
                     .catch(error => {
                         console.warn('Error loading annotations, rendering actogram without annotations:', error);
-                        renderActogram(data.precomputed.dailySummaries, []);
+                        const healthAnomalies = data.precomputed.durationAnomalies ? data.precomputed.durationAnomalies.anomalies : [];
+                        renderActogram(data.precomputed.dailySummaries, [], healthAnomalies);
                     });
             })
             .catch(error => {
@@ -1830,7 +1851,7 @@ function getPatternsPage(email) {
             container.innerHTML = html;
         }
         
-        function renderActogram(dailySummaries, annotations = []) {
+        function renderActogram(dailySummaries, annotations = [], healthAnomalies = []) {
             const container = document.getElementById('actogram');
             container.innerHTML = '';
             
@@ -1995,6 +2016,97 @@ function getPatternsPage(email) {
                                     d3.selectAll('.d3-tooltip').remove();
                                 }
                             }, 100);
+                        });
+                    }
+                });
+            }
+            
+            // Add health anomaly markers (⚕️)
+            if (healthAnomalies && healthAnomalies.length > 0) {
+                // Group anomalies by date
+                const anomaliesByDate = {};
+                healthAnomalies.forEach(anomaly => {
+                    const anomalyDate = anomaly.date;
+                    if (!anomaliesByDate[anomalyDate]) {
+                        anomaliesByDate[anomalyDate] = [];
+                    }
+                    anomaliesByDate[anomalyDate].push(anomaly);
+                });
+                
+                // Add markers for dates that have anomalies and are visible in the actogram
+                const visibleDates = recentDays.map(d => d.date);
+                Object.keys(anomaliesByDate).forEach(date => {
+                    if (visibleDates.includes(date)) {
+                        const dayAnomalies = anomaliesByDate[date];
+                        
+                        // Determine marker color based on highest severity
+                        const severities = dayAnomalies.map(a => a.severity);
+                        let markerColor = '#4caf50'; // Default green for mild
+                        if (severities.includes('high')) {
+                            markerColor = '#f44336'; // Red for significant
+                        } else if (severities.includes('medium')) {
+                            markerColor = '#ff9800'; // Orange for moderate
+                        }
+                        
+                        // Create health anomaly marker (medical icon)
+                        const marker = g.append('text')
+                            .attr('x', xScale(23)) // Position at 11:00 PM to avoid crowding with annotations
+                            .attr('y', yScale(date) + yScale.bandwidth() / 2)
+                            .attr('text-anchor', 'middle')
+                            .attr('dominant-baseline', 'middle')
+                            .style('font-size', '12px')
+                            .style('cursor', 'pointer')
+                            .style('fill', markerColor)
+                            .text('⚕️');
+                        
+                        // Add interactive hover tooltip
+                        marker.on('mouseenter', function(event) {
+                            const tooltip = d3.select('body').append('div')
+                                .attr('class', 'd3-tooltip')
+                                .style('left', (event.pageX + 10) + 'px')
+                                .style('top', (event.pageY - 10) + 'px')
+                                .style('max-width', '400px')
+                                .style('padding', '12px')
+                                .style('pointer-events', 'auto');
+                            
+                            let tooltipContent = '<strong>Health Anomalies on ' + new Date(date).toLocaleDateString() + ':</strong><br><br>';
+                            dayAnomalies.forEach(anomaly => {
+                                const severityColor = {
+                                    'high': '#c62828',
+                                    'medium': '#ef6c00', 
+                                    'low': '#f57f17'
+                                }[anomaly.severity] || '#666';
+                                
+                                const severityText = {
+                                    'high': 'SIGNIFICANT',
+                                    'medium': 'MODERATE',
+                                    'low': 'MILD'
+                                }[anomaly.severity] || anomaly.anomaly_type;
+                                
+                                tooltipContent += '<div style="background: rgba(255,255,255,0.1); padding: 8px; margin-bottom: 8px; border-radius: 4px; border-left: 3px solid ' + severityColor + ';">';
+                                tooltipContent += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">';
+                                tooltipContent += '<strong style="color: ' + severityColor + ';">' + severityText + '</strong>';
+                                tooltipContent += '<span style="font-size: 10px; opacity: 0.8;">' + anomaly.exit_time + ' - ' + anomaly.entry_time + '</span>';
+                                tooltipContent += '</div>';
+                                tooltipContent += '<div style="font-size: 11px; margin-bottom: 2px;">' + anomaly.description + '</div>';
+                                tooltipContent += '<div style="font-size: 10px; opacity: 0.6;">z-score: ' + anomaly.z_score + ' | Season: ' + anomaly.season + '</div>';
+                                tooltipContent += '</div>';
+                            });
+                            
+                            tooltipContent += '<div style="font-size: 10px; opacity: 0.7; margin-top: 8px; font-style: italic;">Click to view detailed health analysis</div>';
+                            
+                            tooltip.html(tooltipContent);
+                        })
+                        .on('mouseleave', function(event) {
+                            setTimeout(() => {
+                                if (!event.relatedTarget || !event.relatedTarget.closest('.d3-tooltip')) {
+                                    d3.selectAll('.d3-tooltip').remove();
+                                }
+                            }, 100);
+                        })
+                        .on('click', function() {
+                            // Navigate to health page for detailed analysis
+                            window.location.href = '/health';
                         });
                     }
                 });
@@ -4473,6 +4585,377 @@ function getAnnotationsPage(email) {
                 setTimeout(() => {
                     container.innerHTML = '';
                 }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>`;
+}
+
+function getHealthPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Health Monitoring</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+${getSharedCSS()}
+        
+        /* Health page specific styles */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .health-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .health-grid { grid-template-columns: 1fr; }
+        }
+        .anomaly-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #ddd;
+            transition: all 0.2s ease;
+        }
+        .anomaly-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .anomaly-item.severity-high {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .anomaly-item.severity-medium {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        .anomaly-item.severity-low {
+            border-left-color: #ffeb3b;
+            background: #fffde7;
+        }
+        .anomaly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .anomaly-date {
+            font-weight: 500;
+            color: #333;
+        }
+        .anomaly-severity {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .severity-high { background: #ffcdd2; color: #c62828; }
+        .severity-medium { background: #ffe0b2; color: #ef6c00; }
+        .severity-low { background: #fff9c4; color: #f57f17; }
+        .anomaly-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0.25rem 0;
+        }
+        .anomaly-timing {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .baseline-info {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+            border-left: 4px solid #4caf50;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196f3;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        .health-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h2>⚕️ Cat Flap Stats - Health Monitoring</h2>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
+            <a href="/annotations" class="btn btn-secondary">Annotations</a>
+            <span>Welcome, ${email}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading health analysis...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <!-- Health Summary Statistics -->
+            <div class="summary-stats" id="health-summary">
+                <!-- Populated by JavaScript -->
+            </div>
+            
+            <!-- Duration Baselines -->
+            <div class="stat-card baseline-info">
+                <h3>🎯 Duration Baselines</h3>
+                <div id="baseline-info">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Health Grid -->
+            <div class="health-grid">
+                <!-- Recent Anomalies -->
+                <div class="stat-card">
+                    <h3>🚨 Recent Anomalies</h3>
+                    <div id="recent-anomalies">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Timeline Markers Info -->
+                <div class="stat-card">
+                    <h3>📍 Timeline Integration</h3>
+                    <p>Health anomalies are marked with ⚕️ icons on all timeline visualizations:</p>
+                    <ul style="margin: 1rem 0; padding-left: 2rem;">
+                        <li><strong>Patterns page:</strong> Actogram timeline markers</li>
+                        <li><strong>Circadian page:</strong> Daily rhythm overlays</li>
+                        <li><strong>Seasonal page:</strong> Seasonal comparison charts</li>
+                    </ul>
+                    <p><small>Click any ⚕️ marker to see detailed anomaly information and correlate with behavioral annotations.</small></p>
+                </div>
+            </div>
+            
+            <!-- All Anomalies -->
+            <div class="stat-card">
+                <h3>📋 All Duration Anomalies</h3>
+                <div id="all-anomalies">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load health monitoring data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHealthData();
+        });
+
+        async function loadHealthData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const contentEl = document.getElementById('content');
+            
+            try {
+                console.log('Loading analytics data for health monitoring...');
+                
+                const response = await fetch('/api/analytics');
+                if (!response.ok) {
+                    throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+                }
+                
+                const data = await response.json();
+                console.log('Analytics data loaded:', data);
+                
+                if (data && data.precomputed && data.precomputed.durationAnomalies) {
+                    displayHealthData(data.precomputed.durationAnomalies);
+                    loadingEl.style.display = 'none';
+                    contentEl.style.display = 'block';
+                } else {
+                    throw new Error('Duration anomalies data not available in analytics');
+                }
+                
+            } catch (error) {
+                console.error('Error loading health data:', error);
+                loadingEl.style.display = 'none';
+                errorEl.textContent = \`Error loading health monitoring data: \${error.message}\`;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function displayHealthData(healthData) {
+            console.log('Displaying health data:', healthData);
+            
+            // Display summary statistics
+            displayHealthSummary(healthData.summary);
+            
+            // Display baseline information
+            displayBaselineInfo(healthData.baselines);
+            
+            // Display recent anomalies (last 10)
+            displayRecentAnomalies(healthData.anomalies.slice(0, 10));
+            
+            // Display all anomalies
+            displayAllAnomalies(healthData.anomalies);
+        }
+        
+        function displayHealthSummary(summary) {
+            const container = document.getElementById('health-summary');
+            
+            container.innerHTML = \`
+                <div class="stat-card">
+                    <h3>📊 Anomaly Summary</h3>
+                    <p><strong>\${summary.total_anomalies}</strong> total anomalies detected</p>
+                </div>
+                <div class="stat-card severity-high">
+                    <h3>🔴 Significant</h3>
+                    <p><strong>\${summary.significant_anomalies}</strong> anomalies</p>
+                    <small>±3+ standard deviations</small>
+                </div>
+                <div class="stat-card severity-medium">
+                    <h3>🟡 Moderate</h3>
+                    <p><strong>\${summary.moderate_anomalies}</strong> anomalies</p>
+                    <small>±2-3 standard deviations</small>
+                </div>
+                <div class="stat-card severity-low">
+                    <h3>🟢 Mild</h3>
+                    <p><strong>\${summary.mild_anomalies}</strong> anomalies</p>
+                    <small>±1-2 standard deviations</small>
+                </div>
+            \`;
+        }
+        
+        function displayBaselineInfo(baselines) {
+            const container = document.getElementById('baseline-info');
+            
+            const globalInfo = \`
+                <h4>Global Baseline</h4>
+                <p><strong>Average Duration:</strong> \${formatDuration(baselines.global.mean)}</p>
+                <p><strong>Standard Deviation:</strong> \${formatDuration(baselines.global.std)}</p>
+            \`;
+            
+            let seasonalInfo = '<h4>Seasonal Baselines</h4>';
+            for (const [season, baseline] of Object.entries(baselines.seasonal)) {
+                seasonalInfo += \`
+                    <p><strong>\${season.charAt(0).toUpperCase() + season.slice(1)}:</strong> 
+                    \${formatDuration(baseline.mean)} (±\${formatDuration(baseline.std)})</p>
+                \`;
+            }
+            
+            container.innerHTML = globalInfo + seasonalInfo;
+        }
+        
+        function displayRecentAnomalies(anomalies) {
+            const container = document.getElementById('recent-anomalies');
+            
+            if (anomalies.length === 0) {
+                container.innerHTML = \`
+                    <div class="empty-state">
+                        <span class="health-icon">🎉</span>
+                        <p>No recent anomalies detected!</p>
+                        <small>All recent sessions are within normal duration ranges.</small>
+                    </div>
+                \`;
+                return;
+            }
+            
+            container.innerHTML = anomalies.map(anomaly => \`
+                <div class="anomaly-item severity-\${anomaly.severity}">
+                    <div class="anomaly-header">
+                        <span class="anomaly-date">\${anomaly.date}</span>
+                        <span class="anomaly-severity severity-\${anomaly.severity}">\${anomaly.anomaly_type}</span>
+                    </div>
+                    <div class="anomaly-description">\${anomaly.description}</div>
+                    <div class="anomaly-timing">
+                        \${anomaly.exit_time} - \${anomaly.entry_time} | z-score: \${anomaly.z_score}
+                    </div>
+                </div>
+            \`).join('');
+        }
+        
+        function displayAllAnomalies(anomalies) {
+            const container = document.getElementById('all-anomalies');
+            
+            if (anomalies.length === 0) {
+                container.innerHTML = \`
+                    <div class="empty-state">
+                        <span class="health-icon">✅</span>
+                        <p>No anomalies detected in your data!</p>
+                        <small>All sessions are within normal statistical ranges.</small>
+                    </div>
+                \`;
+                return;
+            }
+            
+            container.innerHTML = anomalies.map(anomaly => \`
+                <div class="anomaly-item severity-\${anomaly.severity}">
+                    <div class="anomaly-header">
+                        <span class="anomaly-date">\${anomaly.date}</span>
+                        <span class="anomaly-severity severity-\${anomaly.severity}">\${anomaly.anomaly_type}</span>
+                    </div>
+                    <div class="anomaly-description">\${anomaly.description}</div>
+                    <div class="anomaly-timing">
+                        \${anomaly.exit_time} - \${anomaly.entry_time} | Season: \${anomaly.season} | z-score: \${anomaly.z_score}
+                    </div>
+                </div>
+            \`).join('');
+        }
+        
+        function formatDuration(minutes) {
+            if (minutes >= 60) {
+                const hours = Math.floor(minutes / 60);
+                const mins = Math.round(minutes % 60);
+                return \`\${hours}h \${mins}m\`;
+            } else {
+                return \`\${Math.round(minutes)}m\`;
             }
         }
     </script>

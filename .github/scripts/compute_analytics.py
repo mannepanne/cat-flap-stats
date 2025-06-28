@@ -586,6 +586,132 @@ class CatFlapAnalytics:
         
         return patterns
     
+    def compute_duration_anomalies(self):
+        """Compute duration-based health anomalies using statistical thresholds"""
+        if self.df.empty:
+            return {
+                'anomalies': [],
+                'baselines': {},
+                'summary': {
+                    'total_anomalies': 0,
+                    'mild_anomalies': 0,
+                    'moderate_anomalies': 0,
+                    'significant_anomalies': 0
+                }
+            }
+        
+        # Calculate rolling 30-day baselines with seasonal adjustment
+        anomalies = []
+        baselines = {}
+        
+        # Sort DataFrame by date for rolling analysis
+        sorted_df = self.df.sort_values('date_full')
+        
+        # Calculate global baseline statistics first
+        all_durations = sorted_df['duration_minutes']
+        global_mean = all_durations.mean()
+        global_std = all_durations.std()
+        
+        # Calculate seasonal baselines for adjustment
+        seasonal_baselines = {}
+        for season in ['spring', 'summer', 'autumn', 'winter']:
+            season_data = sorted_df[sorted_df['season'] == season]['duration_minutes']
+            if not season_data.empty:
+                seasonal_baselines[season] = {
+                    'mean': season_data.mean(),
+                    'std': season_data.std()
+                }
+        
+        # Store baseline information
+        baselines = {
+            'global': {'mean': round(global_mean, 1), 'std': round(global_std, 1)},
+            'seasonal': {k: {'mean': round(v['mean'], 1), 'std': round(v['std'], 1)} 
+                        for k, v in seasonal_baselines.items()}
+        }
+        
+        # Analyze each session for anomalies
+        for _, session in sorted_df.iterrows():
+            duration = session['duration_minutes']
+            date = session['date_full']
+            season = session['season']
+            
+            # Use seasonal baseline if available, otherwise global
+            if season in seasonal_baselines:
+                baseline_mean = seasonal_baselines[season]['mean']
+                baseline_std = seasonal_baselines[season]['std']
+            else:
+                baseline_mean = global_mean
+                baseline_std = global_std
+            
+            # Skip if no valid baseline (std is 0 or NaN)
+            if baseline_std <= 0 or pd.isna(baseline_std):
+                continue
+            
+            # Calculate z-score
+            z_score = (duration - baseline_mean) / baseline_std
+            abs_z_score = abs(z_score)
+            
+            # Classify anomaly severity
+            anomaly_type = None
+            severity = None
+            
+            if abs_z_score >= 3.0:
+                anomaly_type = 'significant'
+                severity = 'high'
+            elif abs_z_score >= 2.0:
+                anomaly_type = 'moderate' 
+                severity = 'medium'
+            elif abs_z_score >= 1.0:
+                anomaly_type = 'mild'
+                severity = 'low'
+            
+            # Only record actual anomalies
+            if anomaly_type:
+                anomaly = {
+                    'date': date.strftime('%Y-%m-%d'),
+                    'exit_time': session.get('exit_time'),
+                    'entry_time': session.get('entry_time'), 
+                    'duration_minutes': round(duration, 1),
+                    'expected_duration': round(baseline_mean, 1),
+                    'z_score': round(z_score, 2),
+                    'anomaly_type': anomaly_type,
+                    'severity': severity,
+                    'season': season,
+                    'description': self._generate_anomaly_description(duration, baseline_mean, anomaly_type, z_score > 0)
+                }
+                anomalies.append(anomaly)
+        
+        # Sort anomalies by date (most recent first)
+        anomalies.sort(key=lambda x: x['date'], reverse=True)
+        
+        # Calculate summary statistics
+        summary = {
+            'total_anomalies': len(anomalies),
+            'mild_anomalies': len([a for a in anomalies if a['anomaly_type'] == 'mild']),
+            'moderate_anomalies': len([a for a in anomalies if a['anomaly_type'] == 'moderate']),
+            'significant_anomalies': len([a for a in anomalies if a['anomaly_type'] == 'significant'])
+        }
+        
+        return {
+            'anomalies': anomalies,
+            'baselines': baselines,
+            'summary': summary
+        }
+    
+    def _generate_anomaly_description(self, duration, baseline, anomaly_type, is_longer):
+        """Generate human-readable description for anomaly"""
+        direction = "longer than" if is_longer else "shorter than"
+        severity_text = {
+            'mild': 'slightly',
+            'moderate': 'notably',
+            'significant': 'significantly'
+        }
+        
+        duration_text = f"{int(duration // 60)}h {int(duration % 60)}m" if duration >= 60 else f"{int(duration)}m"
+        expected_text = f"{int(baseline // 60)}h {int(baseline % 60)}m" if baseline >= 60 else f"{int(baseline)}m"
+        
+        return f"Session duration ({duration_text}) was {severity_text[anomaly_type]} {direction} typical ({expected_text})"
+
     def compute_data_quality(self):
         """Compute data quality metrics"""
         if self.df.empty:
@@ -653,7 +779,8 @@ class CatFlapAnalytics:
                     'dailySummaries': self.compute_daily_summaries(),
                     'peakHours': self.compute_peak_hours(),
                     'seasonalStats': self.compute_seasonal_stats(),
-                    'weekdayPatterns': self.compute_weekday_patterns()
+                    'weekdayPatterns': self.compute_weekday_patterns(),
+                    'durationAnomalies': self.compute_duration_anomalies()
                 },
                 'sessions': self.data,  # Include original session data
                 'annotations': []  # Placeholder for future annotation system
