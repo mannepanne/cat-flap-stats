@@ -44,8 +44,8 @@ def csv_to_structured_json(csv_file, output_file):
                 'report_date_range': row['report_date_range'],
                 'report_year': int(row['report_year']),
                 'pet_name': row['pet_name'],
-                'age': int(row['age']),
-                'weight': int(row['weight'])
+                'age': row['age'],  # Keep as string format "X years, Y months"
+                'weight': row['weight']  # Keep as string format "X.Xkg"
             }
             reports[filename]['extracted_at'] = row['extracted_at']
         
