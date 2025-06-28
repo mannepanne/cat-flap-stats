@@ -3500,7 +3500,7 @@ ${getSharedCSS()}
         document.addEventListener('DOMContentLoaded', loadSeasonalData);
     </script>
 </body>
-</html>\`;
+</html>`;
 }
 
 function getAnnotationsPage(email) {
