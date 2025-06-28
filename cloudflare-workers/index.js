@@ -4720,6 +4720,42 @@ ${getSharedCSS()}
             margin-bottom: 1rem;
             display: block;
         }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #f5f5f5;
+            border-color: #2196f3;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background: #2196f3;
+            color: white;
+            border-color: #2196f3;
+        }
+        .pagination-info {
+            font-size: 14px;
+            color: #666;
+            margin: 0 1rem;
+        }
     </style>
 </head>
 <body>
@@ -4789,11 +4825,19 @@ ${getSharedCSS()}
                 <div id="all-anomalies">
                     <!-- Populated by JavaScript -->
                 </div>
+                <div id="anomalies-pagination" class="pagination" style="display: none;">
+                    <!-- Pagination controls populated by JavaScript -->
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Pagination state for all anomalies
+        let allAnomaliesData = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        
         // Load health monitoring data on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadHealthData();
@@ -4840,11 +4884,13 @@ ${getSharedCSS()}
             // Display baseline information
             displayBaselineInfo(healthData.baselines);
             
-            // Display recent anomalies (last 10)
-            displayRecentAnomalies(healthData.anomalies.slice(0, 10));
+            // Display recent anomalies (last 5)
+            displayRecentAnomalies(healthData.anomalies.slice(0, 5));
             
-            // Display all anomalies
-            displayAllAnomalies(healthData.anomalies);
+            // Store and display all anomalies with pagination
+            allAnomaliesData = healthData.anomalies;
+            currentPage = 1;
+            displayAllAnomalies();
         }
         
         function displayHealthSummary(summary) {
@@ -4921,10 +4967,11 @@ ${getSharedCSS()}
             \`).join('');
         }
         
-        function displayAllAnomalies(anomalies) {
+        function displayAllAnomalies() {
             const container = document.getElementById('all-anomalies');
+            const paginationContainer = document.getElementById('anomalies-pagination');
             
-            if (anomalies.length === 0) {
+            if (allAnomaliesData.length === 0) {
                 container.innerHTML = \`
                     <div class="empty-state">
                         <span class="health-icon">✅</span>
@@ -4932,10 +4979,18 @@ ${getSharedCSS()}
                         <small>All sessions are within normal statistical ranges.</small>
                     </div>
                 \`;
+                paginationContainer.style.display = 'none';
                 return;
             }
             
-            container.innerHTML = anomalies.map(anomaly => \`
+            // Calculate pagination
+            const totalPages = Math.ceil(allAnomaliesData.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentPageData = allAnomaliesData.slice(startIndex, endIndex);
+            
+            // Display current page of anomalies
+            container.innerHTML = currentPageData.map(anomaly => \`
                 <div class="anomaly-item severity-\${anomaly.severity}">
                     <div class="anomaly-header">
                         <span class="anomaly-date">\${anomaly.date}</span>
@@ -4947,6 +5002,77 @@ ${getSharedCSS()}
                     </div>
                 </div>
             \`).join('');
+            
+            // Display pagination controls if more than one page
+            if (totalPages > 1) {
+                paginationContainer.innerHTML = createPaginationControls(currentPage, totalPages, allAnomaliesData.length);
+                paginationContainer.style.display = 'flex';
+            } else {
+                paginationContainer.style.display = 'none';
+            }
+        }
+        
+        function createPaginationControls(page, totalPages, totalItems) {
+            const startItem = (page - 1) * itemsPerPage + 1;
+            const endItem = Math.min(page * itemsPerPage, totalItems);
+            
+            let controls = \`
+                <button onclick="goToPage(\${page - 1})" \${page === 1 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <span class="pagination-info">
+                    \${startItem}-\${endItem} of \${totalItems} anomalies
+                </span>
+            \`;
+            
+            // Add page numbers (show up to 5 pages around current page)
+            const startPage = Math.max(1, page - 2);
+            const endPage = Math.min(totalPages, page + 2);
+            
+            if (startPage > 1) {
+                controls += \`<button onclick="goToPage(1)">1</button>\`;
+                if (startPage > 2) {
+                    controls += \`<span>...</span>\`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                controls += \`
+                    <button onclick="goToPage(\${i})" \${i === page ? 'class="active"' : ''}>
+                        \${i}
+                    </button>
+                \`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    controls += \`<span>...</span>\`;
+                }
+                controls += \`<button onclick="goToPage(\${totalPages})">\${totalPages}</button>\`;
+            }
+            
+            controls += \`
+                <button onclick="goToPage(\${page + 1})" \${page === totalPages ? 'disabled' : ''}>
+                    Next →
+                </button>
+            \`;
+            
+            return controls;
+        }
+        
+        function goToPage(page) {
+            if (page < 1 || page > Math.ceil(allAnomaliesData.length / itemsPerPage)) {
+                return;
+            }
+            
+            currentPage = page;
+            displayAllAnomalies();
+            
+            // Scroll to top of anomalies section
+            document.getElementById('all-anomalies').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
         }
         
         function formatDuration(minutes) {
