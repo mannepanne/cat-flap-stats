@@ -3206,11 +3206,24 @@ ${getSharedCSS()}
         }
         .heatmap-container {
             width: 100%;
-            height: 500px;
+            height: 400px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             position: relative;
             background: #f8f9fa;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .heatmap-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+        @media (max-width: 768px) {
+            .heatmap-container {
+                height: 350px;
+            }
         }
         .overlay-actogram-container {
             width: 100%;
@@ -3508,18 +3521,238 @@ ${getSharedCSS()}
         }
 
         function renderSeasonalHeatmap(seasonalStats) {
-            // For now, show a placeholder - we'll implement actual heatmap later
             const container = document.getElementById('seasonal-heatmap');
-            container.innerHTML = \`
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
-                    <div style="font-size: 4rem;">📊</div>
-                    <div style="text-align: center;">
-                        <h4>Seasonal Activity Heatmap</h4>
-                        <p>Visual representation of activity patterns by month and week</p>
-                        <p style="color: #666; font-size: 0.9rem;">Implementation in progress</p>
+            container.innerHTML = '';
+            
+            // Check if we have seasonal data
+            if (!seasonalStats || Object.keys(seasonalStats).length === 0) {
+                container.innerHTML = \`
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                        <div style="font-size: 2rem;">📊</div>
+                        <p>No seasonal data available</p>
                     </div>
-                </div>
-            \`;
+                \`;
+                return;
+            }
+            
+            // Prepare data for heatmap - create a matrix by season and metric
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            const metrics = [
+                { key: 'avg_daily_duration_minutes', label: 'Avg Duration (min)', type: 'duration' },
+                { key: 'avg_daily_sessions', label: 'Avg Sessions/day', type: 'frequency' },
+                { key: 'total_days_with_data', label: 'Days with Data', type: 'coverage' }
+            ];
+            
+            // Create data matrix
+            const data = [];
+            seasons.forEach((season, seasonIndex) => {
+                const seasonData = seasonalStats[season];
+                metrics.forEach((metric, metricIndex) => {
+                    let value = 0;
+                    let confidence = 'no_data';
+                    
+                    if (seasonData && seasonData.data_quality?.confidence_level !== 'no_data') {
+                        if (metric.type === 'duration') {
+                            value = seasonData.duration_metrics?.[metric.key] || 0;
+                        } else if (metric.type === 'frequency') {
+                            value = seasonData.frequency_metrics?.[metric.key] || 0;
+                        } else if (metric.type === 'coverage') {
+                            value = seasonData.data_quality?.[metric.key] || 0;
+                        }
+                        confidence = seasonData.data_quality?.confidence_level || 'low';
+                    }
+                    
+                    data.push({
+                        season: season,
+                        seasonIndex: seasonIndex,
+                        metric: metric.label,
+                        metricIndex: metricIndex,
+                        value: value,
+                        confidence: confidence,
+                        metricType: metric.type
+                    });
+                });
+            });
+            
+            // SVG dimensions - responsive sizing
+            const containerWidth = container.clientWidth || 500;
+            const isMobile = containerWidth < 768;
+            
+            const margin = { 
+                top: isMobile ? 60 : 80, 
+                right: isMobile ? 20 : 40, 
+                bottom: isMobile ? 40 : 60, 
+                left: isMobile ? 80 : 120 
+            };
+            
+            const cellWidth = isMobile ? 60 : 80;
+            const cellHeight = isMobile ? 45 : 60;
+            const width = seasons.length * cellWidth;
+            const height = metrics.length * cellHeight;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', \`translate(\${margin.left},\${margin.top})\`);
+            
+            // Color scales for different metric types
+            const colorScales = {
+                duration: d3.scaleSequential(d3.interpolateOranges)
+                    .domain([0, d3.max(data.filter(d => d.metricType === 'duration'), d => d.value) || 100]),
+                frequency: d3.scaleSequential(d3.interpolateBlues)
+                    .domain([0, d3.max(data.filter(d => d.metricType === 'frequency'), d => d.value) || 10]),
+                coverage: d3.scaleSequential(d3.interpolateGreens)
+                    .domain([0, d3.max(data.filter(d => d.metricType === 'coverage'), d => d.value) || 100])
+            };
+            
+            // Draw heatmap cells
+            const cells = g.selectAll('.heatmap-cell')
+                .data(data)
+                .enter()
+                .append('g')
+                .attr('class', 'heatmap-cell')
+                .attr('transform', d => \`translate(\${d.seasonIndex * cellWidth},\${d.metricIndex * cellHeight})\`);
+            
+            // Cell rectangles
+            cells.append('rect')
+                .attr('width', cellWidth - 2)
+                .attr('height', cellHeight - 2)
+                .attr('x', 1)
+                .attr('y', 1)
+                .attr('fill', d => {
+                    if (d.confidence === 'no_data') return '#f5f5f5';
+                    return colorScales[d.metricType](d.value);
+                })
+                .attr('stroke', d => {
+                    // Border color based on confidence
+                    switch(d.confidence) {
+                        case 'high': return '#4caf50';
+                        case 'medium': return '#ff9800';
+                        case 'low': return '#f44336';
+                        case 'very_low': return '#9e9e9e';
+                        default: return '#e0e0e0';
+                    }
+                })
+                .attr('stroke-width', 2)
+                .attr('opacity', d => d.confidence === 'no_data' ? 0.3 : 0.8);
+            
+            // Cell text values
+            cells.append('text')
+                .attr('x', cellWidth / 2)
+                .attr('y', cellHeight / 2 - 5)
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.35em')
+                .style('font-size', isMobile ? '12px' : '14px')
+                .style('font-weight', 'bold')
+                .style('fill', d => {
+                    if (d.confidence === 'no_data') return '#999';
+                    // Use contrasting text color
+                    const bgColor = colorScales[d.metricType](d.value);
+                    return d3.hsl(bgColor).l > 0.5 ? '#333' : '#fff';
+                })
+                .text(d => {
+                    if (d.confidence === 'no_data') return 'N/A';
+                    if (d.metricType === 'duration') return d.value.toFixed(0);
+                    if (d.metricType === 'frequency') return d.value.toFixed(1);
+                    return d.value.toFixed(0);
+                });
+            
+            // Confidence indicator
+            cells.append('text')
+                .attr('x', cellWidth / 2)
+                .attr('y', cellHeight / 2 + 12)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
+                .style('fill', '#666')
+                .text(d => {
+                    if (d.confidence === 'no_data') return '';
+                    return d.confidence.replace('_', ' ');
+                });
+            
+            // Season labels (top)
+            g.selectAll('.season-label')
+                .data(seasons)
+                .enter()
+                .append('text')
+                .attr('class', 'season-label')
+                .attr('x', (d, i) => i * cellWidth + cellWidth / 2)
+                .attr('y', -20)
+                .attr('text-anchor', 'middle')
+                .style('font-size', isMobile ? '12px' : '14px')
+                .style('font-weight', 'bold')
+                .style('fill', d => seasonColors[d])
+                .text(d => d.charAt(0).toUpperCase() + d.slice(1));
+            
+            // Season emojis (top)
+            const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
+            g.selectAll('.season-emoji')
+                .data(seasons)
+                .enter()
+                .append('text')
+                .attr('class', 'season-emoji')
+                .attr('x', (d, i) => i * cellWidth + cellWidth / 2)
+                .attr('y', -40)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '20px')
+                .text(d => seasonEmojis[d]);
+            
+            // Metric labels (left)
+            g.selectAll('.metric-label')
+                .data(metrics)
+                .enter()
+                .append('text')
+                .attr('class', 'metric-label')
+                .attr('x', -10)
+                .attr('y', (d, i) => i * cellHeight + cellHeight / 2)
+                .attr('text-anchor', 'end')
+                .attr('dy', '0.35em')
+                .style('font-size', '12px')
+                .style('font-weight', '500')
+                .text(d => d.label);
+            
+            // Add title
+            svg.append('text')
+                .attr('x', (width + margin.left + margin.right) / 2)
+                .attr('y', 25)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '16px')
+                .style('font-weight', 'bold')
+                .text('Seasonal Activity Patterns');
+            
+            // Add legend for confidence levels
+            const legendData = [
+                { confidence: 'high', color: '#4caf50', label: 'High Confidence' },
+                { confidence: 'medium', color: '#ff9800', label: 'Medium Confidence' },
+                { confidence: 'low', color: '#f44336', label: 'Low Confidence' },
+                { confidence: 'very_low', color: '#9e9e9e', label: 'Very Low Confidence' }
+            ];
+            
+            const legend = svg.append('g')
+                .attr('transform', \`translate(\${margin.left}, \${height + margin.top + 20})\`);
+            
+            const legendItems = legend.selectAll('.legend-item')
+                .data(legendData)
+                .enter()
+                .append('g')
+                .attr('class', 'legend-item')
+                .attr('transform', (d, i) => \`translate(\${i * 120}, 0)\`);
+            
+            legendItems.append('rect')
+                .attr('width', 12)
+                .attr('height', 12)
+                .attr('fill', 'none')
+                .attr('stroke', d => d.color)
+                .attr('stroke-width', 2);
+            
+            legendItems.append('text')
+                .attr('x', 18)
+                .attr('y', 6)
+                .attr('dy', '0.35em')
+                .style('font-size', '11px')
+                .text(d => d.label);
         }
 
         function renderOverlayActogram(dailySummaries) {
