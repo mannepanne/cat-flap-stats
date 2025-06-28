@@ -273,12 +273,13 @@ function getSharedCSS() {
             opacity: 1;
         }
         .btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             background: #667eea;
             color: white;
             text-decoration: none;
             border-radius: 4px;
             font-weight: 500;
+            font-size: 14px;
             display: inline-block;
             transition: background 0.3s;
         }
@@ -1452,10 +1453,6 @@ function getPatternsPage(email) {
             overflow: auto;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
-        }
-        .btn {
-            padding: 8px 16px;
-            font-size: 14px;
         }
         .loading {
             text-align: center;
