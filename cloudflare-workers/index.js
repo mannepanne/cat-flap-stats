@@ -3225,12 +3225,59 @@ ${getSharedCSS()}
                 height: 400px;
             }
         }
+        .season-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 0.5rem;
+        }
+        .season-tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px 4px 0 0;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .season-tab.active {
+            background: #2196f3;
+            color: white;
+            border-color: #2196f3;
+        }
+        .season-tab:hover:not(.active) {
+            background: #e3f2fd;
+        }
+        .comparison-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .comparison-mode {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .comparison-mode input[type="radio"] {
+            margin-right: 0.25rem;
+        }
+        .comparison-mode label {
+            font-size: 14px;
+            cursor: pointer;
+        }
         .overlay-actogram-container {
             width: 100%;
-            height: 600px;
+            height: 500px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             overflow: auto;
+            background: #f8f9fa;
         }
         .season-legend {
             display: flex;
@@ -3311,7 +3358,9 @@ ${getSharedCSS()}
 </head>
 <body>
     <div class="header">
-        <h1>🐾 Cat Flap Stats - Seasonal Pattern Analysis</h1>
+        <div class="logo">
+            <h2>🐾 Cat Flap Stats - Seasonal Pattern Analysis</h2>
+        </div>
         <div class="nav-links">
             <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
             <a href="/patterns" class="btn btn-secondary">Patterns</a>
@@ -3374,9 +3423,15 @@ ${getSharedCSS()}
                 </div>
                 
                 <div class="stat-card">
-                    <h3>📈 Overlay Actogram Comparison</h3>
+                    <h3>📈 Seasonal Activity Comparison</h3>
+                    <div class="season-tabs" id="season-tabs">
+                        <!-- Season selection tabs will be rendered here -->
+                    </div>
+                    <div class="comparison-controls" id="comparison-controls">
+                        <!-- Comparison mode controls will be rendered here -->
+                    </div>
                     <div class="overlay-actogram-container" id="overlay-actogram">
-                        <!-- D3.js overlay actogram will be rendered here -->
+                        <!-- D3.js seasonal actogram will be rendered here -->
                     </div>
                 </div>
             </div>
@@ -3762,11 +3817,8 @@ ${getSharedCSS()}
         }
 
         function renderOverlayActogram(dailySummaries) {
-            const container = document.getElementById('overlay-actogram');
-            container.innerHTML = '';
-            
             if (!dailySummaries || dailySummaries.length === 0) {
-                container.innerHTML = \`
+                document.getElementById('overlay-actogram').innerHTML = \`
                     <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
                         <div style="font-size: 2rem;">📈</div>
                         <p>No daily summary data available</p>
@@ -3775,7 +3827,7 @@ ${getSharedCSS()}
                 return;
             }
             
-            // Group data by season and select representative days
+            // Group data by season
             const seasonalData = {};
             const seasons = ['spring', 'summer', 'autumn', 'winter'];
             
@@ -3803,34 +3855,153 @@ ${getSharedCSS()}
                 }
             });
             
-            // Take up to 30 days per season for visualization
-            const maxDaysPerSeason = 30;
+            // Sample data for better performance (up to 40 days per season)
+            const maxDaysPerSeason = 40;
             Object.keys(seasonalData).forEach(season => {
                 if (seasonalData[season].length > maxDaysPerSeason) {
-                    // Sample evenly across the season
                     const interval = Math.floor(seasonalData[season].length / maxDaysPerSeason);
                     seasonalData[season] = seasonalData[season].filter((_, i) => i % interval === 0);
                 }
             });
             
-            // Calculate total rows needed
-            const totalRows = Object.values(seasonalData).reduce((sum, days) => sum + days.length, 0);
+            // Store data globally for tab switching
+            window.seasonalActogramData = seasonalData;
+            window.currentComparisonMode = 'single';
+            window.selectedSeasons = ['spring']; // Default to spring
             
-            if (totalRows === 0) {
+            // Render tabs and controls
+            renderSeasonTabs(seasonalData);
+            renderComparisonControls();
+            
+            // Render initial actogram
+            renderSeasonActogram();
+        }
+        
+        function renderSeasonTabs(seasonalData) {
+            const tabsContainer = document.getElementById('season-tabs');
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
+            
+            const availableSeasons = seasons.filter(season => 
+                seasonalData[season] && seasonalData[season].length > 0
+            );
+            
+            if (availableSeasons.length === 0) {
+                tabsContainer.innerHTML = '<p>No seasonal data available</p>';
+                return;
+            }
+            
+            tabsContainer.innerHTML = availableSeasons.map(season => \`
+                <div class="season-tab \${window.selectedSeasons.includes(season) ? 'active' : ''}" 
+                     data-season="\${season}" 
+                     onclick="toggleSeasonSelection('\${season}')">
+                    <span>\${seasonEmojis[season]}</span>
+                    <span>\${season.charAt(0).toUpperCase() + season.slice(1)}</span>
+                    <span style="font-size: 12px; opacity: 0.8;">(\${seasonalData[season].length})</span>
+                </div>
+            \`).join('');
+        }
+        
+        function renderComparisonControls() {
+            const controlsContainer = document.getElementById('comparison-controls');
+            controlsContainer.innerHTML = \`
+                <div class="comparison-mode">
+                    <input type="radio" id="single-mode" name="comparison" value="single" 
+                           \${window.currentComparisonMode === 'single' ? 'checked' : ''} 
+                           onchange="changeComparisonMode('single')">
+                    <label for="single-mode">Single Season</label>
+                </div>
+                <div class="comparison-mode">
+                    <input type="radio" id="overlay-mode" name="comparison" value="overlay" 
+                           \${window.currentComparisonMode === 'overlay' ? 'checked' : ''} 
+                           onchange="changeComparisonMode('overlay')">
+                    <label for="overlay-mode">Overlay Comparison</label>
+                </div>
+                <div style="font-size: 12px; color: #666; margin-left: 1rem;">
+                    \${window.currentComparisonMode === 'single' ? 'Click tabs to switch seasons' : 'Click tabs to select seasons for overlay'}
+                </div>
+            \`;
+        }
+        
+        function toggleSeasonSelection(season) {
+            if (window.currentComparisonMode === 'single') {
+                window.selectedSeasons = [season];
+            } else {
+                // Overlay mode - toggle selection
+                if (window.selectedSeasons.includes(season)) {
+                    window.selectedSeasons = window.selectedSeasons.filter(s => s !== season);
+                } else {
+                    window.selectedSeasons.push(season);
+                }
+                // Ensure at least one season is selected
+                if (window.selectedSeasons.length === 0) {
+                    window.selectedSeasons = [season];
+                }
+            }
+            
+            // Update tab appearance
+            document.querySelectorAll('.season-tab').forEach(tab => {
+                const tabSeason = tab.dataset.season;
+                tab.classList.toggle('active', window.selectedSeasons.includes(tabSeason));
+            });
+            
+            renderSeasonActogram();
+        }
+        
+        function changeComparisonMode(mode) {
+            window.currentComparisonMode = mode;
+            if (mode === 'single' && window.selectedSeasons.length > 1) {
+                window.selectedSeasons = [window.selectedSeasons[0]];
+            }
+            
+            renderComparisonControls();
+            renderSeasonTabs(window.seasonalActogramData);
+            renderSeasonActogram();
+        }
+        
+        function renderSeasonActogram() {
+            const container = document.getElementById('overlay-actogram');
+            container.innerHTML = '';
+            
+            if (!window.seasonalActogramData || window.selectedSeasons.length === 0) {
                 container.innerHTML = \`
                     <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
                         <div style="font-size: 2rem;">📈</div>
-                        <p>No seasonal data available for overlay</p>
+                        <p>No season selected</p>
                     </div>
                 \`;
                 return;
             }
             
+            // Get data for selected seasons
+            const selectedData = [];
+            window.selectedSeasons.forEach(season => {
+                if (window.seasonalActogramData[season]) {
+                    window.seasonalActogramData[season].forEach(day => {
+                        selectedData.push({ ...day, season: season });
+                    });
+                }
+            });
+            
+            if (selectedData.length === 0) {
+                container.innerHTML = \`
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                        <div style="font-size: 2rem;">📈</div>
+                        <p>No data for selected seasons</p>
+                    </div>
+                \`;
+                return;
+            }
+            
+            // Sort data by date for better visualization
+            selectedData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
             // SVG dimensions
             const containerWidth = container.clientWidth || 600;
-            const margin = { top: 40, right: 30, bottom: 40, left: 120 };
+            const margin = { top: 60, right: 40, bottom: 60, left: 100 };
             const width = containerWidth - margin.left - margin.right;
-            const height = Math.min(totalRows * 12 + 150, 500); // 12px per row, max 500px height
+            const rowHeight = window.currentComparisonMode === 'overlay' ? 16 : 14;
+            const height = Math.min(selectedData.length * rowHeight + 100, 400);
             
             const svg = d3.select(container)
                 .append('svg')
@@ -3840,88 +4011,43 @@ ${getSharedCSS()}
             const g = svg.append('g')
                 .attr('transform', \`translate(\${margin.left},\${margin.top})\`);
             
-            // Create consolidated data array with season grouping
-            const consolidatedData = [];
-            let currentY = 0;
-            
-            seasons.forEach(season => {
-                if (seasonalData[season] && seasonalData[season].length > 0) {
-                    // Add season header
-                    consolidatedData.push({
-                        type: 'header',
-                        season: season,
-                        y: currentY,
-                        height: 20
-                    });
-                    currentY += 25;
-                    
-                    // Add season data
-                    seasonalData[season].forEach(day => {
-                        consolidatedData.push({
-                            type: 'data',
-                            season: season,
-                            day: day,
-                            y: currentY,
-                            height: 12
-                        });
-                        currentY += 14;
-                    });
-                    currentY += 10; // Gap between seasons
-                }
-            });
-            
             // Scales
             const xScale = d3.scaleLinear()
                 .domain([0, 24])
                 .range([0, width]);
             
-            // Season headers
-            const headers = consolidatedData.filter(d => d.type === 'header');
-            g.selectAll('.season-header')
-                .data(headers)
-                .enter()
-                .append('text')
-                .attr('class', 'season-header')
-                .attr('x', -10)
-                .attr('y', d => d.y + 15)
-                .attr('text-anchor', 'end')
-                .style('font-size', '14px')
-                .style('font-weight', 'bold')
-                .style('fill', d => seasonColors[d.season])
-                .text(d => {
-                    const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
-                    return \`\${seasonEmojis[d.season]} \${d.season.charAt(0).toUpperCase() + d.season.slice(1)}\`;
-                });
+            const yScale = d3.scaleBand()
+                .domain(selectedData.map((d, i) => i))
+                .range([0, selectedData.length * rowHeight])
+                .padding(0.1);
             
-            // Data rows
-            const dataRows = consolidatedData.filter(d => d.type === 'data');
-            
-            // Background day/night cycles for each row
-            dataRows.forEach(row => {
-                // Night background (6PM to 6AM next day)
+            // Background day/night for each row
+            selectedData.forEach((day, i) => {
+                const y = i * rowHeight;
+                
+                // Night background (6PM to 6AM)
                 g.append('rect')
                     .attr('x', 0)
-                    .attr('y', row.y)
+                    .attr('y', y)
                     .attr('width', xScale(6))
-                    .attr('height', row.height)
+                    .attr('height', rowHeight - 1)
                     .attr('fill', '#f0f0f0')
-                    .attr('opacity', 0.3);
+                    .attr('opacity', 0.4);
                 
                 g.append('rect')
                     .attr('x', xScale(18))
-                    .attr('y', row.y)
+                    .attr('y', y)
                     .attr('width', xScale(6))
-                    .attr('height', row.height)
+                    .attr('height', rowHeight - 1)
                     .attr('fill', '#f0f0f0')
-                    .attr('opacity', 0.3);
+                    .attr('opacity', 0.4);
             });
             
-            // Activity bars for each day
-            dataRows.forEach(row => {
-                const day = row.day;
+            // Activity bars
+            selectedData.forEach((day, i) => {
+                const y = i * rowHeight;
                 
                 if (day.firstExit && day.lastEntry) {
-                    // Parse times
                     const firstExit = parseTime(day.firstExit);
                     const lastEntry = parseTime(day.lastEntry);
                     
@@ -3929,30 +4055,29 @@ ${getSharedCSS()}
                         let startHour = firstExit;
                         let endHour = lastEntry;
                         
-                        // Handle overnight activities (when lastEntry < firstExit)
+                        // Handle overnight activities
                         if (lastEntry < firstExit) {
                             endHour = lastEntry + 24;
                         }
                         
-                        // Draw activity bar
                         const barWidth = xScale(endHour - startHour);
                         const barX = xScale(startHour);
                         
                         g.append('rect')
                             .attr('x', barX)
-                            .attr('y', row.y + 1)
+                            .attr('y', y + 1)
                             .attr('width', Math.max(barWidth, 2))
-                            .attr('height', row.height - 2)
-                            .attr('fill', seasonColors[row.season])
-                            .attr('opacity', 0.7)
-                            .attr('stroke', seasonColors[row.season])
+                            .attr('height', rowHeight - 3)
+                            .attr('fill', seasonColors[day.season])
+                            .attr('opacity', 0.8)
+                            .attr('stroke', seasonColors[day.season])
                             .attr('stroke-width', 0.5);
                         
-                        // Add session count if available
+                        // Session count
                         if (day.sessions && day.sessions > 1) {
                             g.append('text')
                                 .attr('x', barX + barWidth/2)
-                                .attr('y', row.y + row.height/2)
+                                .attr('y', y + rowHeight/2)
                                 .attr('text-anchor', 'middle')
                                 .attr('dy', '0.35em')
                                 .style('font-size', '8px')
@@ -3964,58 +4089,69 @@ ${getSharedCSS()}
                 }
             });
             
-            // X-axis (hours)
+            // X-axis
             const xAxis = d3.axisBottom(xScale)
                 .tickFormat(d => \`\${Math.floor(d)}:00\`)
                 .ticks(12);
             
             g.append('g')
                 .attr('class', 'x-axis')
-                .attr('transform', \`translate(0, \${currentY - 10})\`)
+                .attr('transform', \`translate(0, \${selectedData.length * rowHeight})\`)
                 .call(xAxis)
                 .selectAll('text')
-                .style('font-size', '10px');
+                .style('font-size', '11px');
+            
+            // Y-axis labels (dates) - show every 5th for readability
+            selectedData.forEach((day, i) => {
+                if (i % 5 === 0 || selectedData.length < 20) {
+                    g.append('text')
+                        .attr('x', -10)
+                        .attr('y', i * rowHeight + rowHeight/2)
+                        .attr('text-anchor', 'end')
+                        .attr('dy', '0.35em')
+                        .style('font-size', '9px')
+                        .style('fill', seasonColors[day.season])
+                        .style('font-weight', 'bold')
+                        .text(day.date.substring(5)); // Show MM-DD
+                }
+            });
             
             // Title
+            const title = window.currentComparisonMode === 'single' 
+                ? \`\${window.selectedSeasons[0].charAt(0).toUpperCase() + window.selectedSeasons[0].slice(1)} Activity Pattern\`
+                : \`Seasonal Comparison (\${window.selectedSeasons.join(', ')})\`;
+            
             svg.append('text')
                 .attr('x', (width + margin.left + margin.right) / 2)
-                .attr('y', 20)
+                .attr('y', 25)
                 .attr('text-anchor', 'middle')
                 .style('font-size', '14px')
                 .style('font-weight', 'bold')
-                .text('Seasonal Activity Patterns Overlay');
+                .text(title);
             
-            // Legend
-            const legendData = seasons
-                .filter(season => seasonalData[season] && seasonalData[season].length > 0)
-                .map(season => ({
-                    season: season,
-                    color: seasonColors[season],
-                    count: seasonalData[season].length
-                }));
-            
-            const legend = svg.append('g')
-                .attr('transform', \`translate(\${margin.left}, \${height + margin.top - 30})\`);
-            
-            const legendItems = legend.selectAll('.legend-item')
-                .data(legendData)
-                .enter()
-                .append('g')
-                .attr('class', 'legend-item')
-                .attr('transform', (d, i) => \`translate(\${i * 120}, 0)\`);
-            
-            legendItems.append('rect')
-                .attr('width', 12)
-                .attr('height', 8)
-                .attr('fill', d => d.color)
-                .attr('opacity', 0.7);
-            
-            legendItems.append('text')
-                .attr('x', 18)
-                .attr('y', 4)
-                .attr('dy', '0.35em')
-                .style('font-size', '10px')
-                .text(d => \`\${d.season} (\${d.count} days)\`);
+            // Legend for overlay mode
+            if (window.currentComparisonMode === 'overlay' && window.selectedSeasons.length > 1) {
+                const legend = svg.append('g')
+                    .attr('transform', \`translate(\${margin.left}, \${height + margin.top - 25})\`);
+                
+                window.selectedSeasons.forEach((season, i) => {
+                    const legendItem = legend.append('g')
+                        .attr('transform', \`translate(\${i * 100}, 0)\`);
+                    
+                    legendItem.append('rect')
+                        .attr('width', 12)
+                        .attr('height', 8)
+                        .attr('fill', seasonColors[season])
+                        .attr('opacity', 0.8);
+                    
+                    legendItem.append('text')
+                        .attr('x', 18)
+                        .attr('y', 4)
+                        .attr('dy', '0.35em')
+                        .style('font-size', '11px')
+                        .text(season.charAt(0).toUpperCase() + season.slice(1));
+                });
+            }
         }
         
         // Helper function to parse time strings like "06:30" to decimal hours
@@ -4052,14 +4188,14 @@ function getAnnotationsPage(email) {
 <body>
     <div class="header">
         <div class="logo">
-            <h2>🐱 Cat Flap Stats</h2>
+            <h2>🐱 Cat Flap Stats - Behavioral Annotations</h2>
         </div>
-        <div class="user-info">
+        <div class="nav-links">
             <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
             <a href="/patterns" class="btn btn-secondary">Patterns</a>
             <a href="/circadian" class="btn btn-secondary">Circadian</a>
             <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <span>Welcome, ${email.split('@')[0]}</span>
+            <span>Welcome, ${email}</span>
             <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
     </div>
