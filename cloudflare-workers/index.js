@@ -182,7 +182,7 @@ function getSharedCSS() {
             align-items: center;
         }
         .logo { color: #333; }
-        .user-info {
+        .user-info, .nav-links {
             display: flex;
             align-items: center;
             gap: 1rem;
@@ -1427,11 +1427,6 @@ function getPatternsPage(email) {
         ${getSharedCSS()}
         
         /* Patterns page specific styles */
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
         .container {
             max-width: 1400px;
             margin: 2rem auto;
@@ -2069,11 +2064,6 @@ function getCircadianPage(email) {
         ${getSharedCSS()}
         
         /* Circadian page specific styles */
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
         .container {
             max-width: 1400px;
             margin: 2rem auto;
@@ -3185,11 +3175,6 @@ function getSeasonalPage(email) {
 ${getSharedCSS()}
         
         /* Seasonal page specific styles */
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
         .container {
             max-width: 1400px;
             margin: 2rem auto;
