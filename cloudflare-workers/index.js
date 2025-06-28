@@ -48,6 +48,8 @@ export default {
           return await handlePatterns(request, env);
         case '/circadian':
           return await handleCircadian(request, env);
+        case '/seasonal':
+          return await handleSeasonal(request, env);
         case '/annotations':
           return await handleAnnotations(request, env);
         case '/api/annotations':
@@ -742,6 +744,19 @@ async function handleCircadianApi(request, env) {
   }
 }
 
+async function handleSeasonal(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getSeasonalPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
 // Advanced circadian rhythm analysis
 async function generateCircadianAnalysis(data) {
   console.log('Generating circadian analysis, data keys:', Object.keys(data));
@@ -1275,6 +1290,13 @@ function getDashboardPage(email) {
         </div>
         
         <div class="card">
+            <h3>🔬 Seasonal Pattern Detection</h3>
+            <p>Statistical analysis of seasonal behavioral differences with UK meteorological seasons, hypothesis testing, and comprehensive duration vs frequency comparisons.</p>
+            <br>
+            <a href="/seasonal" class="btn">Analyze Seasonal Patterns</a>
+        </div>
+        
+        <div class="card">
             <h3>Upload New PDF Report</h3>
             <p>Upload your weekly SURE Petcare PDF report to add new data to the dataset.</p>
             <br>
@@ -1450,6 +1472,9 @@ function getPatternsPage(email) {
         </div>
         <div class="nav-links">
             <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
+            <a href="/annotations" class="btn btn-secondary">Annotations</a>
             <span>Welcome, ${email}</span>
             <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
@@ -2149,6 +2174,8 @@ function getCircadianPage(email) {
         <div class="nav-links">
             <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
             <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
+            <a href="/annotations" class="btn btn-secondary">Annotations</a>
             <span>Welcome, ${email}</span>
             <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
@@ -3108,6 +3135,374 @@ async function triggerAnnotationUpdate(env, annotations) {
   }
 }
 
+function getSeasonalPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Seasonal Pattern Analysis</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+${getSharedCSS()}
+        
+        /* Seasonal page specific styles */
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .seasonal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .seasonal-grid { grid-template-columns: 1fr; }
+        }
+        .heatmap-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            position: relative;
+            background: #f8f9fa;
+        }
+        .overlay-actogram-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .season-legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        .season-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .season-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .hypothesis-card {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-left: 4px solid #2196f3;
+        }
+        .significance-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+        .significant {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .not-significant {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+        .confidence-high { border-left-color: #4caf50; }
+        .confidence-medium { border-left-color: #ff9800; }
+        .confidence-low { border-left-color: #f44336; }
+        .confidence-very_low { border-left-color: #9e9e9e; }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196f3;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐾 Cat Flap Stats - Seasonal Pattern Analysis</h1>
+        <div class="nav-links">
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            <a href="/patterns" class="btn btn-secondary">Patterns</a>
+            <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <a href="/annotations" class="btn btn-secondary">Annotations</a>
+            <span>Welcome, ${email}</span>
+            <a href="/logout" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading seasonal analysis...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <!-- Seasonal Statistics Overview -->
+            <div class="stats-grid" id="seasonal-stats">
+                <!-- Populated by JavaScript -->
+            </div>
+            
+            <!-- Primary Hypothesis Testing -->
+            <div class="stat-card hypothesis-card">
+                <h3>🧪 Hypothesis Testing</h3>
+                <div id="hypothesis-results">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Season Legend -->
+            <div class="season-legend">
+                <div class="season-item">
+                    <div class="season-color" style="background: #81c784;"></div>
+                    <span>Spring (Mar-May)</span>
+                </div>
+                <div class="season-item">
+                    <div class="season-color" style="background: #ffb74d;"></div>
+                    <span>Summer (Jun-Aug)</span>
+                </div>
+                <div class="season-item">
+                    <div class="season-color" style="background: #ff8a65;"></div>
+                    <span>Autumn (Sep-Nov)</span>
+                </div>
+                <div class="season-item">
+                    <div class="season-color" style="background: #64b5f6;"></div>
+                    <span>Winter (Dec-Feb)</span>
+                </div>
+            </div>
+            
+            <!-- Main Visualizations -->
+            <div class="seasonal-grid">
+                <div class="stat-card">
+                    <h3>📊 Seasonal Activity Heatmap</h3>
+                    <div class="heatmap-container" id="seasonal-heatmap">
+                        <!-- D3.js heatmap will be rendered here -->
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>📈 Overlay Actogram Comparison</h3>
+                    <div class="overlay-actogram-container" id="overlay-actogram">
+                        <!-- D3.js overlay actogram will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Seasonal colors for consistent theming
+        const seasonColors = {
+            spring: '#81c784',
+            summer: '#ffb74d', 
+            autumn: '#ff8a65',
+            winter: '#64b5f6'
+        };
+
+        // Load seasonal analysis data and render visualizations
+        async function loadSeasonalData() {
+            try {
+                const response = await fetch('/api/analytics');
+                if (!response.ok) {
+                    throw new Error(\`HTTP error! status: \${response.status}\`);
+                }
+                const data = await response.json();
+                
+                // Check if seasonal stats are available
+                if (!data.precomputed || !data.precomputed.seasonalStats) {
+                    throw new Error('Seasonal analysis data not available');
+                }
+                
+                const seasonalStats = data.precomputed.seasonalStats;
+                
+                // Render all components
+                renderSeasonalStats(seasonalStats);
+                renderHypothesisResults(seasonalStats);
+                renderSeasonalHeatmap(seasonalStats);
+                renderOverlayActogram(data.precomputed.dailySummaries);
+                
+                // Hide loading, show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading seasonal data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = \`Failed to load seasonal analysis: \${error.message}\`;
+            }
+        }
+
+        function renderSeasonalStats(seasonalStats) {
+            const container = document.getElementById('seasonal-stats');
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            
+            container.innerHTML = seasons.map(season => {
+                const data = seasonalStats[season];
+                if (!data || data.data_quality.confidence_level === 'no_data') {
+                    return \`
+                        <div class="stat-card">
+                            <h3 style="color: \${seasonColors[season]}">
+                                \${season.charAt(0).toUpperCase() + season.slice(1)}
+                            </h3>
+                            <div class="metric-value">No Data</div>
+                            <div class="metric-label">Insufficient data for analysis</div>
+                        </div>
+                    \`;
+                }
+                
+                const confidenceClass = \`confidence-\${data.data_quality.confidence_level}\`;
+                return \`
+                    <div class="stat-card \${confidenceClass}">
+                        <h3 style="color: \${seasonColors[season]}">
+                            \${season.charAt(0).toUpperCase() + season.slice(1)}
+                        </h3>
+                        <div class="metric-value">\${data.duration_metrics.avg_daily_duration_minutes.toFixed(1)} min</div>
+                        <div class="metric-label">Avg Daily Outdoor Time</div>
+                        <div class="metric-sublabel">\${data.frequency_metrics.avg_daily_sessions.toFixed(1)} sessions/day</div>
+                        <div class="metric-sublabel">\${data.data_quality.completeness_percent}% data completeness</div>
+                        <div class="metric-sublabel confidence-\${data.data_quality.confidence_level}">
+                            \${data.data_quality.confidence_level.replace('_', ' ')} confidence
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+
+        function renderHypothesisResults(seasonalStats) {
+            const container = document.getElementById('hypothesis-results');
+            const comparisons = seasonalStats.comparisons;
+            
+            if (!comparisons || comparisons.note) {
+                container.innerHTML = '<p>Statistical comparisons require scipy package for full analysis.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Summer vs Winter duration comparison
+            if (comparisons.summer_winter_duration) {
+                const result = comparisons.summer_winter_duration;
+                const significanceBadge = result.significant ? 
+                    '<span class="significance-badge significant">Significant</span>' :
+                    '<span class="significance-badge not-significant">Not Significant</span>';
+                    
+                const summerAvg = seasonalStats.summer?.duration_metrics?.avg_daily_duration_minutes || 0;
+                const winterAvg = seasonalStats.winter?.duration_metrics?.avg_daily_duration_minutes || 0;
+                const difference = summerAvg - winterAvg;
+                
+                html += \`
+                    <div class="hypothesis-test">
+                        <h4>\${result.hypothesis}</h4>
+                        <p><strong>Result:</strong> Summer \${difference > 0 ? 'longer' : 'shorter'} by \${Math.abs(difference).toFixed(1)} minutes/day \${significanceBadge}</p>
+                        <p><strong>p-value:</strong> \${result.p_value.toFixed(6)}</p>
+                        <p><strong>Effect size:</strong> \${result.effect_size.toFixed(3)}</p>
+                    </div>
+                \`;
+            }
+            
+            // Overall duration analysis
+            if (comparisons.duration_analysis && !comparisons.duration_analysis.error) {
+                const analysis = comparisons.duration_analysis;
+                const significanceBadge = analysis.significant ? 
+                    '<span class="significance-badge significant">Significant</span>' :
+                    '<span class="significance-badge not-significant">Not Significant</span>';
+                    
+                html += \`
+                    <div class="hypothesis-test">
+                        <h4>Overall Seasonal Duration Differences</h4>
+                        <p><strong>ANOVA Result:</strong> \${analysis.interpretation} \${significanceBadge}</p>
+                        <p><strong>F-statistic:</strong> \${analysis.f_statistic}</p>
+                        <p><strong>p-value:</strong> \${analysis.p_value}</p>
+                        <p><strong>Seasons compared:</strong> \${analysis.seasons_compared.join(', ')}</p>
+                    </div>
+                \`;
+            }
+            
+            container.innerHTML = html || '<p>No statistical comparisons available.</p>';
+        }
+
+        function renderSeasonalHeatmap(seasonalStats) {
+            // For now, show a placeholder - we'll implement actual heatmap later
+            const container = document.getElementById('seasonal-heatmap');
+            container.innerHTML = \`
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                    <div style="font-size: 4rem;">📊</div>
+                    <div style="text-align: center;">
+                        <h4>Seasonal Activity Heatmap</h4>
+                        <p>Visual representation of activity patterns by month and week</p>
+                        <p style="color: #666; font-size: 0.9rem;">Implementation in progress</p>
+                    </div>
+                </div>
+            \`;
+        }
+
+        function renderOverlayActogram(dailySummaries) {
+            // For now, show a placeholder - we'll implement actual overlay actogram later
+            const container = document.getElementById('overlay-actogram');
+            container.innerHTML = \`
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                    <div style="font-size: 4rem;">📈</div>
+                    <div style="text-align: center;">
+                        <h4>Overlay Actogram Comparison</h4>
+                        <p>Multi-season timeline overlay for direct pattern comparison</p>
+                        <p style="color: #666; font-size: 0.9rem;">Implementation in progress</p>
+                    </div>
+                </div>
+            \`;
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', loadSeasonalData);
+    </script>
+</body>
+</html>\`;
+}
+
 function getAnnotationsPage(email) {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -3130,6 +3525,7 @@ function getAnnotationsPage(email) {
             <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
             <a href="/patterns" class="btn btn-secondary">Patterns</a>
             <a href="/circadian" class="btn btn-secondary">Circadian</a>
+            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
             <span>Welcome, ${email.split('@')[0]}</span>
             <a href="/logout" class="btn btn-secondary">Logout</a>
         </div>
