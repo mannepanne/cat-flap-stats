@@ -3383,7 +3383,7 @@ ${getSharedCSS()}
             
             container.innerHTML = seasons.map(season => {
                 const data = seasonalStats[season];
-                if (!data || data.data_quality.confidence_level === 'no_data') {
+                if (!data || !data.data_quality || data.data_quality.confidence_level === 'no_data') {
                     return \`
                         <div class="stat-card">
                             <h3 style="color: \${seasonColors[season]}">
@@ -3395,18 +3395,23 @@ ${getSharedCSS()}
                     \`;
                 }
                 
-                const confidenceClass = \`confidence-\${data.data_quality.confidence_level}\`;
+                const confidenceClass = \`confidence-\${data.data_quality?.confidence_level || 'unknown'}\`;
+                const avgDuration = data.duration_metrics?.avg_daily_duration_minutes || 0;
+                const avgSessions = data.frequency_metrics?.avg_daily_sessions || 0;
+                const completeness = data.data_quality?.completeness_percent || 0;
+                const confidence = data.data_quality?.confidence_level || 'unknown';
+                
                 return \`
                     <div class="stat-card \${confidenceClass}">
                         <h3 style="color: \${seasonColors[season]}">
                             \${season.charAt(0).toUpperCase() + season.slice(1)}
                         </h3>
-                        <div class="metric-value">\${data.duration_metrics.avg_daily_duration_minutes.toFixed(1)} min</div>
+                        <div class="metric-value">\${avgDuration.toFixed(1)} min</div>
                         <div class="metric-label">Avg Daily Outdoor Time</div>
-                        <div class="metric-sublabel">\${data.frequency_metrics.avg_daily_sessions.toFixed(1)} sessions/day</div>
-                        <div class="metric-sublabel">\${data.data_quality.completeness_percent}% data completeness</div>
-                        <div class="metric-sublabel confidence-\${data.data_quality.confidence_level}">
-                            \${data.data_quality.confidence_level.replace('_', ' ')} confidence
+                        <div class="metric-sublabel">\${avgSessions.toFixed(1)} sessions/day</div>
+                        <div class="metric-sublabel">\${completeness}% data completeness</div>
+                        <div class="metric-sublabel confidence-\${confidence}">
+                            \${confidence.replace('_', ' ')} confidence
                         </div>
                     </div>
                 \`;
