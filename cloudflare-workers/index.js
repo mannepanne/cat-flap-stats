@@ -1635,6 +1635,16 @@ function getPatternsPage(email) {
         let analyticsData = null;
         let annotationsData = [];
         
+        // Global click handler to close tooltips when clicking outside
+        document.addEventListener('click', function(event) {
+            // Don't close if clicking on a health marker or inside a tooltip
+            if (event.target.textContent === '⚕️' || event.target.closest('.d3-tooltip')) {
+                return;
+            }
+            // Close all health tooltips
+            d3.selectAll('.health-tooltip').remove();
+        });
+        
         // Load analytics data first (critical)
         console.log('Starting to load analytics data...');
         fetch('/api/analytics')
@@ -2099,6 +2109,17 @@ function getPatternsPage(email) {
                             tooltipContent += '<div style="font-size: 10px; opacity: 0.7; margin-top: 8px; font-style: italic;">Click to view detailed health analysis</div>';
                             
                             tooltip.html(tooltipContent);
+                            
+                            // Add mouseleave handler to tooltip itself
+                            tooltip.on('mouseleave', function(tooltipEvent) {
+                                setTimeout(() => {
+                                    // Check if mouse moved back to a health marker
+                                    const hoveredElement = document.elementFromPoint(tooltipEvent.clientX, tooltipEvent.clientY);
+                                    if (!hoveredElement || hoveredElement.textContent !== '⚕️') {
+                                        d3.selectAll('.health-tooltip').remove();
+                                    }
+                                }, 100);
+                            });
                         })
                         .on('mouseleave', function(event) {
                             // Improved debouncing: only remove tooltip if moving to non-health elements
