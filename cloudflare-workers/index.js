@@ -773,38 +773,59 @@ async function generateCircadianAnalysis(data) {
   console.log('Generating circadian analysis, data keys:', Object.keys(data));
   const sessions = [];
   
-  // Flatten all sessions with timestamps
-  // Check both possible data structures
-  const sessionsSource = data.sessions || data;
-  console.log('Sessions source type:', typeof sessionsSource, 'length:', sessionsSource?.length);
-  
-  for (const report of sessionsSource || []) {
-    if (report.session_data) {
-      console.log('Processing report with', report.session_data.length, 'sessions');
-      for (const session of report.session_data) {
-        // More flexible field name checking
-        const exitTime = session.exit_time || session.Exit_Time || session.exitTime;
-        const entryTime = session.entry_time || session.Entry_Time || session.entryTime;
-        const dateField = session.date_full || session.date || session.Date;
-        
-        if (exitTime && entryTime && dateField) {
-          sessions.push({
-            date: dateField,
-            exitTime: exitTime,
-            entryTime: entryTime,
-            duration: session.duration || session.Duration
-          });
+  // Handle enhanced format with precomputed data
+  if (data.precomputed && data.precomputed.dailySummaries) {
+    console.log('Using precomputed daily summaries for circadian analysis');
+    // Convert daily summaries to session-like format for existing analysis
+    for (const summary of data.precomputed.dailySummaries) {
+      if (summary.firstExit && summary.lastEntry) {
+        sessions.push({
+          date: summary.date,
+          exitTime: summary.firstExit,
+          entryTime: summary.lastEntry,
+          duration: summary.totalOutdoorTime
+        });
+      }
+    }
+    console.log('Converted', sessions.length, 'daily summaries to session format');
+  } else {
+    // Fallback to old format processing
+    const sessionsSource = data.sessions || data;
+    console.log('Sessions source type:', typeof sessionsSource, 'length:', sessionsSource?.length);
+    
+    // Only process if sessionsSource is an array (old format)
+    if (Array.isArray(sessionsSource)) {
+      for (const report of sessionsSource) {
+        if (report.session_data) {
+          console.log('Processing report with', report.session_data.length, 'sessions');
+          for (const session of report.session_data) {
+            // More flexible field name checking
+            const exitTime = session.exit_time || session.Exit_Time || session.exitTime;
+            const entryTime = session.entry_time || session.Entry_Time || session.entryTime;
+            const dateField = session.date_full || session.date || session.Date;
+            
+            if (exitTime && entryTime && dateField) {
+              sessions.push({
+                date: dateField,
+                exitTime: exitTime,
+                entryTime: entryTime,
+                duration: session.duration || session.Duration
+              });
+            } else {
+              console.log('Skipping session missing fields:', {
+                hasExit: !!exitTime,
+                hasEntry: !!entryTime,
+                hasDate: !!dateField,
+                sessionKeys: Object.keys(session)
+              });
+            }
+          }
         } else {
-          console.log('Skipping session missing fields:', {
-            hasExit: !!exitTime,
-            hasEntry: !!entryTime,
-            hasDate: !!dateField,
-            sessionKeys: Object.keys(session)
-          });
+          console.log('Report missing session_data:', Object.keys(report));
         }
       }
     } else {
-      console.log('Report missing session_data:', Object.keys(report));
+      console.log('Sessions source is not an array, enhanced format expected');
     }
   }
   
