@@ -3206,12 +3206,12 @@ ${getSharedCSS()}
         }
         .heatmap-container {
             width: 100%;
-            height: 400px;
+            height: 450px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             position: relative;
             background: #f8f9fa;
-            overflow: auto;
+            overflow: visible;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3222,7 +3222,7 @@ ${getSharedCSS()}
         }
         @media (max-width: 768px) {
             .heatmap-container {
-                height: 350px;
+                height: 400px;
             }
         }
         .overlay-actogram-container {
@@ -3540,7 +3540,7 @@ ${getSharedCSS()}
             const metrics = [
                 { key: 'avg_daily_duration_minutes', label: 'Avg Duration (min)', type: 'duration' },
                 { key: 'avg_daily_sessions', label: 'Avg Sessions/day', type: 'frequency' },
-                { key: 'total_days_with_data', label: 'Days with Data', type: 'coverage' }
+                { key: 'total_days', label: 'Days with Data', type: 'coverage' }
             ];
             
             // Create data matrix
@@ -3574,19 +3574,25 @@ ${getSharedCSS()}
                 });
             });
             
-            // SVG dimensions - responsive sizing
+            // SVG dimensions - make it fill the container properly
             const containerWidth = container.clientWidth || 500;
+            const containerHeight = container.clientHeight || 400;
             const isMobile = containerWidth < 768;
             
             const margin = { 
-                top: isMobile ? 60 : 80, 
-                right: isMobile ? 20 : 40, 
-                bottom: isMobile ? 40 : 60, 
-                left: isMobile ? 80 : 120 
+                top: isMobile ? 70 : 90, 
+                right: isMobile ? 30 : 50, 
+                bottom: isMobile ? 50 : 70, 
+                left: isMobile ? 100 : 140 
             };
             
-            const cellWidth = isMobile ? 60 : 80;
-            const cellHeight = isMobile ? 45 : 60;
+            // Calculate cell sizes to fill the available space
+            const availableWidth = containerWidth - margin.left - margin.right;
+            const availableHeight = containerHeight - margin.top - margin.bottom;
+            
+            const cellWidth = Math.max(availableWidth / seasons.length, isMobile ? 80 : 100);
+            const cellHeight = Math.max(availableHeight / metrics.length, isMobile ? 60 : 80);
+            
             const width = seasons.length * cellWidth;
             const height = metrics.length * cellHeight;
             
@@ -3756,18 +3762,271 @@ ${getSharedCSS()}
         }
 
         function renderOverlayActogram(dailySummaries) {
-            // For now, show a placeholder - we'll implement actual overlay actogram later
             const container = document.getElementById('overlay-actogram');
-            container.innerHTML = \`
-                <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
-                    <div style="font-size: 4rem;">📈</div>
-                    <div style="text-align: center;">
-                        <h4>Overlay Actogram Comparison</h4>
-                        <p>Multi-season timeline overlay for direct pattern comparison</p>
-                        <p style="color: #666; font-size: 0.9rem;">Implementation in progress</p>
+            container.innerHTML = '';
+            
+            if (!dailySummaries || dailySummaries.length === 0) {
+                container.innerHTML = \`
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                        <div style="font-size: 2rem;">📈</div>
+                        <p>No daily summary data available</p>
                     </div>
-                </div>
-            \`;
+                \`;
+                return;
+            }
+            
+            // Group data by season and select representative days
+            const seasonalData = {};
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            
+            // Define seasons by month (UK South meteorological seasons)
+            const seasonMonths = {
+                spring: [3, 4, 5],    // Mar, Apr, May
+                summer: [6, 7, 8],    // Jun, Jul, Aug
+                autumn: [9, 10, 11],  // Sep, Oct, Nov
+                winter: [12, 1, 2]    // Dec, Jan, Feb
+            };
+            
+            dailySummaries.forEach(day => {
+                const date = new Date(day.date);
+                const month = date.getMonth() + 1; // getMonth() returns 0-11
+                
+                // Find which season this day belongs to
+                for (const [seasonName, months] of Object.entries(seasonMonths)) {
+                    if (months.includes(month)) {
+                        if (!seasonalData[seasonName]) {
+                            seasonalData[seasonName] = [];
+                        }
+                        seasonalData[seasonName].push(day);
+                        break;
+                    }
+                }
+            });
+            
+            // Take up to 30 days per season for visualization
+            const maxDaysPerSeason = 30;
+            Object.keys(seasonalData).forEach(season => {
+                if (seasonalData[season].length > maxDaysPerSeason) {
+                    // Sample evenly across the season
+                    const interval = Math.floor(seasonalData[season].length / maxDaysPerSeason);
+                    seasonalData[season] = seasonalData[season].filter((_, i) => i % interval === 0);
+                }
+            });
+            
+            // Calculate total rows needed
+            const totalRows = Object.values(seasonalData).reduce((sum, days) => sum + days.length, 0);
+            
+            if (totalRows === 0) {
+                container.innerHTML = \`
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 1rem;">
+                        <div style="font-size: 2rem;">📈</div>
+                        <p>No seasonal data available for overlay</p>
+                    </div>
+                \`;
+                return;
+            }
+            
+            // SVG dimensions
+            const containerWidth = container.clientWidth || 600;
+            const margin = { top: 40, right: 30, bottom: 40, left: 120 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = Math.min(totalRows * 12 + 150, 500); // 12px per row, max 500px height
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', \`translate(\${margin.left},\${margin.top})\`);
+            
+            // Create consolidated data array with season grouping
+            const consolidatedData = [];
+            let currentY = 0;
+            
+            seasons.forEach(season => {
+                if (seasonalData[season] && seasonalData[season].length > 0) {
+                    // Add season header
+                    consolidatedData.push({
+                        type: 'header',
+                        season: season,
+                        y: currentY,
+                        height: 20
+                    });
+                    currentY += 25;
+                    
+                    // Add season data
+                    seasonalData[season].forEach(day => {
+                        consolidatedData.push({
+                            type: 'data',
+                            season: season,
+                            day: day,
+                            y: currentY,
+                            height: 12
+                        });
+                        currentY += 14;
+                    });
+                    currentY += 10; // Gap between seasons
+                }
+            });
+            
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain([0, 24])
+                .range([0, width]);
+            
+            // Season headers
+            const headers = consolidatedData.filter(d => d.type === 'header');
+            g.selectAll('.season-header')
+                .data(headers)
+                .enter()
+                .append('text')
+                .attr('class', 'season-header')
+                .attr('x', -10)
+                .attr('y', d => d.y + 15)
+                .attr('text-anchor', 'end')
+                .style('font-size', '14px')
+                .style('font-weight', 'bold')
+                .style('fill', d => seasonColors[d.season])
+                .text(d => {
+                    const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
+                    return \`\${seasonEmojis[d.season]} \${d.season.charAt(0).toUpperCase() + d.season.slice(1)}\`;
+                });
+            
+            // Data rows
+            const dataRows = consolidatedData.filter(d => d.type === 'data');
+            
+            // Background day/night cycles for each row
+            dataRows.forEach(row => {
+                // Night background (6PM to 6AM next day)
+                g.append('rect')
+                    .attr('x', 0)
+                    .attr('y', row.y)
+                    .attr('width', xScale(6))
+                    .attr('height', row.height)
+                    .attr('fill', '#f0f0f0')
+                    .attr('opacity', 0.3);
+                
+                g.append('rect')
+                    .attr('x', xScale(18))
+                    .attr('y', row.y)
+                    .attr('width', xScale(6))
+                    .attr('height', row.height)
+                    .attr('fill', '#f0f0f0')
+                    .attr('opacity', 0.3);
+            });
+            
+            // Activity bars for each day
+            dataRows.forEach(row => {
+                const day = row.day;
+                
+                if (day.firstExit && day.lastEntry) {
+                    // Parse times
+                    const firstExit = parseTime(day.firstExit);
+                    const lastEntry = parseTime(day.lastEntry);
+                    
+                    if (firstExit !== null && lastEntry !== null) {
+                        let startHour = firstExit;
+                        let endHour = lastEntry;
+                        
+                        // Handle overnight activities (when lastEntry < firstExit)
+                        if (lastEntry < firstExit) {
+                            endHour = lastEntry + 24;
+                        }
+                        
+                        // Draw activity bar
+                        const barWidth = xScale(endHour - startHour);
+                        const barX = xScale(startHour);
+                        
+                        g.append('rect')
+                            .attr('x', barX)
+                            .attr('y', row.y + 1)
+                            .attr('width', Math.max(barWidth, 2))
+                            .attr('height', row.height - 2)
+                            .attr('fill', seasonColors[row.season])
+                            .attr('opacity', 0.7)
+                            .attr('stroke', seasonColors[row.season])
+                            .attr('stroke-width', 0.5);
+                        
+                        // Add session count if available
+                        if (day.sessions && day.sessions > 1) {
+                            g.append('text')
+                                .attr('x', barX + barWidth/2)
+                                .attr('y', row.y + row.height/2)
+                                .attr('text-anchor', 'middle')
+                                .attr('dy', '0.35em')
+                                .style('font-size', '8px')
+                                .style('fill', '#333')
+                                .style('font-weight', 'bold')
+                                .text(day.sessions);
+                        }
+                    }
+                }
+            });
+            
+            // X-axis (hours)
+            const xAxis = d3.axisBottom(xScale)
+                .tickFormat(d => \`\${Math.floor(d)}:00\`)
+                .ticks(12);
+            
+            g.append('g')
+                .attr('class', 'x-axis')
+                .attr('transform', \`translate(0, \${currentY - 10})\`)
+                .call(xAxis)
+                .selectAll('text')
+                .style('font-size', '10px');
+            
+            // Title
+            svg.append('text')
+                .attr('x', (width + margin.left + margin.right) / 2)
+                .attr('y', 20)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '14px')
+                .style('font-weight', 'bold')
+                .text('Seasonal Activity Patterns Overlay');
+            
+            // Legend
+            const legendData = seasons
+                .filter(season => seasonalData[season] && seasonalData[season].length > 0)
+                .map(season => ({
+                    season: season,
+                    color: seasonColors[season],
+                    count: seasonalData[season].length
+                }));
+            
+            const legend = svg.append('g')
+                .attr('transform', \`translate(\${margin.left}, \${height + margin.top - 30})\`);
+            
+            const legendItems = legend.selectAll('.legend-item')
+                .data(legendData)
+                .enter()
+                .append('g')
+                .attr('class', 'legend-item')
+                .attr('transform', (d, i) => \`translate(\${i * 120}, 0)\`);
+            
+            legendItems.append('rect')
+                .attr('width', 12)
+                .attr('height', 8)
+                .attr('fill', d => d.color)
+                .attr('opacity', 0.7);
+            
+            legendItems.append('text')
+                .attr('x', 18)
+                .attr('y', 4)
+                .attr('dy', '0.35em')
+                .style('font-size', '10px')
+                .text(d => \`\${d.season} (\${d.count} days)\`);
+        }
+        
+        // Helper function to parse time strings like "06:30" to decimal hours
+        function parseTime(timeStr) {
+            if (!timeStr || timeStr === 'N/A') return null;
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) return null;
+            const hours = parseInt(parts[0]);
+            const minutes = parseInt(parts[1]);
+            if (isNaN(hours) || isNaN(minutes)) return null;
+            return hours + minutes / 60;
         }
 
         // Initialize page
