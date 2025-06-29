@@ -62,6 +62,8 @@ export default {
           return await handleAnalyticsApi(request, env);
         case '/api/circadian':
           return await handleCircadianApi(request, env);
+        case '/api/processing-metrics':
+          return await handleProcessingMetricsApi(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -647,6 +649,38 @@ async function handleAnalyticsApi(request, env) {
   } catch (error) {
     console.error('Error fetching analytics data:', error);
     return new Response('Analytics fetch failed', { status: 500 });
+  }
+}
+
+async function handleProcessingMetricsApi(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    // Fetch processing metrics from GitHub
+    const metricsUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/processing_metrics.json`;
+    const response = await fetch(metricsUrl);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch processing metrics from GitHub: ${response.status}`);
+      return new Response('Processing metrics not available', { status: 404 });
+    }
+    
+    const metricsData = await response.text();
+    
+    return new Response(metricsData, {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300' // 5 minute cache
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching processing metrics:', error);
+    return new Response('Processing metrics fetch failed', { status: 500 });
   }
 }
 
@@ -5345,9 +5379,12 @@ ${getSharedCSS()}
         
         <div class="card">
             <h2>📋 Processing Report Trends</h2>
-            <div class="loading">
+            <div class="loading" id="processing-loading">
                 <div class="loading-spinner"></div>
                 <p>Loading processing validation metrics...</p>
+            </div>
+            <div id="processing-trends-container" style="display: none;">
+                <!-- Processing metrics content will be inserted here -->
             </div>
         </div>
     </div>
@@ -5494,6 +5531,7 @@ ${getSharedCSS()}
         // Load analysis on page load
         loadSundayAnalysis();
         loadConfidenceAnalysis();
+        loadProcessingTrends();
         
         // Load confidence analysis
         async function loadConfidenceAnalysis() {
@@ -5685,6 +5723,298 @@ ${getSharedCSS()}
                     </span>
                 </div>
             \`;
+            
+            container.innerHTML = html;
+        }
+        
+        // Load processing trends analysis
+        async function loadProcessingTrends() {
+            try {
+                const response = await fetch('/api/processing-metrics');
+                const data = await response.json();
+                
+                const analysis = analyzeProcessingTrends(data);
+                displayProcessingTrends(analysis);
+                
+                // Hide loading and show content
+                document.getElementById('processing-loading').style.display = 'none';
+                document.getElementById('processing-trends-container').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading processing trends:', error);
+                const container = document.getElementById('processing-trends-container');
+                container.innerHTML = '<div class="error">Failed to load processing trends data</div>';
+                document.getElementById('processing-loading').style.display = 'none';
+                container.style.display = 'block';
+            }
+        }
+        
+        function analyzeProcessingTrends(data) {
+            const metrics = data.metrics || [];
+            const trends = data.trends || {};
+            
+            // Separate processing metrics from historical analysis
+            const processingMetrics = metrics.filter(m => m.type !== 'historical_analysis');
+            const historicalGaps = metrics.filter(m => m.type === 'historical_analysis');
+            
+            // Calculate trend statistics
+            const totalProcessingRuns = processingMetrics.length;
+            const successfulRuns = processingMetrics.filter(m => m.processing_status === 'success').length;
+            const successRate = totalProcessingRuns > 0 ? (successfulRuns / totalProcessingRuns * 100) : 0;
+            
+            // Calculate duplicate rates over time
+            const duplicateRates = processingMetrics.map(m => m.duplicate_rate_percent || 0);
+            const avgDuplicateRate = duplicateRates.length > 0 ? duplicateRates.reduce((a, b) => a + b) / duplicateRates.length : 0;
+            
+            // Calculate new sessions over time
+            const newSessionCounts = processingMetrics.map(m => m.unique_new_sessions_added || 0);
+            const totalNewSessions = newSessionCounts.reduce((a, b) => a + b, 0);
+            const avgNewSessions = newSessionCounts.length > 0 ? totalNewSessions / newSessionCounts.length : 0;
+            
+            // Dataset growth tracking
+            const datasetSizes = processingMetrics.map(m => ({
+                timestamp: m.timestamp,
+                csvSize: m.dataset_growth?.csv_size_mb || 0,
+                jsonSize: m.dataset_growth?.json_size_mb || 0,
+                totalSessions: m.total_sessions_in_dataset || 0
+            }));
+            
+            const currentSize = datasetSizes.length > 0 ? datasetSizes[datasetSizes.length - 1] : null;
+            
+            // Missing weeks analysis
+            const totalMissingWeeks = historicalGaps.reduce((total, gap) => {
+                return total + (gap.gap_details?.weeks_missing || 0);
+            }, 0);
+            
+            return {
+                summary: {
+                    totalProcessingRuns,
+                    successRate,
+                    avgDuplicateRate,
+                    avgNewSessions,
+                    totalNewSessions,
+                    totalMissingWeeks,
+                    currentSize
+                },
+                processingMetrics,
+                historicalGaps,
+                datasetSizes,
+                trends
+            };
+        }
+        
+        function displayProcessingTrends(analysis) {
+            const container = document.getElementById('processing-trends-container');
+            const { summary, historicalGaps, processingMetrics } = analysis;
+            
+            let gapsHtml = '';
+            if (historicalGaps.length > 0) {
+                gapsHtml = `
+                    <div class="gaps-section">
+                        <h4>📅 Historical Data Gaps</h4>
+                        <div class="gaps-list">
+                            ${historicalGaps.map(gap => {
+                                const details = gap.gap_details;
+                                return `
+                                    <div class="gap-item">
+                                        <span class="gap-duration">${details.weeks_missing} weeks</span>
+                                        <span class="gap-range">${details.gap_start_date} to ${details.gap_end_date}</span>
+                                        <span class="gap-days">(${details.days_missing} days)</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let recentUploadsHtml = '';
+            if (processingMetrics.length > 0) {
+                const recentUploads = processingMetrics.slice(-5).reverse(); // Last 5 uploads
+                recentUploadsHtml = `
+                    <div class="recent-uploads">
+                        <h4>🔄 Recent Processing Activity</h4>
+                        <div class="uploads-list">
+                            ${recentUploads.map(metric => {
+                                const date = new Date(metric.timestamp).toLocaleDateString();
+                                const status = metric.processing_status === 'success' ? '✅' : '❌';
+                                const duplicateRate = metric.duplicate_rate_percent || 0;
+                                const newSessions = metric.unique_new_sessions_added || 0;
+                                
+                                return `
+                                    <div class="upload-item">
+                                        <div class="upload-header">
+                                            <span class="upload-status">${status}</span>
+                                            <span class="upload-date">${date}</span>
+                                            <span class="upload-user">${metric.uploader}</span>
+                                        </div>
+                                        <div class="upload-stats">
+                                            <span class="stat">${newSessions} new sessions</span>
+                                            <span class="stat">${duplicateRate.toFixed(1)}% duplicates</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const html = `
+                <div class="processing-trends-content">
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <span class="metric-label">Processing Success Rate</span>
+                            <span class="metric-value ${summary.successRate === 100 ? 'success' : summary.successRate > 80 ? 'warning' : 'error'}">
+                                ${summary.successRate.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Average Duplicate Rate</span>
+                            <span class="metric-value">
+                                ${summary.avgDuplicateRate.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">New Sessions per Upload</span>
+                            <span class="metric-value">
+                                ${summary.avgNewSessions.toFixed(1)}
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Dataset Size</span>
+                            <span class="metric-value">
+                                ${summary.currentSize ? summary.currentSize.jsonSize.toFixed(1) + ' MB' : 'N/A'}
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Total Sessions</span>
+                            <span class="metric-value">
+                                ${summary.currentSize ? summary.currentSize.totalSessions.toLocaleString() : 'N/A'}
+                            </span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Missing Weeks</span>
+                            <span class="metric-value ${summary.totalMissingWeeks > 0 ? 'warning' : 'success'}">
+                                ${summary.totalMissingWeeks.toFixed(1)} weeks
+                            </span>
+                        </div>
+                    </div>
+                    
+                    ${gapsHtml}
+                    ${recentUploadsHtml}
+                </div>
+                
+                <style>
+                .processing-trends-content {
+                    margin-top: 20px;
+                }
+                
+                .metrics-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 25px;
+                }
+                
+                .metric-item {
+                    display: flex;
+                    flex-direction: column;
+                    padding: 15px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border-left: 4px solid #007bff;
+                }
+                
+                .metric-label {
+                    font-size: 0.9em;
+                    color: #666;
+                    margin-bottom: 5px;
+                }
+                
+                .metric-value {
+                    font-size: 1.3em;
+                    font-weight: bold;
+                    color: #333;
+                }
+                
+                .metric-value.success { color: #28a745; }
+                .metric-value.warning { color: #ffc107; }
+                .metric-value.error { color: #dc3545; }
+                
+                .gaps-section, .recent-uploads {
+                    margin: 20px 0;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                }
+                
+                .gaps-section h4, .recent-uploads h4 {
+                    margin: 0 0 15px 0;
+                    color: #333;
+                }
+                
+                .gap-item, .upload-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 10px;
+                    margin: 5px 0;
+                    background: white;
+                    border-radius: 5px;
+                    border-left: 3px solid #ffc107;
+                }
+                
+                .upload-item {
+                    flex-direction: column;
+                    align-items: stretch;
+                    border-left-color: #28a745;
+                }
+                
+                .upload-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 5px;
+                }
+                
+                .upload-stats {
+                    display: flex;
+                    gap: 15px;
+                    font-size: 0.9em;
+                    color: #666;
+                }
+                
+                .gap-duration {
+                    font-weight: bold;
+                    color: #dc3545;
+                }
+                
+                .upload-status {
+                    font-size: 1.2em;
+                }
+                
+                .upload-user {
+                    font-size: 0.9em;
+                    color: #666;
+                }
+                
+                @media (max-width: 768px) {
+                    .metrics-grid {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    
+                    .gap-item {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    
+                    .upload-header {
+                        flex-wrap: wrap;
+                        gap: 10px;
+                    }
+                }
+                </style>
+            `;
             
             container.innerHTML = html;
         }

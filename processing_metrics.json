@@ -1,0 +1,93 @@
+{
+  "metadata": {
+    "created": "2025-06-29",
+    "description": "Processing metrics trends for PDF upload and processing analysis",
+    "version": "1.0"
+  },
+  "metrics": [
+    {
+      "type": "historical_analysis",
+      "timestamp": "2024-03-14T00:00:00Z",
+      "filename": "HISTORICAL_GAP_ANALYSIS",
+      "uploader": "system_analysis",
+      "processing_status": "historical_gap_detected",
+      "gap_details": {
+        "gap_start_date": "2024-02-24",
+        "gap_end_date": "2024-03-13",
+        "days_missing": 19,
+        "weeks_missing": 2.7,
+        "last_data_date": "2024-02-23",
+        "next_data_date": "2024-03-14",
+        "description": "Historical gap: 19 days between 2024-02-23 and 2024-03-14"
+      },
+      "missing_weeks": [
+        {
+          "gap_start_date": "2024-02-24",
+          "gap_end_date": "2024-03-13",
+          "days_missing": 19,
+          "weeks_missing": 2.7,
+          "description": "Historical data collection gap: 19 days"
+        }
+      ]
+    },
+    {
+      "type": "historical_analysis",
+      "timestamp": "2024-12-30T00:00:00Z",
+      "filename": "HISTORICAL_GAP_ANALYSIS",
+      "uploader": "system_analysis",
+      "processing_status": "historical_gap_detected",
+      "gap_details": {
+        "gap_start_date": "2024-12-23",
+        "gap_end_date": "2024-12-29",
+        "days_missing": 7,
+        "weeks_missing": 1.0,
+        "last_data_date": "2024-12-22",
+        "next_data_date": "2024-12-30",
+        "description": "Historical gap: 7 days between 2024-12-22 and 2024-12-30"
+      },
+      "missing_weeks": [
+        {
+          "gap_start_date": "2024-12-23",
+          "gap_end_date": "2024-12-29",
+          "days_missing": 7,
+          "weeks_missing": 1.0,
+          "description": "Historical data collection gap: 7 days"
+        }
+      ]
+    },
+    {
+      "timestamp": "2025-06-28T14:06:11Z",
+      "filename": "SvenVarysSootyHultbergWong Activity Report 14-07-2024.pdf",
+      "uploader": "magnus.hultberg@gmail.com",
+      "processing_status": "success",
+      "new_sessions_processed": 31,
+      "duplicate_sessions_found": 31,
+      "unique_new_sessions_added": 0,
+      "total_sessions_in_dataset": 1572,
+      "duplicate_rate_percent": 100.0,
+      "dataset_date_range": {
+        "start": "2024-02-05",
+        "end": "2025-06-22"
+      },
+      "file_sizes": {
+        "new_csv_bytes": 6888,
+        "new_json_bytes": 12625,
+        "master_csv_bytes": 333868,
+        "master_json_bytes": 859048
+      },
+      "dataset_growth": {
+        "csv_size_mb": 0.33,
+        "json_size_mb": 0.86,
+        "total_days_covered": 503
+      }
+    }
+  ],
+  "trends": {
+    "last_updated": "2025-06-29",
+    "total_processing_runs": 1,
+    "average_duplicate_rate": 100.0,
+    "average_new_sessions_per_upload": 0.0,
+    "dataset_growth_trend": "stable",
+    "processing_success_rate": 100.0
+  }
+}
