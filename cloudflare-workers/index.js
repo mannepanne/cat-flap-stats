@@ -5808,100 +5808,100 @@ ${getSharedCSS()}
             
             let gapsHtml = '';
             if (historicalGaps.length > 0) {
-                gapsHtml = `
+                gapsHtml = \`
                     <div class="gaps-section">
                         <h4>📅 Historical Data Gaps</h4>
                         <div class="gaps-list">
-                            ${historicalGaps.map(gap => {
+                            \${historicalGaps.map(gap => {
                                 const details = gap.gap_details;
-                                return `
+                                return \`
                                     <div class="gap-item">
-                                        <span class="gap-duration">${details.weeks_missing} weeks</span>
-                                        <span class="gap-range">${details.gap_start_date} to ${details.gap_end_date}</span>
-                                        <span class="gap-days">(${details.days_missing} days)</span>
+                                        <span class="gap-duration">\${details.weeks_missing} weeks</span>
+                                        <span class="gap-range">\${details.gap_start_date} to \${details.gap_end_date}</span>
+                                        <span class="gap-days">(\${details.days_missing} days)</span>
                                     </div>
-                                `;
+                                \`;
                             }).join('')}
                         </div>
                     </div>
-                `;
+                \`;
             }
             
             let recentUploadsHtml = '';
             if (processingMetrics.length > 0) {
                 const recentUploads = processingMetrics.slice(-5).reverse(); // Last 5 uploads
-                recentUploadsHtml = `
+                recentUploadsHtml = \`
                     <div class="recent-uploads">
                         <h4>🔄 Recent Processing Activity</h4>
                         <div class="uploads-list">
-                            ${recentUploads.map(metric => {
+                            \${recentUploads.map(metric => {
                                 const date = new Date(metric.timestamp).toLocaleDateString();
                                 const status = metric.processing_status === 'success' ? '✅' : '❌';
                                 const duplicateRate = metric.duplicate_rate_percent || 0;
                                 const newSessions = metric.unique_new_sessions_added || 0;
                                 
-                                return `
+                                return \`
                                     <div class="upload-item">
                                         <div class="upload-header">
-                                            <span class="upload-status">${status}</span>
-                                            <span class="upload-date">${date}</span>
-                                            <span class="upload-user">${metric.uploader}</span>
+                                            <span class="upload-status">\${status}</span>
+                                            <span class="upload-date">\${date}</span>
+                                            <span class="upload-user">\${metric.uploader}</span>
                                         </div>
                                         <div class="upload-stats">
-                                            <span class="stat">${newSessions} new sessions</span>
-                                            <span class="stat">${duplicateRate.toFixed(1)}% duplicates</span>
+                                            <span class="stat">\${newSessions} new sessions</span>
+                                            <span class="stat">\${duplicateRate.toFixed(1)}% duplicates</span>
                                         </div>
                                     </div>
-                                `;
+                                \`;
                             }).join('')}
                         </div>
                     </div>
-                `;
+                \`;
             }
             
-            const html = `
+            const html = \`
                 <div class="processing-trends-content">
                     <div class="metrics-grid">
                         <div class="metric-item">
                             <span class="metric-label">Processing Success Rate</span>
-                            <span class="metric-value ${summary.successRate === 100 ? 'success' : summary.successRate > 80 ? 'warning' : 'error'}">
-                                ${summary.successRate.toFixed(1)}%
+                            <span class="metric-value \${summary.successRate === 100 ? 'success' : summary.successRate > 80 ? 'warning' : 'error'}">
+                                \${summary.successRate.toFixed(1)}%
                             </span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Average Duplicate Rate</span>
                             <span class="metric-value">
-                                ${summary.avgDuplicateRate.toFixed(1)}%
+                                \${summary.avgDuplicateRate.toFixed(1)}%
                             </span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">New Sessions per Upload</span>
                             <span class="metric-value">
-                                ${summary.avgNewSessions.toFixed(1)}
+                                \${summary.avgNewSessions.toFixed(1)}
                             </span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Dataset Size</span>
                             <span class="metric-value">
-                                ${summary.currentSize ? summary.currentSize.jsonSize.toFixed(1) + ' MB' : 'N/A'}
+                                \${summary.currentSize ? summary.currentSize.jsonSize.toFixed(1) + ' MB' : 'N/A'}
                             </span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Total Sessions</span>
                             <span class="metric-value">
-                                ${summary.currentSize ? summary.currentSize.totalSessions.toLocaleString() : 'N/A'}
+                                \${summary.currentSize ? summary.currentSize.totalSessions.toLocaleString() : 'N/A'}
                             </span>
                         </div>
                         <div class="metric-item">
                             <span class="metric-label">Missing Weeks</span>
-                            <span class="metric-value ${summary.totalMissingWeeks > 0 ? 'warning' : 'success'}">
-                                ${summary.totalMissingWeeks.toFixed(1)} weeks
+                            <span class="metric-value \${summary.totalMissingWeeks > 0 ? 'warning' : 'success'}">
+                                \${summary.totalMissingWeeks.toFixed(1)} weeks
                             </span>
                         </div>
                     </div>
                     
-                    ${gapsHtml}
-                    ${recentUploadsHtml}
+                    \${gapsHtml}
+                    \${recentUploadsHtml}
                 </div>
                 
                 <style>
@@ -6014,7 +6014,7 @@ ${getSharedCSS()}
                     }
                 }
                 </style>
-            `;
+            \`;
             
             container.innerHTML = html;
         }
