@@ -4037,7 +4037,7 @@
       "anomalies": [
         {
           "date": "2025-06-21",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "23:59",
           "duration_minutes": 1439.0,
           "expected_duration": 217.4,
@@ -4050,7 +4050,7 @@
         {
           "date": "2025-06-20",
           "exit_time": "06:06",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1073.0,
           "expected_duration": 217.4,
           "z_score": 3.02,
@@ -4062,7 +4062,7 @@
         {
           "date": "2025-06-19",
           "exit_time": "05:58",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1080.0,
           "expected_duration": 217.4,
           "z_score": 3.04,
@@ -4134,7 +4134,7 @@
         {
           "date": "2025-06-12",
           "exit_time": "09:07",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 892.0,
           "expected_duration": 217.4,
           "z_score": 2.38,
@@ -4170,7 +4170,7 @@
         {
           "date": "2025-06-02",
           "exit_time": "04:32",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1167.0,
           "expected_duration": 217.4,
           "z_score": 3.35,
@@ -4181,7 +4181,7 @@
         },
         {
           "date": "2025-05-26",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "07:53",
           "duration_minutes": 473.0,
           "expected_duration": 143.6,
@@ -4194,7 +4194,7 @@
         {
           "date": "2025-05-25",
           "exit_time": "07:27",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 992.0,
           "expected_duration": 143.6,
           "z_score": 4.55,
@@ -4205,7 +4205,7 @@
         },
         {
           "date": "2025-05-24",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "08:09",
           "duration_minutes": 489.0,
           "expected_duration": 143.6,
@@ -4218,7 +4218,7 @@
         {
           "date": "2025-05-23",
           "exit_time": "08:23",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 936.0,
           "expected_duration": 143.6,
           "z_score": 4.25,
@@ -4290,7 +4290,7 @@
         {
           "date": "2025-05-11",
           "exit_time": "07:22",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 997.0,
           "expected_duration": 143.6,
           "z_score": 4.57,
@@ -4302,7 +4302,7 @@
         {
           "date": "2025-05-10",
           "exit_time": "06:41",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1038.0,
           "expected_duration": 143.6,
           "z_score": 4.79,
@@ -4374,7 +4374,7 @@
         {
           "date": "2025-04-29",
           "exit_time": "05:11",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1128.0,
           "expected_duration": 143.6,
           "z_score": 5.27,
@@ -4409,7 +4409,7 @@
         },
         {
           "date": "2025-04-24",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "07:10",
           "duration_minutes": 430.0,
           "expected_duration": 143.6,
@@ -4422,7 +4422,7 @@
         {
           "date": "2025-04-24",
           "exit_time": "08:23",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 936.0,
           "expected_duration": 143.6,
           "z_score": 4.25,
@@ -4434,7 +4434,7 @@
         {
           "date": "2025-04-22",
           "exit_time": "12:40",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 679.0,
           "expected_duration": 143.6,
           "z_score": 2.87,
@@ -4458,7 +4458,7 @@
         {
           "date": "2025-04-19",
           "exit_time": "17:52",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 367.0,
           "expected_duration": 143.6,
           "z_score": 1.2,
@@ -4481,7 +4481,7 @@
         },
         {
           "date": "2025-04-18",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "09:16",
           "duration_minutes": 556.0,
           "expected_duration": 143.6,
@@ -4494,7 +4494,7 @@
         {
           "date": "2025-04-17",
           "exit_time": "17:23",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 396.0,
           "expected_duration": 143.6,
           "z_score": 1.35,
@@ -4529,7 +4529,7 @@
         },
         {
           "date": "2025-04-13",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "08:15",
           "duration_minutes": 495.0,
           "expected_duration": 143.6,
@@ -4542,7 +4542,7 @@
         {
           "date": "2025-04-12",
           "exit_time": "09:26",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 873.0,
           "expected_duration": 143.6,
           "z_score": 3.91,
@@ -4554,7 +4554,7 @@
         {
           "date": "2025-04-11",
           "exit_time": "10:39",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 799.0,
           "expected_duration": 143.6,
           "z_score": 3.51,
@@ -4565,7 +4565,7 @@
         },
         {
           "date": "2025-04-10",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "08:51",
           "duration_minutes": 531.0,
           "expected_duration": 143.6,
@@ -4578,7 +4578,7 @@
         {
           "date": "2025-04-10",
           "exit_time": "09:51",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 848.0,
           "expected_duration": 143.6,
           "z_score": 3.77,
@@ -4662,7 +4662,7 @@
         {
           "date": "2025-03-24",
           "exit_time": "10:44",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 795.0,
           "expected_duration": 143.6,
           "z_score": 3.49,
@@ -4685,7 +4685,7 @@
         },
         {
           "date": "2025-03-20",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "06:25",
           "duration_minutes": 385.0,
           "expected_duration": 143.6,
@@ -4734,7 +4734,7 @@
         {
           "date": "2025-03-10",
           "exit_time": "11:27",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 752.0,
           "expected_duration": 143.6,
           "z_score": 3.26,
@@ -4745,7 +4745,7 @@
         },
         {
           "date": "2025-03-09",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "06:28",
           "duration_minutes": 388.0,
           "expected_duration": 143.6,
@@ -4770,7 +4770,7 @@
         {
           "date": "2025-03-08",
           "exit_time": "12:11",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 708.0,
           "expected_duration": 143.6,
           "z_score": 3.02,
@@ -4782,7 +4782,7 @@
         {
           "date": "2025-03-04",
           "exit_time": "18:24",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 335.0,
           "expected_duration": 143.6,
           "z_score": 1.03,
@@ -4818,7 +4818,7 @@
         {
           "date": "2025-02-22",
           "exit_time": "15:19",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 520.0,
           "expected_duration": 84.7,
           "z_score": 4.8,
@@ -4877,7 +4877,7 @@
         },
         {
           "date": "2025-01-20",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "03:28",
           "duration_minutes": 208.0,
           "expected_duration": 84.7,
@@ -4890,7 +4890,7 @@
         {
           "date": "2025-01-19",
           "exit_time": "12:16",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 703.0,
           "expected_duration": 84.7,
           "z_score": 6.81,
@@ -4925,7 +4925,7 @@
         },
         {
           "date": "2024-12-31",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "03:13",
           "duration_minutes": 193.0,
           "expected_duration": 84.7,
@@ -4938,7 +4938,7 @@
         {
           "date": "2024-12-30",
           "exit_time": "16:06",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 473.0,
           "expected_duration": 84.7,
           "z_score": 4.28,
@@ -5009,7 +5009,7 @@
         },
         {
           "date": "2024-12-13",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "02:59",
           "duration_minutes": 179.0,
           "expected_duration": 84.7,
@@ -5105,7 +5105,7 @@
         },
         {
           "date": "2024-11-29",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "06:29",
           "duration_minutes": 389.0,
           "expected_duration": 172.3,
@@ -5118,7 +5118,7 @@
         {
           "date": "2024-11-28",
           "exit_time": "15:32",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 507.0,
           "expected_duration": 172.3,
           "z_score": 1.69,
@@ -5141,7 +5141,7 @@
         },
         {
           "date": "2024-11-09",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "15:25",
           "duration_minutes": 925.0,
           "expected_duration": 172.3,
@@ -5154,7 +5154,7 @@
         {
           "date": "2024-11-08",
           "exit_time": "11:32",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 747.0,
           "expected_duration": 172.3,
           "z_score": 2.9,
@@ -5165,7 +5165,7 @@
         },
         {
           "date": "2024-11-07",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "09:54",
           "duration_minutes": 594.0,
           "expected_duration": 172.3,
@@ -5178,7 +5178,7 @@
         {
           "date": "2024-11-06",
           "exit_time": "04:44",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1155.0,
           "expected_duration": 172.3,
           "z_score": 4.96,
@@ -5201,7 +5201,7 @@
         },
         {
           "date": "2024-11-03",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "07:05",
           "duration_minutes": 425.0,
           "expected_duration": 172.3,
@@ -5213,7 +5213,7 @@
         },
         {
           "date": "2024-11-02",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "07:08",
           "duration_minutes": 428.0,
           "expected_duration": 172.3,
@@ -5226,7 +5226,7 @@
         {
           "date": "2024-11-02",
           "exit_time": "13:27",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 632.0,
           "expected_duration": 172.3,
           "z_score": 2.32,
@@ -5249,7 +5249,7 @@
         },
         {
           "date": "2024-10-20",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "06:46",
           "duration_minutes": 406.0,
           "expected_duration": 172.3,
@@ -5261,7 +5261,7 @@
         },
         {
           "date": "2024-10-16",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "14:11",
           "duration_minutes": 851.0,
           "expected_duration": 172.3,
@@ -5273,7 +5273,7 @@
         },
         {
           "date": "2024-10-15",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "11:40",
           "duration_minutes": 700.0,
           "expected_duration": 172.3,
@@ -5285,7 +5285,7 @@
         },
         {
           "date": "2024-10-06",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "06:33",
           "duration_minutes": 393.0,
           "expected_duration": 172.3,
@@ -5298,7 +5298,7 @@
         {
           "date": "2024-09-22",
           "exit_time": "10:13",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 826.0,
           "expected_duration": 172.3,
           "z_score": 3.3,
@@ -5322,7 +5322,7 @@
         {
           "date": "2024-09-18",
           "exit_time": "12:00",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 719.0,
           "expected_duration": 172.3,
           "z_score": 2.76,
@@ -5369,7 +5369,7 @@
         },
         {
           "date": "2024-09-05",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "21:32",
           "duration_minutes": 1292.0,
           "expected_duration": 172.3,
@@ -5382,7 +5382,7 @@
         {
           "date": "2024-09-04",
           "exit_time": "14:06",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 593.0,
           "expected_duration": 172.3,
           "z_score": 2.12,
@@ -5394,7 +5394,7 @@
         {
           "date": "2024-09-03",
           "exit_time": "07:59",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 960.0,
           "expected_duration": 172.3,
           "z_score": 3.97,
@@ -5418,7 +5418,7 @@
         {
           "date": "2024-08-30",
           "exit_time": "08:33",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 926.0,
           "expected_duration": 217.4,
           "z_score": 2.5,
@@ -5430,7 +5430,7 @@
         {
           "date": "2024-08-29",
           "exit_time": "07:10",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1009.0,
           "expected_duration": 217.4,
           "z_score": 2.79,
@@ -5478,7 +5478,7 @@
         {
           "date": "2024-08-23",
           "exit_time": "06:02",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1077.0,
           "expected_duration": 217.4,
           "z_score": 3.03,
@@ -5574,7 +5574,7 @@
         {
           "date": "2024-08-09",
           "exit_time": "08:32",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 927.0,
           "expected_duration": 217.4,
           "z_score": 2.5,
@@ -5622,7 +5622,7 @@
         {
           "date": "2024-08-02",
           "exit_time": "09:52",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 847.0,
           "expected_duration": 217.4,
           "z_score": 2.22,
@@ -5634,7 +5634,7 @@
         {
           "date": "2024-07-30",
           "exit_time": "05:13",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1126.0,
           "expected_duration": 217.4,
           "z_score": 3.21,
@@ -5694,7 +5694,7 @@
         {
           "date": "2024-07-19",
           "exit_time": "05:51",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1088.0,
           "expected_duration": 217.4,
           "z_score": 3.07,
@@ -5730,7 +5730,7 @@
         {
           "date": "2024-07-16",
           "exit_time": "11:30",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 749.0,
           "expected_duration": 217.4,
           "z_score": 1.88,
@@ -5766,7 +5766,7 @@
         {
           "date": "2024-07-06",
           "exit_time": "13:51",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 608.0,
           "expected_duration": 217.4,
           "z_score": 1.38,
@@ -5778,7 +5778,7 @@
         {
           "date": "2024-07-04",
           "exit_time": "13:50",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 609.0,
           "expected_duration": 217.4,
           "z_score": 1.38,
@@ -5802,7 +5802,7 @@
         {
           "date": "2024-06-25",
           "exit_time": "05:50",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 1089.0,
           "expected_duration": 217.4,
           "z_score": 3.07,
@@ -5838,7 +5838,7 @@
         {
           "date": "2024-06-19",
           "exit_time": "12:24",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 695.0,
           "expected_duration": 217.4,
           "z_score": 1.68,
@@ -5873,7 +5873,7 @@
         },
         {
           "date": "2024-05-19",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "11:55",
           "duration_minutes": 715.0,
           "expected_duration": 143.6,
@@ -5886,7 +5886,7 @@
         {
           "date": "2024-05-18",
           "exit_time": "09:17",
-          "entry_time": NaN,
+          "entry_time": null,
           "duration_minutes": 882.0,
           "expected_duration": 143.6,
           "z_score": 3.96,
@@ -6041,7 +6041,7 @@
         },
         {
           "date": "2024-02-16",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "03:43",
           "duration_minutes": 223.0,
           "expected_duration": 84.7,
@@ -6077,7 +6077,7 @@
         },
         {
           "date": "2024-02-14",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "03:45",
           "duration_minutes": 225.0,
           "expected_duration": 84.7,
@@ -6101,7 +6101,7 @@
         },
         {
           "date": "2024-02-13",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "04:00",
           "duration_minutes": 240.0,
           "expected_duration": 84.7,
@@ -6125,7 +6125,7 @@
         },
         {
           "date": "2024-02-11",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "04:01",
           "duration_minutes": 241.0,
           "expected_duration": 84.7,
@@ -6149,7 +6149,7 @@
         },
         {
           "date": "2024-02-07",
-          "exit_time": NaN,
+          "exit_time": null,
           "entry_time": "04:45",
           "duration_minutes": 285.0,
           "expected_duration": 84.7,
