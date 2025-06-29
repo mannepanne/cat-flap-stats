@@ -5535,43 +5535,106 @@ ${getSharedCSS()}
                 }
             }
             
-            // Analyze timestamp completeness
-            let completeTimestamps = 0;
-            let entryOnly = 0;
-            let exitOnly = 0;
-            let invalidSessions = 0;
+            // Sort sessions by date for cross-midnight analysis
+            sessions.sort((a, b) => {
+                const dateA = new Date(a.date_full || a.Date);
+                const dateB = new Date(b.date_full || b.Date);
+                return dateA - dateB;
+            });
             
-            sessions.forEach(session => {
+            // Analyze timestamp completeness with cross-midnight detection
+            let completeTimestamps = 0;
+            let crossMidnightPairs = 0;
+            let trueEntryOnly = 0;
+            let trueExitOnly = 0;
+            let invalidSessions = 0;
+            const pairedSessions = new Set();
+            
+            // First pass: identify cross-midnight pairs
+            for (let i = 0; i < sessions.length - 1; i++) {
+                if (pairedSessions.has(i)) continue;
+                
+                const current = sessions[i];
+                const next = sessions[i + 1];
+                
+                const currentDate = new Date(current.date_full || current.Date);
+                const nextDate = new Date(next.date_full || next.Date);
+                const daysDiff = (nextDate - currentDate) / (1000 * 60 * 60 * 24);
+                
+                // Check if current session is exit-only and next is entry-only on consecutive day
+                const currentHasExit = current.exit_time && current.exit_time !== '' && current.exit_time !== 'nan';
+                const currentHasEntry = current.entry_time && current.entry_time !== '' && current.entry_time !== 'nan';
+                const nextHasExit = next.exit_time && next.exit_time !== '' && next.exit_time !== 'nan';
+                const nextHasEntry = next.entry_time && next.entry_time !== '' && next.entry_time !== 'nan';
+                
+                // Cross-midnight pair: exit-only followed by entry-only on next day
+                if (daysDiff === 1 && 
+                    currentHasExit && !currentHasEntry && 
+                    !nextHasExit && nextHasEntry) {
+                    
+                    // Validate timing: exit should be evening, entry should be early morning
+                    const exitTime = current.exit_time;
+                    const entryTime = next.entry_time;
+                    
+                    if (isLateEvening(exitTime) && isEarlyMorning(entryTime)) {
+                        crossMidnightPairs++;
+                        pairedSessions.add(i);
+                        pairedSessions.add(i + 1);
+                    }
+                }
+            }
+            
+            // Second pass: categorize remaining sessions
+            sessions.forEach((session, index) => {
+                if (pairedSessions.has(index)) {
+                    return; // Already counted as cross-midnight pair
+                }
+                
                 const hasExit = session.exit_time && session.exit_time !== '' && session.exit_time !== 'nan';
                 const hasEntry = session.entry_time && session.entry_time !== '' && session.entry_time !== 'nan';
                 
                 if (hasExit && hasEntry) {
                     completeTimestamps++;
                 } else if (!hasExit && hasEntry) {
-                    entryOnly++;
+                    trueEntryOnly++;
                 } else if (hasExit && !hasEntry) {
-                    exitOnly++;
+                    trueExitOnly++;
                 } else {
                     invalidSessions++;
                 }
             });
             
             const total = sessions.length;
-            const singleTimestamp = entryOnly + exitOnly;
+            const completeSessions = completeTimestamps + (crossMidnightPairs * 2); // Each pair represents one complete session across 2 records
+            const trueSingleTimestamp = trueEntryOnly + trueExitOnly;
             
             return {
                 total,
                 complete: completeTimestamps,
-                entryOnly,
-                exitOnly,
-                singleTimestamp,
+                crossMidnightPairs,
+                completeSessions,
+                trueEntryOnly,
+                trueExitOnly,
+                trueSingleTimestamp,
                 invalid: invalidSessions,
                 confidence: {
-                    high: (completeTimestamps / total * 100),
-                    medium: (singleTimestamp / total * 100),
+                    high: (completeSessions / total * 100),
+                    medium: (trueSingleTimestamp / total * 100),
                     low: (invalidSessions / total * 100)
                 }
             };
+        }
+        
+        function isLateEvening(timeStr) {
+            if (!timeStr) return false;
+            const hour = parseInt(timeStr.split(':')[0]);
+            return hour >= 20 || hour <= 2; // 8 PM to 2 AM
+        }
+        
+        function isEarlyMorning(timeStr) {
+            if (!timeStr) return false;
+            const hour = parseInt(timeStr.split(':')[0]);
+            return hour >= 0 && hour <= 8; // Midnight to 8 AM
         }
         
         function displayConfidenceAnalysis(analysis) {
@@ -5582,14 +5645,14 @@ ${getSharedCSS()}
                     <div class="confidence-card">
                         <div class="confidence-level confidence-high">High Confidence</div>
                         <div class="confidence-percentage">\${analysis.confidence.high.toFixed(1)}%</div>
-                        <div>Both timestamps present</div>
-                        <div style="color: #666; font-size: 0.9rem;">\${analysis.complete} sessions</div>
+                        <div>Complete sessions</div>
+                        <div style="color: #666; font-size: 0.9rem;">\${analysis.completeSessions} sessions</div>
                     </div>
                     <div class="confidence-card">
                         <div class="confidence-level confidence-medium">Medium Confidence</div>
                         <div class="confidence-percentage">\${analysis.confidence.medium.toFixed(1)}%</div>
-                        <div>Single timestamp only</div>
-                        <div style="color: #666; font-size: 0.9rem;">\${analysis.singleTimestamp} sessions</div>
+                        <div>True single timestamp</div>
+                        <div style="color: #666; font-size: 0.9rem;">\${analysis.trueSingleTimestamp} sessions</div>
                     </div>
                     <div class="confidence-card">
                         <div class="confidence-level confidence-low">Low Confidence</div>
@@ -5600,12 +5663,20 @@ ${getSharedCSS()}
                 </div>
                 
                 <div class="quality-metric">
-                    <span class="metric-label">Entry-Only Sessions</span>
-                    <span class="metric-value">\${analysis.entryOnly} sessions (\${(analysis.entryOnly/analysis.total*100).toFixed(1)}%)</span>
+                    <span class="metric-label">Same-Day Complete Sessions</span>
+                    <span class="metric-value">\${analysis.complete} sessions (\${(analysis.complete/analysis.total*100).toFixed(1)}%)</span>
                 </div>
                 <div class="quality-metric">
-                    <span class="metric-label">Exit-Only Sessions</span>
-                    <span class="metric-value">\${analysis.exitOnly} sessions (\${(analysis.exitOnly/analysis.total*100).toFixed(1)}%)</span>
+                    <span class="metric-label">Cross-Midnight Pairs</span>
+                    <span class="metric-value">\${analysis.crossMidnightPairs} pairs (\${(analysis.crossMidnightPairs*2/analysis.total*100).toFixed(1)}% of records)</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">True Entry-Only Sessions</span>
+                    <span class="metric-value">\${analysis.trueEntryOnly} sessions (\${(analysis.trueEntryOnly/analysis.total*100).toFixed(1)}%)</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">True Exit-Only Sessions</span>
+                    <span class="metric-value">\${analysis.trueExitOnly} sessions (\${(analysis.trueExitOnly/analysis.total*100).toFixed(1)}%)</span>
                 </div>
                 <div class="quality-metric">
                     <span class="metric-label">Data Quality Score</span>
