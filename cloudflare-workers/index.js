@@ -5218,15 +5218,6 @@ ${getSharedCSS()}
             margin: 2rem auto;
             padding: 0 1rem;
         }
-        .quality-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        @media (max-width: 768px) {
-            .quality-grid { grid-template-columns: 1fr; }
-        }
         .loading {
             display: flex;
             justify-content: center;
@@ -5347,22 +5338,12 @@ ${getSharedCSS()}
             <p class="subtitle">Comprehensive analysis of data completeness and reliability</p>
         </div>
         
-        <div class="quality-grid">
-            <div class="card">
-                <h2>📈 Data Completeness</h2>
+        <div class="card">
+            <h2>📅 Sunday Truncation Impact</h2>
+            <div id="sunday-analysis">
                 <div class="loading">
                     <div class="loading-spinner"></div>
-                    <p>Loading data completeness analysis...</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>📅 Sunday Truncation Impact</h2>
-                <div id="sunday-analysis">
-                    <div class="loading">
-                        <div class="loading-spinner"></div>
-                        <p>Analyzing Sunday data truncation effects...</p>
-                    </div>
+                    <p>Analyzing Sunday data truncation effects...</p>
                 </div>
             </div>
         </div>
