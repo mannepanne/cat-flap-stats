@@ -5248,6 +5248,46 @@ ${getSharedCSS()}
         .sessions-count { text-align: center; }
         .entry-only { text-align: center; color: #ff5722; }
         .impact-high { color: #f44336; font-weight: 600; }
+        .confidence-level {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .confidence-high { 
+            background: #e8f5e8; 
+            color: #2e7d32; 
+            border: 1px solid #c8e6c9;
+        }
+        .confidence-medium { 
+            background: #fff3e0; 
+            color: #ef6c00; 
+            border: 1px solid #ffcc02;
+        }
+        .confidence-low { 
+            background: #ffebee; 
+            color: #c62828; 
+            border: 1px solid #ffcdd2;
+        }
+        .confidence-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .confidence-card {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .confidence-percentage {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0.5rem 0;
+        }
     </style>
 </head>
 <body>
@@ -5295,9 +5335,11 @@ ${getSharedCSS()}
         
         <div class="card">
             <h2>🎯 Single Timestamp Confidence</h2>
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <p>Calculating timestamp confidence scores...</p>
+            <div id="confidence-analysis">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Calculating timestamp confidence scores...</p>
+                </div>
             </div>
         </div>
         
@@ -5451,6 +5493,130 @@ ${getSharedCSS()}
         
         // Load analysis on page load
         loadSundayAnalysis();
+        loadConfidenceAnalysis();
+        
+        // Load confidence analysis
+        async function loadConfidenceAnalysis() {
+            try {
+                const response = await fetch('/api/download/dataset.json');
+                const data = await response.json();
+                
+                console.log('Confidence analysis: Dataset loaded successfully');
+                
+                const analysis = analyzeTimestampConfidence(data);
+                displayConfidenceAnalysis(analysis);
+            } catch (error) {
+                console.error('Error loading confidence analysis:', error);
+                document.getElementById('confidence-analysis').innerHTML = '<p>Error loading confidence analysis</p>';
+            }
+        }
+        
+        function analyzeTimestampConfidence(data) {
+            const sessions = [];
+            
+            // Extract sessions (same logic as Sunday analysis)
+            if (data.sessions && data.sessions.sessions) {
+                for (const report of data.sessions.sessions) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            } else if (data.sessions && Array.isArray(data.sessions)) {
+                for (const report of data.sessions) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            } else if (Array.isArray(data)) {
+                for (const report of data) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            }
+            
+            // Analyze timestamp completeness
+            let completeTimestamps = 0;
+            let entryOnly = 0;
+            let exitOnly = 0;
+            let invalidSessions = 0;
+            
+            sessions.forEach(session => {
+                const hasExit = session.exit_time && session.exit_time !== '' && session.exit_time !== 'nan';
+                const hasEntry = session.entry_time && session.entry_time !== '' && session.entry_time !== 'nan';
+                
+                if (hasExit && hasEntry) {
+                    completeTimestamps++;
+                } else if (!hasExit && hasEntry) {
+                    entryOnly++;
+                } else if (hasExit && !hasEntry) {
+                    exitOnly++;
+                } else {
+                    invalidSessions++;
+                }
+            });
+            
+            const total = sessions.length;
+            const singleTimestamp = entryOnly + exitOnly;
+            
+            return {
+                total,
+                complete: completeTimestamps,
+                entryOnly,
+                exitOnly,
+                singleTimestamp,
+                invalid: invalidSessions,
+                confidence: {
+                    high: (completeTimestamps / total * 100),
+                    medium: (singleTimestamp / total * 100),
+                    low: (invalidSessions / total * 100)
+                }
+            };
+        }
+        
+        function displayConfidenceAnalysis(analysis) {
+            const container = document.getElementById('confidence-analysis');
+            
+            const html = \`
+                <div class="confidence-stats">
+                    <div class="confidence-card">
+                        <div class="confidence-level confidence-high">High Confidence</div>
+                        <div class="confidence-percentage">\${analysis.confidence.high.toFixed(1)}%</div>
+                        <div>Both timestamps present</div>
+                        <div style="color: #666; font-size: 0.9rem;">\${analysis.complete} sessions</div>
+                    </div>
+                    <div class="confidence-card">
+                        <div class="confidence-level confidence-medium">Medium Confidence</div>
+                        <div class="confidence-percentage">\${analysis.confidence.medium.toFixed(1)}%</div>
+                        <div>Single timestamp only</div>
+                        <div style="color: #666; font-size: 0.9rem;">\${analysis.singleTimestamp} sessions</div>
+                    </div>
+                    <div class="confidence-card">
+                        <div class="confidence-level confidence-low">Low Confidence</div>
+                        <div class="confidence-percentage">\${analysis.confidence.low.toFixed(1)}%</div>
+                        <div>Missing/invalid data</div>
+                        <div style="color: #666; font-size: 0.9rem;">\${analysis.invalid} sessions</div>
+                    </div>
+                </div>
+                
+                <div class="quality-metric">
+                    <span class="metric-label">Entry-Only Sessions</span>
+                    <span class="metric-value">\${analysis.entryOnly} sessions (\${(analysis.entryOnly/analysis.total*100).toFixed(1)}%)</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">Exit-Only Sessions</span>
+                    <span class="metric-value">\${analysis.exitOnly} sessions (\${(analysis.exitOnly/analysis.total*100).toFixed(1)}%)</span>
+                </div>
+                <div class="quality-metric">
+                    <span class="metric-label">Data Quality Score</span>
+                    <span class="metric-value \${analysis.confidence.high > 75 ? 'confidence-high' : analysis.confidence.high > 50 ? 'confidence-medium' : 'confidence-low'}">
+                        \${analysis.confidence.high.toFixed(1)}% Complete
+                    </span>
+                </div>
+            \`;
+            
+            container.innerHTML = html;
+        }
     </script>
 </body>
 </html>`;
