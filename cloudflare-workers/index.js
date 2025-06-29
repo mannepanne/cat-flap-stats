@@ -5316,8 +5316,10 @@ ${getSharedCSS()}
         // Load Sunday truncation analysis
         async function loadSundayAnalysis() {
             try {
-                const response = await fetch('/api/dataset');
+                const response = await fetch('/api/download/dataset.json');
                 const data = await response.json();
+                
+                console.log('Sunday analysis: Dataset loaded successfully');
                 
                 // Analyze Sunday truncation from dataset
                 const analysis = analyzeSundayTruncation(data);
@@ -5332,10 +5334,26 @@ ${getSharedCSS()}
             // Process the dataset to analyze Sunday truncation
             const sessions = [];
             
+            // Process session data for Sunday truncation analysis
+            
             // Handle both old and new data formats
-            if (data.sessions) {
-                // New format with sessions array
+            if (data.sessions && data.sessions.sessions) {
+                // New format with nested sessions array
+                for (const report of data.sessions.sessions) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            } else if (data.sessions && Array.isArray(data.sessions)) {
+                // Direct sessions array format
                 for (const report of data.sessions) {
+                    if (report.session_data) {
+                        sessions.push(...report.session_data);
+                    }
+                }
+            } else if (Array.isArray(data)) {
+                // Old format - array of reports
+                for (const report of data) {
                     if (report.session_data) {
                         sessions.push(...report.session_data);
                     }
