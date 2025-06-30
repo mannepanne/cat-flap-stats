@@ -5339,12 +5339,13 @@ ${getSharedCSS()}
         </div>
         
         <div class="card">
-            <h2>📅 Sunday Truncation Impact</h2>
-            <div id="sunday-analysis">
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <p>Analyzing Sunday data truncation effects...</p>
-                </div>
+            <h2>📋 Processing Report Trends</h2>
+            <div class="loading" id="processing-loading">
+                <div class="loading-spinner"></div>
+                <p>Loading processing validation metrics...</p>
+            </div>
+            <div id="processing-trends-container" style="display: none;">
+                <!-- Processing metrics content will be inserted here -->
             </div>
         </div>
         
@@ -5359,13 +5360,12 @@ ${getSharedCSS()}
         </div>
         
         <div class="card">
-            <h2>📋 Processing Report Trends</h2>
-            <div class="loading" id="processing-loading">
-                <div class="loading-spinner"></div>
-                <p>Loading processing validation metrics...</p>
-            </div>
-            <div id="processing-trends-container" style="display: none;">
-                <!-- Processing metrics content will be inserted here -->
+            <h2>📅 Sunday Truncation Impact</h2>
+            <div id="sunday-analysis">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Analyzing Sunday data truncation effects...</p>
+                </div>
             </div>
         </div>
     </div>
