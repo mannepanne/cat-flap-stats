@@ -261,6 +261,12 @@ jobs:
         
         echo "Processing report generated successfully"
         
+    - name: Extract processing metrics
+      run: |
+        echo "Extracting processing metrics from report..."
+        python3 extract_processing_metrics.py
+        echo "Processing metrics extraction completed"
+        
     - name: Commit updated dataset
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -270,7 +276,7 @@ jobs:
         git config --local user.name "GitHub Action"
         
         # Add files to git
-        git add master_dataset.csv master_dataset.json dataset_backups/ processing_report.md
+        git add master_dataset.csv master_dataset.json dataset_backups/ processing_report.md processing_metrics.json
         
         # Check if there are changes to commit
         if git diff --staged --quiet; then
