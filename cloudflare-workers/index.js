@@ -5368,6 +5368,17 @@ ${getSharedCSS()}
                 </div>
             </div>
         </div>
+        
+        <div class="card">
+            <h2>📊 Historical Missing Data</h2>
+            <div class="loading" id="missing-data-loading">
+                <div class="loading-spinner"></div>
+                <p>Loading missing report weeks analysis...</p>
+            </div>
+            <div id="missing-data-container" style="display: none;">
+                <!-- Missing data content will be inserted here -->
+            </div>
+        </div>
     </div>
 
     <script>
@@ -5513,6 +5524,7 @@ ${getSharedCSS()}
         loadSundayAnalysis();
         loadConfidenceAnalysis();
         loadProcessingTrends();
+        loadMissingDataAnalysis();
         
         // Load confidence analysis
         async function loadConfidenceAnalysis() {
@@ -5787,26 +5799,6 @@ ${getSharedCSS()}
             const container = document.getElementById('processing-trends-container');
             const { summary, historicalGaps, processingMetrics } = analysis;
             
-            let gapsHtml = '';
-            if (historicalGaps.length > 0) {
-                gapsHtml = \`
-                    <div class="gaps-section">
-                        <h4>📅 Historical Data Gaps</h4>
-                        <div class="gaps-list">
-                            \${historicalGaps.map(gap => {
-                                const details = gap.gap_details;
-                                return \`
-                                    <div class="gap-item">
-                                        <span class="gap-duration">\${details.weeks_missing} weeks</span>
-                                        <span class="gap-range">\${details.gap_start_date} to \${details.gap_end_date}</span>
-                                        <span class="gap-days">(\${details.days_missing} days)</span>
-                                    </div>
-                                \`;
-                            }).join('')}
-                        </div>
-                    </div>
-                \`;
-            }
             
             let recentUploadsHtml = '';
             if (processingMetrics.length > 0) {
@@ -5881,7 +5873,6 @@ ${getSharedCSS()}
                         </div>
                     </div>
                     
-                    \${gapsHtml}
                     \${recentUploadsHtml}
                 </div>
                 
@@ -5996,6 +5987,134 @@ ${getSharedCSS()}
                 }
                 </style>
             \`;
+            
+            container.innerHTML = html;
+        }
+        
+        // Load missing data analysis
+        async function loadMissingDataAnalysis() {
+            try {
+                const response = await fetch('/api/processing-metrics');
+                const data = await response.json();
+                
+                console.log('Missing data analysis: Processing metrics loaded successfully');
+                
+                // Extract historical gaps from the data
+                const analysis = analyzeProcessingTrends(data);
+                displayMissingDataAnalysis(analysis.historicalGaps);
+                
+                // Hide loading spinner
+                document.getElementById('missing-data-loading').style.display = 'none';
+                document.getElementById('missing-data-container').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading missing data analysis:', error);
+                document.getElementById('missing-data-loading').innerHTML = '<p>Error loading missing data analysis</p>';
+            }
+        }
+        
+        function displayMissingDataAnalysis(historicalGaps) {
+            const container = document.getElementById('missing-data-container');
+            
+            let html = '';
+            if (historicalGaps.length > 0) {
+                html = \`
+                    <div class="missing-data-content">
+                        <h4>📅 Missing Report Weeks</h4>
+                        <p>The following periods show gaps in weekly PDF report uploads:</p>
+                        <div class="gaps-list">
+                            \${historicalGaps.map(gap => {
+                                const details = gap.gap_details;
+                                return \`
+                                    <div class="gap-item">
+                                        <span class="gap-duration">\${details.weeks_missing} weeks</span>
+                                        <span class="gap-range">\${details.gap_start_date} to \${details.gap_end_date}</span>
+                                        <span class="gap-days">(\${details.days_missing} days)</span>
+                                    </div>
+                                \`;
+                            }).join('')}
+                        </div>
+                        <div class="missing-data-summary">
+                            <p><strong>Total missing weeks:</strong> \${historicalGaps.reduce((total, gap) => total + gap.gap_details.weeks_missing, 0).toFixed(1)} weeks</p>
+                            <p><strong>Impact:</strong> These gaps represent periods where no weekly activity reports were uploaded to the system.</p>
+                        </div>
+                    </div>
+                    
+                    <style>
+                    .missing-data-content {
+                        margin-top: 20px;
+                    }
+                    
+                    .gaps-list {
+                        margin: 15px 0;
+                    }
+                    
+                    .gap-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 10px 15px;
+                        margin: 8px 0;
+                        background: #fff3cd;
+                        border: 1px solid #ffeaa7;
+                        border-radius: 6px;
+                        border-left: 4px solid #f39c12;
+                    }
+                    
+                    .gap-duration {
+                        font-weight: bold;
+                        color: #e67e22;
+                        min-width: 80px;
+                    }
+                    
+                    .gap-range {
+                        flex: 1;
+                        text-align: center;
+                        font-family: monospace;
+                        color: #333;
+                    }
+                    
+                    .gap-days {
+                        color: #666;
+                        font-size: 0.9em;
+                        min-width: 80px;
+                        text-align: right;
+                    }
+                    
+                    .missing-data-summary {
+                        margin-top: 20px;
+                        padding: 15px;
+                        background: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    
+                    .missing-data-summary p {
+                        margin: 8px 0;
+                        color: #333;
+                    }
+                    </style>
+                \`;
+            } else {
+                html = \`
+                    <div class="missing-data-content">
+                        <div class="no-gaps">
+                            <h4>✅ Complete Data Coverage</h4>
+                            <p>No missing report weeks detected. All expected weekly PDF reports have been successfully uploaded and processed.</p>
+                        </div>
+                    </div>
+                    
+                    <style>
+                    .no-gaps {
+                        text-align: center;
+                        padding: 30px;
+                        background: #d4edda;
+                        border: 1px solid #c3e6cb;
+                        border-radius: 6px;
+                        color: #155724;
+                    }
+                    </style>
+                \`;
+            }
             
             container.innerHTML = html;
         }
