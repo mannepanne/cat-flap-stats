@@ -6012,15 +6012,85 @@ ${getSharedCSS()}
             }
         }
         
-        function displayMissingDataAnalysis(historicalGaps) {
+        async function calculateMissingDays() {
+            try {
+                // Fetch the full dataset with precomputed analytics
+                const response = await fetch('/api/download/dataset.json');
+                const data = await response.json();
+                
+                console.log('Dataset structure:', data);
+                
+                if (!data.precomputed || !data.precomputed.dailySummaries) {
+                    console.log('No precomputed dailySummaries found');
+                    return { totalMissingDays: 0, explanation: 'Dataset not available' };
+                }
+                
+                const dailySummaries = data.precomputed.dailySummaries;
+                console.log('Daily summaries count:', dailySummaries.length);
+                
+                if (dailySummaries.length === 0) {
+                    return { totalMissingDays: 0, explanation: 'No data available' };
+                }
+                
+                // Get date range from daily summaries
+                const dates = dailySummaries.map(d => new Date(d.date)).sort((a, b) => a - b);
+                const startDate = dates[0];
+                const endDate = dates[dates.length - 1];
+                
+                console.log('Date range:', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
+                
+                // Calculate total days in range
+                const totalDaysInRange = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                
+                // Count days with data (including days with 0 sessions)
+                const daysWithData = dailySummaries.length;
+                
+                // Missing days = days not represented in dataset at all
+                const missingDays = totalDaysInRange - daysWithData;
+                
+                // Count days with no activity (sessions = 0)
+                const daysWithNoActivity = dailySummaries.filter(d => d.sessions === 0).length;
+                
+                // Total missing days = days not in dataset + days with no cat flap activity
+                const totalMissingDays = missingDays + daysWithNoActivity;
+                
+                console.log('Missing days calculation:', {
+                    totalDaysInRange,
+                    daysWithData,
+                    missingDays,
+                    daysWithNoActivity,
+                    totalMissingDays
+                });
+                
+                return {
+                    totalMissingDays: totalMissingDays,
+                    missingFromDataset: missingDays,
+                    daysWithNoActivity: daysWithNoActivity,
+                    totalDaysInRange: totalDaysInRange,
+                    daysWithData: daysWithData
+                };
+                
+            } catch (error) {
+                console.error('Error calculating missing days:', error);
+                return { totalMissingDays: 0, explanation: 'Error calculating missing days' };
+            }
+        }
+        
+        async function displayMissingDataAnalysis(historicalGaps) {
             const container = document.getElementById('missing-data-container');
+            
+            // Calculate missing days from dataset
+            const missingDaysData = await calculateMissingDays();
             
             let html = '';
             if (historicalGaps.length > 0) {
                 html = \`
                     <div class="missing-data-content">
                         <h4>📅 Missing Report Weeks</h4>
-                        <p>The following periods show gaps in weekly PDF report uploads:</p>
+                        <div class="missing-data-summary">
+                            <p><strong>Total missing weeks:</strong> \${historicalGaps.reduce((total, gap) => total + gap.gap_details.weeks_missing, 0).toFixed(1)} weeks</p>
+                            <p><strong>Impact:</strong> These gaps represent periods where no weekly activity reports were uploaded to the system.</p>
+                        </div>
                         <div class="gaps-list">
                             \${historicalGaps.map(gap => {
                                 const details = gap.gap_details;
@@ -6033,9 +6103,11 @@ ${getSharedCSS()}
                                 \`;
                             }).join('')}
                         </div>
+                        
+                        <h4 style="margin-top: 30px;">📊 Missing Report Days</h4>
                         <div class="missing-data-summary">
-                            <p><strong>Total missing weeks:</strong> \${historicalGaps.reduce((total, gap) => total + gap.gap_details.weeks_missing, 0).toFixed(1)} weeks</p>
-                            <p><strong>Impact:</strong> These gaps represent periods where no weekly activity reports were uploaded to the system.</p>
+                            <p><strong>Total missing days:</strong> \${missingDaysData.totalMissingDays} days</p>
+                            <p><strong>Impact:</strong> These gaps represent days where the cat flap was not used, or activity reports were downloaded late.</p>
                         </div>
                     </div>
                     
@@ -6098,12 +6170,22 @@ ${getSharedCSS()}
                 html = \`
                     <div class="missing-data-content">
                         <div class="no-gaps">
-                            <h4>✅ Complete Data Coverage</h4>
+                            <h4>✅ Complete Report Week Coverage</h4>
                             <p>No missing report weeks detected. All expected weekly PDF reports have been successfully uploaded and processed.</p>
+                        </div>
+                        
+                        <h4 style="margin-top: 30px;">📊 Missing Report Days</h4>
+                        <div class="missing-data-summary">
+                            <p><strong>Total missing days:</strong> \${missingDaysData.totalMissingDays} days</p>
+                            <p><strong>Impact:</strong> These gaps represent days where the cat flap was not used, or activity reports were downloaded late.</p>
                         </div>
                     </div>
                     
                     <style>
+                    .missing-data-content {
+                        margin-top: 20px;
+                    }
+                    
                     .no-gaps {
                         text-align: center;
                         padding: 30px;
@@ -6111,6 +6193,19 @@ ${getSharedCSS()}
                         border: 1px solid #c3e6cb;
                         border-radius: 6px;
                         color: #155724;
+                    }
+                    
+                    .missing-data-summary {
+                        margin-top: 20px;
+                        padding: 15px;
+                        background: #f8f9fa;
+                        border-radius: 6px;
+                        border-left: 4px solid #007bff;
+                    }
+                    
+                    .missing-data-summary p {
+                        margin: 8px 0;
+                        color: #333;
                     }
                     </style>
                 \`;
