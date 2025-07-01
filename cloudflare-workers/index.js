@@ -318,10 +318,10 @@ function getSharedCSS() {
             width: 200px;
         }
         .sidebar.collapsed {
-            width: 60px;
+            width: 70px;
         }
         .sidebar-header {
-            padding: 1rem;
+            padding: 0.75rem;
             border-bottom: 1px solid #e0e0e0;
             display: flex;
             align-items: center;
@@ -329,21 +329,29 @@ function getSharedCSS() {
             min-height: 60px;
         }
         .sidebar-logo {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 500;
             color: #333;
             white-space: nowrap;
             overflow: hidden;
+            flex: 1;
+            margin-right: 0.5rem;
         }
         .sidebar-toggle {
             background: none;
             border: none;
-            font-size: 1.2rem;
+            font-size: 1rem;
             cursor: pointer;
-            padding: 4px;
+            padding: 4px 6px;
             border-radius: 4px;
             color: #666;
             transition: background 0.2s;
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .sidebar-toggle:hover {
             background: #f0f0f0;
@@ -398,6 +406,9 @@ function getSharedCSS() {
             width: 20px;
             text-align: center;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .nav-text {
             transition: opacity 0.3s;
@@ -409,10 +420,16 @@ function getSharedCSS() {
         }
         .sidebar.collapsed .nav-item {
             justify-content: center;
-            padding: 0.75rem;
+            padding: 0.75rem 0;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            width: 100%;
         }
         .sidebar.collapsed .nav-icon {
             margin-right: 0;
+            width: 24px;
+            height: 24px;
         }
         .sidebar-footer {
             position: absolute;
@@ -471,7 +488,7 @@ function getSharedCSS() {
             margin-left: 200px;
         }
         .main-content.sidebar-collapsed {
-            margin-left: 60px;
+            margin-left: 70px;
         }
         .content-header {
             background: white;
