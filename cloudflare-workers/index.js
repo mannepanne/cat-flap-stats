@@ -416,15 +416,15 @@ function getSharedCSS() {
         .sidebar.collapsed .nav-text,
         .sidebar.collapsed .nav-section-title,
         .sidebar.collapsed .sidebar-logo {
-            opacity: 0;
+            display: none;
         }
         .sidebar.collapsed .nav-item {
-            justify-content: center;
             padding: 0.75rem 0;
-            margin: 0 auto;
+            margin: 0;
             display: flex;
             align-items: center;
-            width: 100%;
+            justify-content: center;
+            width: 70px;
         }
         .sidebar.collapsed .nav-icon {
             margin-right: 0;
@@ -479,6 +479,9 @@ function getSharedCSS() {
         .sidebar.collapsed .user-email,
         .sidebar.collapsed .logout-btn {
             display: none;
+        }
+        .sidebar.collapsed .user-section {
+            justify-content: center;
         }
         .main-content {
             flex: 1;
