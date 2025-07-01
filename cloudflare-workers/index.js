@@ -38,6 +38,8 @@ export default {
           return await handleApiUpload(request, env);
         case '/dashboard':
           return await handleDashboard(request, env);
+        case '/download':
+          return await handleDownload(request, env);
         case '/api/dataset':
           return await handleDatasetApi(request, env);
         case '/api/download/dataset.csv':
@@ -295,6 +297,312 @@ function getSharedCSS() {
             color: #333;
         }
         .btn-secondary:hover { background: #d0d0d0; }
+        
+        /* Sidebar Navigation Styles */
+        .layout-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: width 0.3s ease;
+            overflow: hidden;
+        }
+        .sidebar.expanded {
+            width: 200px;
+        }
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 60px;
+        }
+        .sidebar-logo {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            color: #666;
+            transition: background 0.2s;
+        }
+        .sidebar-toggle:hover {
+            background: #f0f0f0;
+        }
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+        .nav-section-title {
+            padding: 0 1rem 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #666;
+            text-decoration: none;
+            transition: all 0.2s;
+            position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .nav-item:hover {
+            background: #f8f9ff;
+            color: #667eea;
+        }
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #5a6fd8;
+        }
+        .nav-icon {
+            font-size: 1.2rem;
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .nav-text {
+            transition: opacity 0.3s;
+        }
+        .sidebar.collapsed .nav-text,
+        .sidebar.collapsed .nav-section-title,
+        .sidebar.collapsed .sidebar-logo {
+            opacity: 0;
+        }
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+        .sidebar.collapsed .nav-icon {
+            margin-right: 0;
+        }
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            border-top: 1px solid #e0e0e0;
+            background: white;
+        }
+        .user-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background: #f8f9ff;
+        }
+        .user-icon {
+            font-size: 1rem;
+            margin-right: 0.5rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .user-email {
+            font-size: 0.8rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .logout-btn {
+            width: 100%;
+            padding: 0.5rem;
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .logout-btn:hover {
+            background: #d0d0d0;
+        }
+        .sidebar.collapsed .user-email,
+        .sidebar.collapsed .logout-btn {
+            display: none;
+        }
+        .main-content {
+            flex: 1;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.sidebar-expanded {
+            margin-left: 200px;
+        }
+        .main-content.sidebar-collapsed {
+            margin-left: 60px;
+        }
+        .content-header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .content-body {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+  `;
+}
+
+function getSidebarHTML(currentPage, email) {
+  return `
+    <div class="sidebar expanded" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">🐱 Cat Flap Stats</div>
+            <button class="sidebar-toggle" id="sidebarToggle">⟵</button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <a href="/dashboard" class="nav-item ${currentPage === 'dashboard' ? 'active' : ''}">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Analytics</div>
+                <a href="/patterns" class="nav-item ${currentPage === 'patterns' ? 'active' : ''}">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Patterns</span>
+                </a>
+                <a href="/seasonal" class="nav-item ${currentPage === 'seasonal' ? 'active' : ''}">
+                    <span class="nav-icon">🌍</span>
+                    <span class="nav-text">Seasonal</span>
+                </a>
+                <a href="/health" class="nav-item ${currentPage === 'health' ? 'active' : ''}">
+                    <span class="nav-icon">🏥</span>
+                    <span class="nav-text">Health</span>
+                </a>
+                <a href="/circadian" class="nav-item ${currentPage === 'circadian' ? 'active' : ''}">
+                    <span class="nav-icon">🔬</span>
+                    <span class="nav-text">Circadian</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Data</div>
+                <a href="/upload" class="nav-item ${currentPage === 'upload' ? 'active' : ''}">
+                    <span class="nav-icon">📤</span>
+                    <span class="nav-text">Upload</span>
+                </a>
+                <a href="/annotations" class="nav-item ${currentPage === 'annotations' ? 'active' : ''}">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-text">Annotations</span>
+                </a>
+                <a href="/quality" class="nav-item ${currentPage === 'quality' ? 'active' : ''}">
+                    <span class="nav-icon">✅</span>
+                    <span class="nav-text">Quality</span>
+                </a>
+                <a href="/download" class="nav-item ${currentPage === 'download' ? 'active' : ''}">
+                    <span class="nav-icon">📥</span>
+                    <span class="nav-text">Download</span>
+                </a>
+            </div>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-section">
+                <span class="user-icon">👤</span>
+                <span class="user-email">${email}</span>
+            </div>
+            <button class="logout-btn" onclick="window.location.href='/logout'">Logout</button>
+        </div>
+    </div>
+  `;
+}
+
+function getSidebarScript() {
+  return `
+    <script>
+        // Sidebar state management
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const mainContent = document.querySelector('.main-content');
+        
+        // Load saved state from localStorage
+        const savedState = localStorage.getItem('sidebarCollapsed');
+        const isCollapsed = savedState === 'true';
+        
+        function setSidebarState(collapsed) {
+            if (collapsed) {
+                sidebar.classList.remove('expanded');
+                sidebar.classList.add('collapsed');
+                mainContent.classList.remove('sidebar-expanded');
+                mainContent.classList.add('sidebar-collapsed');
+                sidebarToggle.textContent = '⟶';
+            } else {
+                sidebar.classList.remove('collapsed');
+                sidebar.classList.add('expanded');
+                mainContent.classList.remove('sidebar-collapsed');
+                mainContent.classList.add('sidebar-expanded');
+                sidebarToggle.textContent = '⟵';
+            }
+            localStorage.setItem('sidebarCollapsed', collapsed);
+        }
+        
+        // Set initial state
+        setSidebarState(isCollapsed);
+        
+        // Toggle functionality
+        sidebarToggle.addEventListener('click', () => {
+            const currentlyCollapsed = sidebar.classList.contains('collapsed');
+            setSidebarState(!currentlyCollapsed);
+        });
+        
+        // Navigation active state management
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                // Handle navigation without preventing default behavior
+                // Active state is handled server-side based on current page
+            });
+        });
+    </script>
   `;
 }
 
@@ -415,6 +723,19 @@ async function handleDashboard(request, env) {
   }
   
   return new Response(getDashboardPage(email), {
+    headers: { 'Content-Type': 'text/html' }
+  });
+}
+
+async function handleDownload(request, env) {
+  const authToken = getCookie(request, 'auth_token');
+  const email = await validateAuthToken(authToken, env);
+  
+  if (!email) {
+    return Response.redirect(new URL('/', request.url).toString(), 302);
+  }
+  
+  return new Response(getDownloadPage(email), {
     headers: { 'Content-Type': 'text/html' }
   });
 }
@@ -1308,6 +1629,143 @@ function getLoginPage(message = '') {
 </html>`;
 }
 
+function getDownloadPage(email) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Flap Stats - Download</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        ${getSharedCSS()}
+    </style>
+</head>
+<body>
+    <div class="layout-container">
+        ${getSidebarHTML('download', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>📥 Download & Data Overview</h2>
+            </div>
+            
+            <div class="content-body">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-sessions">1,250</div>
+                        <div class="stat-label">Total Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="info-icon">
+                            i
+                            <div class="tooltip" id="days-data-tooltip">
+                                <strong>Days of Data: 455</strong><br><br>
+                                Total calendar days from first to last recorded session.<br><br>
+                                <strong>Date Range:</strong> <span id="tooltip-date-range">Loading...</span><br>
+                                <strong>Calculation:</strong> End date - Start date + 1<br><br>
+                                This represents the complete timespan covered by the dataset, including days with no activity.
+                            </div>
+                        </div>
+                        <div class="stat-number" id="date-range">365</div>
+                        <div class="stat-label">Days of Data</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="last-update">Today</div>
+                        <div class="stat-label">Last Updated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="info-icon">
+                            i
+                            <div class="tooltip">
+                                <strong>Data Quality: 89%</strong><br><br>
+                                Based on days with complete behavioral data (≥2 sessions per day).<br><br>
+                                <strong>Formula:</strong> Complete days ÷ Total days<br>
+                                <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
+                                There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
+                            </div>
+                        </div>
+                        <div class="stat-number" id="data-quality">98%</div>
+                        <div class="stat-label">Data Quality</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Download Dataset</h3>
+                    <p>Download the complete dataset in CSV or JSON format for analysis.</p>
+                    <br>
+                    <a href="/api/download/dataset.csv" class="btn btn-secondary">Download CSV</a>
+                    <a href="/api/download/dataset.json" class="btn btn-secondary">Download JSON</a>
+                </div>
+                
+                <div class="card">
+                    <h3>Processing History</h3>
+                    <p>Recent file uploads and processing results will appear here.</p>
+                    <div id="processing-history">
+                        <p style="color: #666; font-style: italic;">No recent activity</p>
+                    </div>
+                </div>
+                
+                <script>
+                    // Load dashboard data
+                    Promise.all([
+                        fetch('/api/dataset').then(r => r.json()),
+                        fetch('/api/analytics').then(r => r.json())
+                    ])
+                    .then(([datasetInfo, analyticsData]) => {
+                        // Update basic stats
+                        if (datasetInfo.total_sessions) {
+                            document.getElementById('total-sessions').textContent = datasetInfo.total_sessions.toLocaleString();
+                        }
+                        if (datasetInfo.last_updated) {
+                            const date = new Date(datasetInfo.last_updated);
+                            document.getElementById('last-update').textContent = date.toLocaleDateString();
+                        }
+                        
+                        // Calculate and update days of data from date range
+                        if (analyticsData.metadata && analyticsData.metadata.dateRange) {
+                            const dateRange = analyticsData.metadata.dateRange;
+                            if (dateRange.includes(' to ')) {
+                                const [startDate, endDate] = dateRange.split(' to ');
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                const timeDiff = end - start;
+                                const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
+                                document.getElementById('date-range').textContent = daysDiff.toLocaleString();
+                                
+                                // Update tooltip with real data
+                                const formattedStart = start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                                const formattedEnd = end.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                                const tooltipElement = document.getElementById('days-data-tooltip');
+                                if (tooltipElement) {
+                                    tooltipElement.innerHTML = 
+                                        '<strong>Days of Data: ' + daysDiff.toLocaleString() + '</strong><br><br>' +
+                                        'Total calendar days from first to last recorded session.<br><br>' +
+                                        '<strong>Date Range:</strong> ' + formattedStart + ' to ' + formattedEnd + '<br>' +
+                                        '<strong>Calculation:</strong> End date - Start date + 1<br><br>' +
+                                        'This represents the complete timespan covered by the dataset, including days with no activity.';
+                                }
+                            }
+                        }
+                        
+                        // Update data quality with real calculated value
+                        if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
+                            const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
+                            document.getElementById('data-quality').textContent = qualityScore + '%';
+                        }
+                    })
+                    .catch(error => console.error('Error loading dashboard data:', error));
+                </script>
+                
+                ${getSidebarScript()}
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
 function getDashboardPage(email) {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1322,158 +1780,30 @@ function getDashboardPage(email) {
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🐱 Cat Flap Stats</h2>
-        </div>
-        <div class="user-info">
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="total-sessions">1,250</div>
-                <div class="stat-label">Total Sessions</div>
+    <div class="layout-container">
+        ${getSidebarHTML('dashboard', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>🏠 Dashboard</h2>
             </div>
-            <div class="stat-card">
-                <div class="info-icon">
-                    i
-                    <div class="tooltip" id="days-data-tooltip">
-                        <strong>Days of Data: 455</strong><br><br>
-                        Total calendar days from first to last recorded session.<br><br>
-                        <strong>Date Range:</strong> <span id="tooltip-date-range">Loading...</span><br>
-                        <strong>Calculation:</strong> End date - Start date + 1<br><br>
-                        This represents the complete timespan covered by the dataset, including days with no activity.
-                    </div>
+            
+            <div class="content-body">
+                <!-- Dashboard content will be added here in future iteration -->
+                <div class="card">
+                    <h3>Welcome to Cat Flap Stats</h3>
+                    <p>Your comprehensive behavioral analytics platform for Sven's cat flap activity. Use the navigation sidebar to explore:</p>
+                    <ul style="margin: 1rem 0; padding-left: 2rem;">
+                        <li><strong>Analytics:</strong> View patterns, seasonal trends, health monitoring, and circadian rhythms</li>
+                        <li><strong>Data Management:</strong> Upload new PDFs, manage annotations, check quality, and download datasets</li>
+                    </ul>
+                    <p>The sidebar can be collapsed by clicking the arrow button for more viewing space.</p>
                 </div>
-                <div class="stat-number" id="date-range">365</div>
-                <div class="stat-label">Days of Data</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="last-update">Today</div>
-                <div class="stat-label">Last Updated</div>
-            </div>
-            <div class="stat-card">
-                <div class="info-icon">
-                    i
-                    <div class="tooltip">
-                        <strong>Data Quality: 89%</strong><br><br>
-                        Based on days with complete behavioral data (≥2 sessions per day).<br><br>
-                        <strong>Formula:</strong> Complete days ÷ Total days<br>
-                        <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
-                        There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
-                    </div>
-                </div>
-                <div class="stat-number" id="data-quality">98%</div>
-                <div class="stat-label">Data Quality</div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h3>📊 Behavioral Patterns</h3>
-            <p>View Sven's activity rhythms, peak hours, and seasonal patterns with scientific actogram visualization.</p>
-            <br>
-            <a href="/patterns" class="btn">View Activity Patterns</a>
-        </div>
-        
-        <div class="card">
-            <h3>🌍 Circadian Rhythm Analysis</h3>
-            <p>Advanced chronobiological analysis of Sven's internal clock, including polar activity visualization, behavioral predictability metrics, and seasonal adaptation patterns.</p>
-            <br>
-            <a href="/circadian" class="btn">Analyze Circadian Rhythms</a>
-        </div>
-        
-        <div class="card">
-            <h3>🔬 Seasonal Pattern Detection</h3>
-            <p>Statistical analysis of seasonal behavioral differences with UK meteorological seasons, hypothesis testing, and comprehensive duration vs frequency comparisons.</p>
-            <br>
-            <a href="/seasonal" class="btn">Analyze Seasonal Patterns</a>
-        </div>
-        
-        <div class="card">
-            <h3>Upload New PDF Report</h3>
-            <p>Upload your weekly SURE Petcare PDF report to add new data to the dataset.</p>
-            <br>
-            <a href="/upload" class="btn">Upload PDF File</a>
-        </div>
-        
-        <div class="card">
-            <h3>📝 Behavioral Annotations</h3>
-            <p>Add, view, and manage behavioral annotations to track contextual events that might influence Sven's behavior patterns.</p>
-            <br>
-            <a href="/annotations" class="btn">Manage Annotations</a>
-        </div>
-        
-        <div class="card">
-            <h3>Download Dataset</h3>
-            <p>Download the complete dataset in CSV or JSON format for analysis.</p>
-            <br>
-            <a href="/api/download/dataset.csv" class="btn btn-secondary">Download CSV</a>
-            <a href="/api/download/dataset.json" class="btn btn-secondary">Download JSON</a>
-        </div>
-        
-        <div class="card">
-            <h3>Processing History</h3>
-            <p>Recent file uploads and processing results will appear here.</p>
-            <div id="processing-history">
-                <p style="color: #666; font-style: italic;">No recent activity</p>
+                
+                ${getSidebarScript()}
             </div>
         </div>
     </div>
-    
-    <script>
-        // Load dashboard data
-        Promise.all([
-            fetch('/api/dataset').then(r => r.json()),
-            fetch('/api/analytics').then(r => r.json())
-        ])
-        .then(([datasetInfo, analyticsData]) => {
-            // Update basic stats
-            if (datasetInfo.total_sessions) {
-                document.getElementById('total-sessions').textContent = datasetInfo.total_sessions.toLocaleString();
-            }
-            if (datasetInfo.last_updated) {
-                const date = new Date(datasetInfo.last_updated);
-                document.getElementById('last-update').textContent = date.toLocaleDateString();
-            }
-            
-            // Calculate and update days of data from date range
-            if (analyticsData.metadata && analyticsData.metadata.dateRange) {
-                const dateRange = analyticsData.metadata.dateRange;
-                if (dateRange.includes(' to ')) {
-                    const [startDate, endDate] = dateRange.split(' to ');
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const timeDiff = end - start;
-                    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
-                    document.getElementById('date-range').textContent = daysDiff.toLocaleString();
-                    
-                    // Update tooltip with real data
-                    const formattedStart = start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                    const formattedEnd = end.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                    const tooltipElement = document.getElementById('days-data-tooltip');
-                    if (tooltipElement) {
-                        tooltipElement.innerHTML = 
-                            '<strong>Days of Data: ' + daysDiff.toLocaleString() + '</strong><br><br>' +
-                            'Total calendar days from first to last recorded session.<br><br>' +
-                            '<strong>Date Range:</strong> ' + formattedStart + ' to ' + formattedEnd + '<br>' +
-                            '<strong>Calculation:</strong> End date - Start date + 1<br><br>' +
-                            'This represents the complete timespan covered by the dataset, including days with no activity.';
-                    }
-                }
-            }
-            
-            // Update data quality with real calculated value
-            if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
-                const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
-                document.getElementById('data-quality').textContent = qualityScore + '%';
-            }
-        })
-        .catch(error => console.error('Error loading dashboard data:', error));
-    </script>
 </body>
 </html>`;
 }
@@ -1554,21 +1884,15 @@ function getPatternsPage(email) {
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🐱 Cat Flap Stats - Behavioral Patterns</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/circadian" class="btn btn-secondary">Circadian</a>
-            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <a href="/annotations" class="btn btn-secondary">Annotations</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
+    <div class="layout-container">
+        ${getSidebarHTML('patterns', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>📊 Behavioral Patterns</h2>
+            </div>
+            
+            <div class="content-body">
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="info-icon">
@@ -2266,6 +2590,11 @@ function getPatternsPage(email) {
             window.location.href = '/annotations?edit=' + annotationId;
         };
     </script>
+    
+    ${getSidebarScript()}
+            </div>
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -2284,11 +2613,6 @@ function getCircadianPage(email) {
         ${getSharedCSS()}
         
         /* Circadian page specific styles */
-        .container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
         .circadian-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -2413,21 +2737,15 @@ function getCircadianPage(email) {
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🌍 Cat Flap Stats - Circadian Rhythm Analysis</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/patterns" class="btn btn-secondary">Patterns</a>
-            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <a href="/annotations" class="btn btn-secondary">Annotations</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
+    <div class="layout-container">
+        ${getSidebarHTML('circadian', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>🔬 Circadian Rhythm Analysis</h2>
+            </div>
+            
+            <div class="content-body">
         <div class="loading" id="loading">
             <div class="loading-spinner"></div>
             Analyzing Sven's circadian rhythms...
@@ -2562,7 +2880,6 @@ function getCircadianPage(email) {
                 </div>
             </div>
         </div>
-    </div>
     
     <script>
         // Load circadian data on page load
@@ -2804,6 +3121,10 @@ function getCircadianPage(email) {
             }
         }
     </script>
+    
+    ${getSidebarScript()}
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -2818,32 +3139,7 @@ function getUploadPage(email) {
     <link rel="icon" href="/favicon.ico" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-        }
-        .header {
-            background: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .logo { color: #333; }
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+        ${getSharedCSS()}
         .upload-area {
             border: 2px dashed #e0e0e0;
             border-radius: 8px;
@@ -2861,22 +3157,6 @@ function getUploadPage(email) {
             color: #ccc;
             margin-bottom: 1rem;
         }
-        .btn {
-            padding: 12px 24px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .btn:hover { background: #5a6fd8; }
-        .btn-secondary {
-            background: #e0e0e0;
-            color: #333;
-        }
-        .btn-secondary:hover { background: #d0d0d0; }
         .progress {
             width: 100%;
             height: 8px;
@@ -2910,143 +3190,146 @@ function getUploadPage(email) {
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🐱 Cat Flap Stats</h2>
-        </div>
-        <div>
-            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    <div class="layout-container">
+        ${getSidebarHTML('upload', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>📤 Upload PDF Report</h2>
+            </div>
+            
+            <div class="content-body">
+                <div class="card">
+                    <h3>Upload PDF Report</h3>
+                    <p>Upload your weekly SURE Petcare PDF report. The file will be processed automatically and added to your dataset.</p>
+                    
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="upload-area" id="upload-area">
+                            <div class="upload-icon">📄</div>
+                            <h3>Drop your PDF file here</h3>
+                            <p>or click to browse files</p>
+                            <input type="file" id="pdf-file" name="pdf_file" accept=".pdf" style="display: none;">
+                            <br><br>
+                            <button type="button" onclick="document.getElementById('pdf-file').click()" class="btn">
+                                Choose PDF File
+                            </button>
+                        </div>
+                        
+                        <div id="file-info" class="hidden">
+                            <h4>Selected File:</h4>
+                            <p id="file-name"></p>
+                            <p id="file-size"></p>
+                        </div>
+                        
+                        <div id="progress-container" class="hidden">
+                            <div class="progress">
+                                <div class="progress-bar" id="progress-bar"></div>
+                            </div>
+                            <p id="progress-text">Uploading...</p>
+                        </div>
+                        
+                        <div id="message-container"></div>
+                        
+                        <button type="submit" id="upload-btn" class="btn" disabled>
+                            Upload and Process
+                        </button>
+                    </form>
+                </div>
+                
+                <script>
+                    const uploadArea = document.getElementById('upload-area');
+                    const fileInput = document.getElementById('pdf-file');
+                    const uploadForm = document.getElementById('upload-form');
+                    const uploadBtn = document.getElementById('upload-btn');
+                    const fileInfo = document.getElementById('file-info');
+                    const progressContainer = document.getElementById('progress-container');
+                    const messageContainer = document.getElementById('message-container');
+                    
+                    // Drag and drop handling
+                    uploadArea.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        uploadArea.classList.add('dragover');
+                    });
+                    
+                    uploadArea.addEventListener('dragleave', () => {
+                        uploadArea.classList.remove('dragover');
+                    });
+                    
+                    uploadArea.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        uploadArea.classList.remove('dragover');
+                        const files = e.dataTransfer.files;
+                        if (files.length > 0 && files[0].type === 'application/pdf') {
+                            fileInput.files = files;
+                            handleFileSelect();
+                        }
+                    });
+                    
+                    fileInput.addEventListener('change', handleFileSelect);
+                    
+                    function handleFileSelect() {
+                        const file = fileInput.files[0];
+                        if (file) {
+                            document.getElementById('file-name').textContent = file.name;
+                            document.getElementById('file-size').textContent = formatFileSize(file.size);
+                            fileInfo.classList.remove('hidden');
+                            uploadBtn.disabled = false;
+                        }
+                    }
+                    
+                    function formatFileSize(bytes) {
+                        if (bytes === 0) return '0 Bytes';
+                        const k = 1024;
+                        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                    }
+                    
+                    uploadForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        
+                        const file = fileInput.files[0];
+                        if (!file) return;
+                        
+                        const formData = new FormData();
+                        formData.append('pdf_file', file);
+                        
+                        progressContainer.classList.remove('hidden');
+                        uploadBtn.disabled = true;
+                        
+                        try {
+                            const response = await fetch('/api/upload', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (response.ok) {
+                                showMessage(result.message, 'success');
+                                setTimeout(() => {
+                                    window.location.href = '/dashboard';
+                                }, 2000);
+                            } else {
+                                showMessage(result.error || 'Upload failed', 'error');
+                            }
+                        } catch (error) {
+                            showMessage('Upload failed: ' + error.message, 'error');
+                        } finally {
+                            progressContainer.classList.add('hidden');
+                            uploadBtn.disabled = false;
+                        }
+                    });
+                    
+                    function showMessage(text, type) {
+                        messageContainer.innerHTML = \`<div class="message \${type}">\${text}</div>\`;
+                    }
+                </script>
+                
+                ${getSidebarScript()}
+            </div>
         </div>
     </div>
-    
-    <div class="container">
-        <div class="card">
-            <h2>Upload PDF Report</h2>
-            <p>Upload your weekly SURE Petcare PDF report. The file will be processed automatically and added to your dataset.</p>
-            
-            <form id="upload-form" enctype="multipart/form-data">
-                <div class="upload-area" id="upload-area">
-                    <div class="upload-icon">📄</div>
-                    <h3>Drop your PDF file here</h3>
-                    <p>or click to browse files</p>
-                    <input type="file" id="pdf-file" name="pdf_file" accept=".pdf" style="display: none;">
-                    <br><br>
-                    <button type="button" onclick="document.getElementById('pdf-file').click()" class="btn">
-                        Choose PDF File
-                    </button>
-                </div>
-                
-                <div id="file-info" class="hidden">
-                    <h4>Selected File:</h4>
-                    <p id="file-name"></p>
-                    <p id="file-size"></p>
-                </div>
-                
-                <div id="progress-container" class="hidden">
-                    <div class="progress">
-                        <div class="progress-bar" id="progress-bar"></div>
-                    </div>
-                    <p id="progress-text">Uploading...</p>
-                </div>
-                
-                <div id="message-container"></div>
-                
-                <button type="submit" id="upload-btn" class="btn" disabled>
-                    Upload and Process
-                </button>
-            </form>
-        </div>
-    </div>
-    
-    <script>
-        const uploadArea = document.getElementById('upload-area');
-        const fileInput = document.getElementById('pdf-file');
-        const uploadForm = document.getElementById('upload-form');
-        const uploadBtn = document.getElementById('upload-btn');
-        const fileInfo = document.getElementById('file-info');
-        const progressContainer = document.getElementById('progress-container');
-        const messageContainer = document.getElementById('message-container');
-        
-        // Drag and drop handling
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-        
-        fileInput.addEventListener('change', handleFileSelect);
-        
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                document.getElementById('file-name').textContent = file.name;
-                document.getElementById('file-size').textContent = formatFileSize(file.size);
-                fileInfo.classList.remove('hidden');
-                uploadBtn.disabled = false;
-            }
-        }
-        
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-        
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const file = fileInput.files[0];
-            if (!file) return;
-            
-            const formData = new FormData();
-            formData.append('pdf_file', file);
-            
-            progressContainer.classList.remove('hidden');
-            uploadBtn.disabled = true;
-            
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showMessage(result.message, 'success');
-                    setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 2000);
-                } else {
-                    showMessage(result.error || 'Upload failed', 'error');
-                }
-            } catch (error) {
-                showMessage('Upload failed: ' + error.message, 'error');
-            } finally {
-                progressContainer.classList.add('hidden');
-                uploadBtn.disabled = false;
-            }
-        });
-        
-        function showMessage(text, type) {
-            messageContainer.innerHTML = \`<div class="message \${type}">\${text}</div>\`;
-        }
-    </script>
 </body>
 </html>`;
 }
@@ -3562,21 +3845,15 @@ ${getSharedCSS()}
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🐾 Cat Flap Stats - Seasonal Pattern Analysis</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/patterns" class="btn btn-secondary">Patterns</a>
-            <a href="/circadian" class="btn btn-secondary">Circadian</a>
-            <a href="/annotations" class="btn btn-secondary">Annotations</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
+    <div class="layout-container">
+        ${getSidebarHTML('seasonal', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>🌍 Seasonal Pattern Analysis</h2>
+            </div>
+            
+            <div class="content-body">
         <div class="loading" id="loading">
             <div class="loading-spinner"></div>
             <p>Loading seasonal analysis...</p>
@@ -4373,6 +4650,11 @@ ${getSharedCSS()}
         // Initialize page
         document.addEventListener('DOMContentLoaded', loadSeasonalData);
     </script>
+    
+    ${getSidebarScript()}
+            </div>
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -4391,21 +4673,16 @@ function getAnnotationsPage(email) {
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>🐱 Cat Flap Stats - Behavioral Annotations</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/patterns" class="btn btn-secondary">Patterns</a>
-            <a href="/circadian" class="btn btn-secondary">Circadian</a>
-            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
+    <div class="layout-container">
+        ${getSidebarHTML('annotations', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>📝 Behavioral Annotations</h2>
+            </div>
+            
+            <div class="content-body">
+                <div class="container">
         <div class="card">
             <h3>📝 Add New Annotation</h3>
             <p>Track contextual events that might influence Sven's behavior patterns.</p>
@@ -4457,7 +4734,7 @@ function getAnnotationsPage(email) {
             <div id="annotationsContainer" style="margin-top: 1.5rem;">Loading annotations...</div>
             <div id="pagination" style="text-align: center; margin-top: 1.5rem;"></div>
         </div>
-    </div>
+                </div>
 
     <script>
         let annotations = [];
@@ -4699,6 +4976,12 @@ function getAnnotationsPage(email) {
             }
         }
     </script>
+    
+    ${getSidebarScript()}
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -4870,22 +5153,15 @@ ${getSharedCSS()}
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>⚕️ Cat Flap Stats - Health Monitoring</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/patterns" class="btn btn-secondary">Patterns</a>
-            <a href="/circadian" class="btn btn-secondary">Circadian</a>
-            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <a href="/annotations" class="btn btn-secondary">Annotations</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
+    <div class="layout-container">
+        ${getSidebarHTML('health', email)}
+        
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>🏥 Health Monitoring</h2>
+            </div>
+            
+            <div class="content-body">
         <div class="loading" id="loading">
             <div class="loading-spinner"></div>
             <p>Loading health analysis...</p>
@@ -5196,6 +5472,11 @@ ${getSharedCSS()}
             }
         }
     </script>
+    
+    ${getSidebarScript()}
+            </div>
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -5316,70 +5597,63 @@ ${getSharedCSS()}
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h2>📊 Cat Flap Stats - Data Quality</h2>
-        </div>
-        <div class="nav-links">
-            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
-            <a href="/patterns" class="btn btn-secondary">Patterns</a>
-            <a href="/circadian" class="btn btn-secondary">Circadian</a>
-            <a href="/seasonal" class="btn btn-secondary">Seasonal</a>
-            <a href="/health" class="btn btn-secondary">Health</a>
-            <a href="/annotations" class="btn btn-secondary">Annotations</a>
-            <span>Welcome, ${email}</span>
-            <a href="/logout" class="btn btn-secondary">Logout</a>
-        </div>
-    </div>
-    
-    <div class="container">
-        <div class="card">
-            <h1>📊 Data Quality Dashboard</h1>
-            <p class="subtitle">Comprehensive analysis of data completeness and reliability</p>
-        </div>
+    <div class="layout-container">
+        ${getSidebarHTML('quality', email)}
         
-        <div class="card">
-            <h2>📋 Processing Report Trends</h2>
-            <div class="loading" id="processing-loading">
-                <div class="loading-spinner"></div>
-                <p>Loading processing validation metrics...</p>
+        <div class="main-content sidebar-expanded">
+            <div class="content-header">
+                <h2>📊 Data Quality</h2>
             </div>
-            <div id="processing-trends-container" style="display: none;">
-                <!-- Processing metrics content will be inserted here -->
-            </div>
-        </div>
+            
+            <div class="content-body">
+                <div class="card">
+                    <h1>📊 Data Quality Dashboard</h1>
+                    <p class="subtitle">Comprehensive analysis of data completeness and reliability</p>
+                </div>
         
-        <div class="card">
-            <h2>🎯 Single Timestamp Confidence</h2>
-            <div id="confidence-analysis">
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <p>Calculating timestamp confidence scores...</p>
+                <div class="card">
+                    <h2>📋 Processing Report Trends</h2>
+                    <div class="loading" id="processing-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading processing validation metrics...</p>
+                    </div>
+                    <div id="processing-trends-container" style="display: none;">
+                        <!-- Processing metrics content will be inserted here -->
+                    </div>
+                </div>
+        
+                <div class="card">
+                    <h2>🎯 Single Timestamp Confidence</h2>
+                    <div id="confidence-analysis">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>Calculating timestamp confidence scores...</p>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="card">
+                    <h2>📅 Sunday Truncation Impact</h2>
+                    <div id="sunday-analysis">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>Analyzing Sunday data truncation effects...</p>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="card">
+                    <h2>📊 Historical Missing Data</h2>
+                    <div class="loading" id="missing-data-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading missing report weeks analysis...</p>
+                    </div>
+                    <div id="missing-data-container" style="display: none;">
+                        <!-- Missing data content will be inserted here -->
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <h2>📅 Sunday Truncation Impact</h2>
-            <div id="sunday-analysis">
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <p>Analyzing Sunday data truncation effects...</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h2>📊 Historical Missing Data</h2>
-            <div class="loading" id="missing-data-loading">
-                <div class="loading-spinner"></div>
-                <p>Loading missing report weeks analysis...</p>
-            </div>
-            <div id="missing-data-container" style="display: none;">
-                <!-- Missing data content will be inserted here -->
-            </div>
-        </div>
-    </div>
 
     <script>
         console.log('Data Quality Dashboard loaded');
@@ -6214,6 +6488,10 @@ ${getSharedCSS()}
             container.innerHTML = html;
         }
     </script>
+    
+    ${getSidebarScript()}
+        </div>
+    </div>
 </body>
 </html>`;
 }
