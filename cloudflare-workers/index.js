@@ -6551,7 +6551,9 @@ function getDashboardCSS() {
     .widget-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: 1rem;
+      position: relative;
     }
     
     .widget-title {
@@ -6632,6 +6634,57 @@ function getDashboardCSS() {
       padding: 2rem;
     }
     
+    .info-icon {
+      position: relative;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: #1976d2;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: help;
+      z-index: 10;
+    }
+    
+    .tooltip {
+      visibility: hidden;
+      width: 300px;
+      background-color: rgba(0,0,0,0.9);
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 15px;
+      position: absolute;
+      z-index: 1000;
+      top: 100%;
+      right: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 13px;
+      line-height: 1.4;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    .tooltip::after {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      right: 20px;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent rgba(0,0,0,0.9) transparent;
+    }
+    
+    .info-icon:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    
     @media (max-width: 768px) {
       .dashboard-widgets {
         grid-template-columns: 1fr;
@@ -6639,6 +6692,11 @@ function getDashboardCSS() {
       
       .widget-value {
         font-size: 1.5rem;
+      }
+      
+      .tooltip {
+        width: 250px;
+        right: -50px;
       }
     }
   `;
@@ -6690,6 +6748,19 @@ function getDashboardContent(dashboardMetrics) {
       <div class="dashboard-widget">
         <div class="widget-header">
           <h3 class="widget-title">Peak Activity Hour</h3>
+          <div class="info-icon">
+            i
+            <div class="tooltip">
+              <strong>Peak Activity Hour</strong><br><br>
+              The hour when Sven is most active in the most recent day with data.<br><br>
+              <strong>Calculation:</strong> Hour with highest exit frequency per day<br>
+              • Counts all exits for each hour of the day<br>
+              • Finds the hour with the most activity<br>
+              • Uses the most recent day that has activity data<br><br>
+              <strong>21-Day Window:</strong> Calculated from the latest 21 days of data<br>
+              Shows recent behavioral patterns rather than historical averages.
+            </div>
+          </div>
         </div>
         <div class="widget-main">
           <div>
