@@ -742,7 +742,23 @@ async function handleDashboard(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getDashboardPage(email), {
+  // Fetch dashboard metrics from analytics data
+  let dashboardMetrics = null;
+  try {
+    const jsonUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
+    const response = await fetch(jsonUrl);
+    
+    if (response.ok) {
+      const analyticsData = await response.json();
+      dashboardMetrics = analyticsData.precomputed?.dashboardMetrics || null;
+    } else {
+      console.warn('Failed to fetch dashboard metrics:', response.status);
+    }
+  } catch (error) {
+    console.error('Error fetching dashboard metrics:', error);
+  }
+  
+  return new Response(getDashboardPage(email, dashboardMetrics), {
     headers: { 'Content-Type': 'text/html' }
   });
 }
@@ -1786,7 +1802,7 @@ function getDownloadPage(email) {
 </html>`;
 }
 
-function getDashboardPage(email) {
+function getDashboardPage(email, dashboardMetrics) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1795,8 +1811,10 @@ function getDashboardPage(email) {
     <title>Cat Flap Stats - Dashboard</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         ${getSharedCSS()}
+        ${getDashboardCSS()}
     </style>
 </head>
 <body>
@@ -1805,21 +1823,12 @@ function getDashboardPage(email) {
         
         <div class="main-content sidebar-expanded">
             <div class="content-header">
-                <h2>🏠 Dashboard</h2>
+                <h2>🏠 Dashboard - Recent Behavioral Trends</h2>
+                <p class="dashboard-subtitle">21-day rolling window insights showing how Sven's behavior changes over time</p>
             </div>
             
             <div class="content-body">
-                <!-- Dashboard content will be added here in future iteration -->
-                <div class="card">
-                    <h3>Welcome to Cat Flap Stats</h3>
-                    <p>Your comprehensive behavioral analytics platform for Sven's cat flap activity. Use the navigation sidebar to explore:</p>
-                    <ul style="margin: 1rem 0; padding-left: 2rem;">
-                        <li><strong>Analytics:</strong> View patterns, seasonal trends, health monitoring, and circadian rhythms</li>
-                        <li><strong>Data Management:</strong> Upload new PDFs, manage annotations, check quality, and download datasets</li>
-                    </ul>
-                    <p>The sidebar can be collapsed by clicking the arrow button for more viewing space.</p>
-                </div>
-                
+                ${getDashboardContent(dashboardMetrics)}
                 ${getSidebarScript()}
             </div>
         </div>
@@ -6514,4 +6523,333 @@ ${getSharedCSS()}
     </div>
 </body>
 </html>`;
+}
+
+function getDashboardCSS() {
+  return `
+    .dashboard-subtitle {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    
+    .dashboard-widgets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .dashboard-widget {
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .widget-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .widget-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #666;
+      margin: 0;
+    }
+    
+    .widget-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .widget-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #333;
+      margin: 0;
+    }
+    
+    .widget-trend {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .trend-arrow {
+      font-size: 1.5rem;
+    }
+    
+    .trend-up { color: #4caf50; }
+    .trend-down { color: #f44336; }
+    .trend-stable { color: #666; }
+    
+    .widget-subtitle {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.5rem;
+    }
+    
+    .timeline-container {
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .timeline-header {
+      margin-bottom: 1rem;
+    }
+    
+    .timeline-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #333;
+      margin: 0 0 0.5rem 0;
+    }
+    
+    .timeline-subtitle {
+      font-size: 0.85rem;
+      color: #666;
+      margin: 0;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+    
+    .no-data-message {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-widgets {
+        grid-template-columns: 1fr;
+      }
+      
+      .widget-value {
+        font-size: 1.5rem;
+      }
+    }
+  `;
+}
+
+function getDashboardContent(dashboardMetrics) {
+  if (!dashboardMetrics) {
+    return `
+      <div class="no-data-message">
+        <h3>Dashboard Metrics Loading...</h3>
+        <p>Dashboard metrics are being computed. Please refresh the page in a moment.</p>
+      </div>
+    `;
+  }
+  
+  const { summary, trends, date_labels, time_outside_21day, exits_21day } = dashboardMetrics;
+  
+  // Generate trend arrows and text
+  function getTrendDisplay(trend, changeValue, unit) {
+    let arrow = '➡️';
+    let text = 'stable';
+    
+    if (trend === 'up' || trend === 'later') {
+      arrow = '⬆️';
+      text = trend === 'later' ? 'getting later' : 'increasing';
+    } else if (trend === 'down' || trend === 'earlier') {
+      arrow = '⬇️';
+      text = trend === 'earlier' ? 'getting earlier' : 'decreasing';
+    }
+    
+    const changeText = changeValue ? ` (${Math.abs(changeValue)}${unit})` : '';
+    return { arrow, text: text + changeText };
+  }
+  
+  const peakHourTrend = getTrendDisplay(trends.peak_hour_trend, trends.peak_hour_change_minutes, 'min');
+  const timeOutsideTrend = getTrendDisplay(trends.time_outside_trend, trends.time_outside_change_percent, '%');
+  const exitsTrend = getTrendDisplay(trends.exits_trend, trends.exits_change_percent, '%');
+  
+  // Format peak hour
+  const currentPeakHour = summary.current_peak_hour !== null ? 
+    `${summary.current_peak_hour}:00` : 'No data';
+  
+  // Format time outside (convert minutes to hours:minutes)
+  const avgTimeOutside = summary.avg_time_outside_minutes > 0 ?
+    `${Math.floor(summary.avg_time_outside_minutes / 60)}h ${Math.round(summary.avg_time_outside_minutes % 60)}m` : 'No data';
+  
+  return `
+    <div class="dashboard-widgets">
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3 class="widget-title">Peak Activity Hour</h3>
+        </div>
+        <div class="widget-main">
+          <div>
+            <div class="widget-value">${currentPeakHour}</div>
+            <div class="widget-subtitle">Most active time of day</div>
+          </div>
+          <div class="widget-trend trend-${trends.peak_hour_trend}">
+            <span class="trend-arrow">${peakHourTrend.arrow}</span>
+          </div>
+        </div>
+        <div class="widget-subtitle">${peakHourTrend.text}</div>
+      </div>
+      
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3 class="widget-title">Average Time Outside</h3>
+        </div>
+        <div class="widget-main">
+          <div>
+            <div class="widget-value">${avgTimeOutside}</div>
+            <div class="widget-subtitle">Daily average (21 days)</div>
+          </div>
+          <div class="widget-trend trend-${trends.time_outside_trend}">
+            <span class="trend-arrow">${timeOutsideTrend.arrow}</span>
+          </div>
+        </div>
+        <div class="widget-subtitle">${timeOutsideTrend.text}</div>
+      </div>
+      
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3 class="widget-title">Daily Activity Level</h3>
+        </div>
+        <div class="widget-main">
+          <div>
+            <div class="widget-value">${summary.avg_exits_per_day.toFixed(1)}</div>
+            <div class="widget-subtitle">Exits per day (21 days)</div>
+          </div>
+          <div class="widget-trend trend-${trends.exits_trend}">
+            <span class="trend-arrow">${exitsTrend.arrow}</span>
+          </div>
+        </div>
+        <div class="widget-subtitle">${exitsTrend.text}</div>
+      </div>
+    </div>
+    
+    <div class="timeline-container">
+      <div class="timeline-header">
+        <h3 class="timeline-title">21-Day Activity Timeline</h3>
+        <p class="timeline-subtitle">Daily time outside and exit frequency over the latest 3 weeks</p>
+      </div>
+      <div class="chart-container">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+    
+    <script>
+      // Dashboard timeline chart
+      document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('timelineChart').getContext('2d');
+        
+        const chartData = {
+          labels: ${JSON.stringify(date_labels)},
+          datasets: [
+            {
+              label: 'Time Outside (hours)',
+              data: ${JSON.stringify(time_outside_21day.map(minutes => minutes ? (minutes / 60).toFixed(1) : 0))},
+              borderColor: '#1976d2',
+              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+              fill: true,
+              tension: 0.4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Daily Exits',
+              data: ${JSON.stringify(exits_21day)},
+              borderColor: '#ff9800',
+              backgroundColor: 'rgba(255, 152, 0, 0.1)',
+              fill: false,
+              tension: 0.4,
+              yAxisID: 'y1'
+            }
+          ]
+        };
+        
+        new Chart(ctx, {
+          type: 'line',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false
+            },
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    if (context.datasetIndex === 0) {
+                      return context.dataset.label + ': ' + context.parsed.y + ' hours';
+                    } else {
+                      return context.dataset.label + ': ' + context.parsed.y + ' exits';
+                    }
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: true,
+                  text: 'Date'
+                },
+                ticks: {
+                  callback: function(value, index) {
+                    // Show every 3rd date to avoid crowding
+                    if (index % 3 === 0) {
+                      const date = new Date(this.getLabelForValue(value));
+                      return date.toLocaleDateString('en-GB', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                      });
+                    }
+                    return '';
+                  }
+                }
+              },
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                  display: true,
+                  text: 'Hours Outside'
+                },
+                grid: {
+                  drawOnChartArea: true
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                  display: true,
+                  text: 'Number of Exits'
+                },
+                grid: {
+                  drawOnChartArea: false
+                }
+              }
+            }
+          }
+        });
+      });
+    </script>
+  `;
 }

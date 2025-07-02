@@ -736,6 +736,149 @@ class CatFlapAnalytics:
             'confidenceScore': round(confidence, 2)
         }
     
+    def compute_dashboard_metrics(self):
+        """Compute 21-day rolling window dashboard metrics"""
+        if self.df.empty:
+            return {
+                'peak_hours_21day': [],
+                'time_outside_21day': [],
+                'exits_21day': [],
+                'trends': {
+                    'peak_hour_trend': 'stable',
+                    'time_outside_trend': 'stable',
+                    'exits_trend': 'stable'
+                },
+                'summary': {
+                    'current_peak_hour': None,
+                    'avg_time_outside_minutes': 0,
+                    'avg_exits_per_day': 0,
+                    'data_days': 0
+                }
+            }
+        
+        # Get latest 21 days of data
+        latest_date = self.df['date_full'].max()
+        start_date = latest_date - timedelta(days=20)  # 21 days including latest
+        recent_df = self.df[self.df['date_full'] >= start_date].copy()
+        
+        if recent_df.empty:
+            return self.compute_dashboard_metrics()  # Return empty structure
+        
+        # Calculate daily metrics for the 21-day window
+        daily_metrics = []
+        date_range = pd.date_range(start=start_date, end=latest_date, freq='D')
+        
+        for date in date_range:
+            day_data = recent_df[recent_df['date_full'].dt.date == date.date()]
+            
+            # Calculate peak hour for this day
+            peak_hour = None
+            if not day_data.empty:
+                hour_counts = defaultdict(int)
+                for _, session in day_data.iterrows():
+                    if session['hour_exit'] is not None:
+                        hour_counts[session['hour_exit']] += 1
+                if hour_counts:
+                    peak_hour = max(hour_counts, key=hour_counts.get)
+            
+            # Calculate total time outside (in minutes)
+            total_time_minutes = day_data['duration_minutes'].sum() if not day_data.empty else 0
+            
+            # Count exits
+            exits_count = len(day_data[day_data['exit_time'].notna()]) if not day_data.empty else 0
+            
+            daily_metrics.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'peak_hour': peak_hour,
+                'time_outside_minutes': round(total_time_minutes, 1),
+                'exits_count': exits_count
+            })
+        
+        # Calculate trends
+        trends = self._calculate_dashboard_trends(daily_metrics)
+        
+        # Calculate summary statistics
+        valid_peak_hours = [m['peak_hour'] for m in daily_metrics if m['peak_hour'] is not None]
+        valid_times = [m['time_outside_minutes'] for m in daily_metrics if m['time_outside_minutes'] > 0]
+        valid_exits = [m['exits_count'] for m in daily_metrics if m['exits_count'] > 0]
+        
+        current_peak_hour = valid_peak_hours[-1] if valid_peak_hours else None
+        avg_time_outside = np.mean(valid_times) if valid_times else 0
+        avg_exits = np.mean(valid_exits) if valid_exits else 0
+        
+        return {
+            'peak_hours_21day': [m['peak_hour'] for m in daily_metrics],
+            'time_outside_21day': [m['time_outside_minutes'] for m in daily_metrics],
+            'exits_21day': [m['exits_count'] for m in daily_metrics],
+            'date_labels': [m['date'] for m in daily_metrics],
+            'trends': trends,
+            'summary': {
+                'current_peak_hour': current_peak_hour,
+                'avg_time_outside_minutes': round(avg_time_outside, 1),
+                'avg_exits_per_day': round(avg_exits, 1),
+                'data_days': len([m for m in daily_metrics if m['exits_count'] > 0])
+            }
+        }
+    
+    def _calculate_dashboard_trends(self, daily_metrics):
+        """Calculate trend directions for dashboard metrics"""
+        trends = {
+            'peak_hour_trend': 'stable',
+            'time_outside_trend': 'stable', 
+            'exits_trend': 'stable',
+            'peak_hour_change_minutes': 0,
+            'time_outside_change_percent': 0,
+            'exits_change_percent': 0
+        }
+        
+        if len(daily_metrics) < 14:  # Need at least 14 days for comparison
+            return trends
+        
+        # Split into first 7 days and last 7 days for trend comparison
+        first_week = daily_metrics[:7]
+        last_week = daily_metrics[-7:]
+        
+        # Peak hour trend
+        first_peak_hours = [m['peak_hour'] for m in first_week if m['peak_hour'] is not None]
+        last_peak_hours = [m['peak_hour'] for m in last_week if m['peak_hour'] is not None]
+        
+        if first_peak_hours and last_peak_hours:
+            first_avg_hour = np.mean(first_peak_hours)
+            last_avg_hour = np.mean(last_peak_hours)
+            hour_change = last_avg_hour - first_avg_hour
+            
+            if abs(hour_change) >= 0.5:  # 30+ minute change
+                trends['peak_hour_trend'] = 'later' if hour_change > 0 else 'earlier'
+                trends['peak_hour_change_minutes'] = round(hour_change * 60)
+        
+        # Time outside trend
+        first_times = [m['time_outside_minutes'] for m in first_week if m['time_outside_minutes'] > 0]
+        last_times = [m['time_outside_minutes'] for m in last_week if m['time_outside_minutes'] > 0]
+        
+        if first_times and last_times:
+            first_avg_time = np.mean(first_times)
+            last_avg_time = np.mean(last_times)
+            time_change_percent = ((last_avg_time - first_avg_time) / first_avg_time) * 100
+            
+            if abs(time_change_percent) >= 10:  # 10% change threshold
+                trends['time_outside_trend'] = 'up' if time_change_percent > 0 else 'down'
+                trends['time_outside_change_percent'] = round(time_change_percent, 1)
+        
+        # Exits trend
+        first_exits = [m['exits_count'] for m in first_week if m['exits_count'] > 0]
+        last_exits = [m['exits_count'] for m in last_week if m['exits_count'] > 0]
+        
+        if first_exits and last_exits:
+            first_avg_exits = np.mean(first_exits)
+            last_avg_exits = np.mean(last_exits)
+            exits_change_percent = ((last_avg_exits - first_avg_exits) / first_avg_exits) * 100
+            
+            if abs(exits_change_percent) >= 15:  # 15% change threshold
+                trends['exits_trend'] = 'up' if exits_change_percent > 0 else 'down'
+                trends['exits_change_percent'] = round(exits_change_percent, 1)
+        
+        return trends
+
     def generate_enhanced_json(self, output_path):
         """Generate enhanced JSON with precomputed analytics"""
         if not self.data:
@@ -750,7 +893,8 @@ class CatFlapAnalytics:
                     'dailySummaries': [],
                     'peakHours': [],
                     'seasonalStats': {},
-                    'weekdayPatterns': {}
+                    'weekdayPatterns': {},
+                    'dashboardMetrics': self.compute_dashboard_metrics()
                 },
                 'sessions': [],
                 'annotations': []
@@ -780,7 +924,8 @@ class CatFlapAnalytics:
                     'peakHours': self.compute_peak_hours(),
                     'seasonalStats': self.compute_seasonal_stats(),
                     'weekdayPatterns': self.compute_weekday_patterns(),
-                    'durationAnomalies': self.compute_duration_anomalies()
+                    'durationAnomalies': self.compute_duration_anomalies(),
+                    'dashboardMetrics': self.compute_dashboard_metrics()
                 },
                 'sessions': self.data,  # Include original session data
                 'annotations': []  # Placeholder for future annotation system
