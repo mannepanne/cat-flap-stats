@@ -6757,6 +6757,9 @@ function getDashboardContent(dashboardMetrics) {
               • Counts all exits for each hour across all 21 days<br>
               • Finds the hour with highest total exit frequency<br>
               • Provides true peak hour for recent behavioral patterns<br><br>
+              <strong>Trend Detection:</strong> 10-day vs 10-day comparison<br>
+              • First 10 days vs last 10 days (day 11 as buffer)<br>
+              • Shows if peak hour is shifting earlier or later<br><br>
               <strong>21-Day Window:</strong> Rolling window that updates with new data<br>
               Shows robust recent patterns rather than single-day snapshots.
             </div>

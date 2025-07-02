@@ -854,7 +854,7 @@ class CatFlapAnalytics:
         }
     
     def _calculate_dashboard_trends(self, daily_metrics):
-        """Calculate trend directions for dashboard metrics"""
+        """Calculate trend directions for dashboard metrics - Phase 3.2.1b implementation"""
         trends = {
             'peak_hour_trend': 'stable',
             'time_outside_trend': 'stable', 
@@ -864,16 +864,16 @@ class CatFlapAnalytics:
             'exits_change_percent': 0
         }
         
-        if len(daily_metrics) < 14:  # Need at least 14 days for comparison
+        if len(daily_metrics) < 21:  # Need full 21 days for 10+1+10 comparison
             return trends
         
-        # Split into first 7 days and last 7 days for trend comparison
-        first_week = daily_metrics[:7]
-        last_week = daily_metrics[-7:]
+        # Phase 3.2.1b: Split into first 10 days and last 10 days with day 11 as buffer
+        first_10_days = daily_metrics[:10]
+        last_10_days = daily_metrics[-10:]
         
         # Peak hour trend
-        first_peak_hours = [m['peak_hour'] for m in first_week if m['peak_hour'] is not None]
-        last_peak_hours = [m['peak_hour'] for m in last_week if m['peak_hour'] is not None]
+        first_peak_hours = [m['peak_hour'] for m in first_10_days if m['peak_hour'] is not None]
+        last_peak_hours = [m['peak_hour'] for m in last_10_days if m['peak_hour'] is not None]
         
         if first_peak_hours and last_peak_hours:
             first_avg_hour = np.mean(first_peak_hours)
@@ -885,8 +885,8 @@ class CatFlapAnalytics:
                 trends['peak_hour_change_minutes'] = round(hour_change * 60)
         
         # Time outside trend
-        first_times = [m['time_outside_minutes'] for m in first_week if m['time_outside_minutes'] > 0]
-        last_times = [m['time_outside_minutes'] for m in last_week if m['time_outside_minutes'] > 0]
+        first_times = [m['time_outside_minutes'] for m in first_10_days if m['time_outside_minutes'] > 0]
+        last_times = [m['time_outside_minutes'] for m in last_10_days if m['time_outside_minutes'] > 0]
         
         if first_times and last_times:
             first_avg_time = np.mean(first_times)
@@ -898,8 +898,8 @@ class CatFlapAnalytics:
                 trends['time_outside_change_percent'] = round(time_change_percent, 1)
         
         # Exits trend
-        first_exits = [m['exits_count'] for m in first_week if m['exits_count'] > 0]
-        last_exits = [m['exits_count'] for m in last_week if m['exits_count'] > 0]
+        first_exits = [m['exits_count'] for m in first_10_days if m['exits_count'] > 0]
+        last_exits = [m['exits_count'] for m in last_10_days if m['exits_count'] > 0]
         
         if first_exits and last_exits:
             first_avg_exits = np.mean(first_exits)
