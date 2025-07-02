@@ -806,16 +806,28 @@ class CatFlapAnalytics:
         avg_time_outside = np.mean(valid_times) if valid_times else 0
         avg_exits = np.mean(valid_exits) if valid_exits else 0
         
+        # Clean up NaN values for JSON serialization
+        def clean_value(val):
+            if val is None:
+                return None
+            if isinstance(val, (int, float)) and (math.isnan(val) or math.isinf(val)):
+                return None
+            return val
+        
+        peak_hours_clean = [clean_value(m['peak_hour']) for m in daily_metrics]
+        time_outside_clean = [clean_value(m['time_outside_minutes']) or 0 for m in daily_metrics]
+        exits_clean = [clean_value(m['exits_count']) or 0 for m in daily_metrics]
+        
         return {
-            'peak_hours_21day': [m['peak_hour'] for m in daily_metrics],
-            'time_outside_21day': [m['time_outside_minutes'] for m in daily_metrics],
-            'exits_21day': [m['exits_count'] for m in daily_metrics],
+            'peak_hours_21day': peak_hours_clean,
+            'time_outside_21day': time_outside_clean,
+            'exits_21day': exits_clean,
             'date_labels': [m['date'] for m in daily_metrics],
             'trends': trends,
             'summary': {
-                'current_peak_hour': current_peak_hour,
-                'avg_time_outside_minutes': round(avg_time_outside, 1),
-                'avg_exits_per_day': round(avg_exits, 1),
+                'current_peak_hour': clean_value(current_peak_hour),
+                'avg_time_outside_minutes': round(avg_time_outside, 1) if not (math.isnan(avg_time_outside) or math.isinf(avg_time_outside)) else 0,
+                'avg_exits_per_day': round(avg_exits, 1) if not (math.isnan(avg_exits) or math.isinf(avg_exits)) else 0,
                 'data_days': len([m for m in daily_metrics if m['exits_count'] > 0])
             }
         }
