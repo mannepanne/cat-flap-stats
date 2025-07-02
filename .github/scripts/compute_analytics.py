@@ -798,6 +798,9 @@ class CatFlapAnalytics:
                         hour_counts[session['hour_exit']] += 1
                 if hour_counts:
                     peak_hour = max(hour_counts, key=hour_counts.get)
+                    # Ensure peak_hour is clean
+                    if isinstance(peak_hour, float) and (math.isnan(peak_hour) or math.isinf(peak_hour)):
+                        peak_hour = None
             
             # Calculate total time outside (in minutes)
             total_time_minutes = day_data['duration_minutes'].sum() if not day_data.empty else 0
@@ -820,7 +823,13 @@ class CatFlapAnalytics:
         valid_times = [m['time_outside_minutes'] for m in daily_metrics if m['time_outside_minutes'] > 0]
         valid_exits = [m['exits_count'] for m in daily_metrics if m['exits_count'] > 0]
         
-        current_peak_hour = valid_peak_hours[-1] if valid_peak_hours else None
+        # Find the most recent day with a valid peak hour (working backwards from latest)
+        current_peak_hour = None
+        for i in range(len(daily_metrics) - 1, -1, -1):
+            peak_val = daily_metrics[i]['peak_hour']
+            if peak_val is not None and not (isinstance(peak_val, float) and math.isnan(peak_val)):
+                current_peak_hour = peak_val
+                break
         avg_time_outside = np.mean(valid_times) if valid_times else 0
         avg_exits = np.mean(valid_exits) if valid_exits else 0
         
