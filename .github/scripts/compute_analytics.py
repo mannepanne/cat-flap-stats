@@ -819,17 +819,11 @@ class CatFlapAnalytics:
         trends = self._calculate_dashboard_trends(daily_metrics)
         
         # Calculate summary statistics
-        valid_peak_hours = [m['peak_hour'] for m in daily_metrics if m['peak_hour'] is not None]
         valid_times = [m['time_outside_minutes'] for m in daily_metrics if m['time_outside_minutes'] > 0]
         valid_exits = [m['exits_count'] for m in daily_metrics if m['exits_count'] > 0]
         
-        # Find the most recent day with a valid peak hour (working backwards from latest)
-        current_peak_hour = None
-        for i in range(len(daily_metrics) - 1, -1, -1):
-            peak_val = daily_metrics[i]['peak_hour']
-            if peak_val is not None and not (isinstance(peak_val, float) and math.isnan(peak_val)):
-                current_peak_hour = peak_val
-                break
+        # Enhanced Phase 3.2.1a: Calculate 21-day combined peak hour
+        current_peak_hour = self._calculate_combined_peak_hour(recent_df)
         avg_time_outside = np.mean(valid_times) if valid_times else 0
         avg_exits = np.mean(valid_exits) if valid_exits else 0
         
@@ -917,6 +911,30 @@ class CatFlapAnalytics:
                 trends['exits_change_percent'] = round(exits_change_percent, 1)
         
         return trends
+    
+    def _calculate_combined_peak_hour(self, recent_df):
+        """Calculate peak hour across all 21 days combined - Phase 3.2.1a implementation"""
+        if recent_df.empty:
+            return None
+        
+        # Count exits by hour across all 21 days combined
+        hour_counts = defaultdict(int)
+        
+        for _, session in recent_df.iterrows():
+            if session['hour_exit'] is not None and not (isinstance(session['hour_exit'], float) and math.isnan(session['hour_exit'])):
+                hour_counts[session['hour_exit']] += 1
+        
+        if not hour_counts:
+            return None
+        
+        # Find the hour with maximum exits across all 21 days
+        peak_hour = max(hour_counts, key=hour_counts.get)
+        
+        # Ensure peak_hour is clean
+        if isinstance(peak_hour, float) and (math.isnan(peak_hour) or math.isinf(peak_hour)):
+            return None
+            
+        return peak_hour
 
     def generate_enhanced_json(self, output_path):
         """Generate enhanced JSON with precomputed analytics"""

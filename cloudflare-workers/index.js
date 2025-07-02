@@ -6752,13 +6752,13 @@ function getDashboardContent(dashboardMetrics) {
             i
             <div class="tooltip">
               <strong>Peak Activity Hour</strong><br><br>
-              The hour when Sven is most active in the most recent day with data.<br><br>
-              <strong>Calculation:</strong> Hour with highest exit frequency per day<br>
-              • Counts all exits for each hour of the day<br>
-              • Finds the hour with the most activity<br>
-              • Uses the most recent day that has activity data<br><br>
-              <strong>21-Day Window:</strong> Calculated from the latest 21 days of data<br>
-              Shows recent behavioral patterns rather than historical averages.
+              The hour when Sven is most active across the entire 21-day rolling window.<br><br>
+              <strong>Enhanced Calculation:</strong> Combined activity across all 21 days<br>
+              • Counts all exits for each hour across all 21 days<br>
+              • Finds the hour with highest total exit frequency<br>
+              • Provides true peak hour for recent behavioral patterns<br><br>
+              <strong>21-Day Window:</strong> Rolling window that updates with new data<br>
+              Shows robust recent patterns rather than single-day snapshots.
             </div>
           </div>
         </div>
