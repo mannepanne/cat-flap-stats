@@ -41,9 +41,9 @@ class CatFlapAnalytics:
                     for _, row in df.iterrows():
                         session = {
                             'date_full': row['date_full'],
-                            'exit_time': row.get('exit_time', ''),
-                            'entry_time': row.get('entry_time', ''),
-                            'duration': row.get('duration', ''),
+                            'exit_time': row.get('exit_time', '') if pd.notna(row.get('exit_time', '')) else '',
+                            'entry_time': row.get('entry_time', '') if pd.notna(row.get('entry_time', '')) else '',
+                            'duration': row.get('duration', '') if pd.notna(row.get('duration', '')) else '',
                             'pet_name': row.get('pet_name', 'Sven')
                         }
                         self.sessions.append(session)
@@ -66,6 +66,14 @@ class CatFlapAnalytics:
                 for session in report['session_data']:
                     session_copy = session.copy()
                     session_copy['report_date'] = report['report_info']['report_date']
+                    
+                    # Clean NaN values
+                    for key in ['exit_time', 'entry_time', 'duration']:
+                        if key in session_copy:
+                            val = session_copy[key]
+                            if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                                session_copy[key] = ''
+                    
                     self.sessions.append(session_copy)
     
     def _setup_dataframe(self):
@@ -260,7 +268,10 @@ class CatFlapAnalytics:
     def _make_json_serializable(self, obj):
         """Convert numpy types to Python types for JSON serialization"""
         if hasattr(obj, 'item'):  # numpy scalar
-            return obj.item()
+            val = obj.item()
+            if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                return None
+            return val
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         elif isinstance(obj, (np.bool_, bool)):
@@ -268,7 +279,14 @@ class CatFlapAnalytics:
         elif isinstance(obj, (np.integer, int)):
             return int(obj)
         elif isinstance(obj, (np.floating, float)):
-            return float(obj)
+            val = float(obj)
+            if math.isnan(val) or math.isinf(val):
+                return None
+            return val
+        elif isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return obj
         elif isinstance(obj, dict):
             return {k: self._make_json_serializable(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -939,7 +957,7 @@ class CatFlapAnalytics:
                     'durationAnomalies': self.compute_duration_anomalies(),
                     'dashboardMetrics': self.compute_dashboard_metrics()
                 },
-                'sessions': self.data,  # Include original session data
+                'sessions': self._make_json_serializable(self.data),  # Include original session data
                 'annotations': []  # Placeholder for future annotation system
             }
         
