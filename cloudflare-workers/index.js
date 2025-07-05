@@ -6884,14 +6884,25 @@ function getDashboardContent(dashboardMetrics) {
                 },
                 ticks: {
                   callback: function(value, index) {
-                    // Show every 3rd date to avoid crowding
-                    if (index % 3 === 0) {
-                      const date = new Date(this.getLabelForValue(value));
+                    const date = new Date(this.getLabelForValue(value));
+                    const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
+                    
+                    // Always show Mondays with "Mon" prefix
+                    if (dayOfWeek === 1) {
+                      return 'Mon ' + date.toLocaleDateString('en-GB', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                      });
+                    }
+                    
+                    // Show every 4th non-Monday date to avoid crowding
+                    if (index % 4 === 0) {
                       return date.toLocaleDateString('en-GB', { 
                         day: 'numeric', 
                         month: 'short' 
                       });
                     }
+                    
                     return '';
                   }
                 }
