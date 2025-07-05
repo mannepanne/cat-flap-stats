@@ -6918,6 +6918,12 @@ function getDashboardContent(dashboardMetrics) {
                 },
                 grid: {
                   drawOnChartArea: false
+                },
+                ticks: {
+                  stepSize: 1,
+                  callback: function(value) {
+                    return Math.floor(value);
+                  }
                 }
               }
             }
