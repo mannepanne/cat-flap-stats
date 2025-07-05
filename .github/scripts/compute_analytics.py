@@ -898,8 +898,8 @@ class CatFlapAnalytics:
                 trends['time_outside_change_percent'] = round(time_change_percent, 1)
         
         # Exits trend
-        first_exits = [m['exits_count'] for m in first_10_days if m['exits_count'] > 0]
-        last_exits = [m['exits_count'] for m in last_10_days if m['exits_count'] > 0]
+        first_exits = [m['exits_count'] for m in first_10_days]
+        last_exits = [m['exits_count'] for m in last_10_days]
         
         if first_exits and last_exits:
             first_avg_exits = np.mean(first_exits)
