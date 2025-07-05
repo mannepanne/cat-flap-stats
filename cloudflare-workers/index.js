@@ -7026,7 +7026,7 @@ function getDashboardContent(dashboardMetrics) {
           
           if (dateIndex !== -1) {
             const xPosition = chartArea.left + (dateIndex / (dateLabels.length - 1)) * chartArea.width;
-            const yPosition = chartArea.top - 10; // Position above the chart
+            const yPosition = chartArea.bottom; // Position at bottom edge of chart
             
             const marker = svg.append('text')
               .attr('class', 'annotation-marker')
