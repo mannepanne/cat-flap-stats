@@ -1812,6 +1812,7 @@ function getDashboardPage(email, dashboardMetrics) {
     <link rel="icon" href="/favicon.ico" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         ${getSharedCSS()}
         ${getDashboardCSS()}
@@ -6685,6 +6686,28 @@ function getDashboardCSS() {
       opacity: 1;
     }
     
+    /* D3.js tooltip styles for annotation markers */
+    .d3-tooltip {
+      position: absolute;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    
+    .annotation-tooltip {
+      max-width: 400px;
+      padding: 12px;
+      pointer-events: auto;
+    }
+    
+    .annotation-marker {
+      pointer-events: all;
+    }
+    
     @media (max-width: 768px) {
       .dashboard-widgets {
         grid-template-columns: 1fr;
@@ -6815,8 +6838,9 @@ function getDashboardContent(dashboardMetrics) {
         <h3 class="timeline-title">21-Day Activity Timeline</h3>
         <p class="timeline-subtitle">Daily time outside and exit frequency over the latest 3 weeks</p>
       </div>
-      <div class="chart-container">
+      <div class="chart-container" style="position: relative;">
         <canvas id="timelineChart"></canvas>
+        <div id="annotationOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></div>
       </div>
     </div>
     
@@ -6849,7 +6873,7 @@ function getDashboardContent(dashboardMetrics) {
           ]
         };
         
-        new Chart(ctx, {
+        window.timelineChart = new Chart(ctx, {
           type: 'line',
           data: chartData,
           options: {
@@ -6940,7 +6964,137 @@ function getDashboardContent(dashboardMetrics) {
             }
           }
         });
+        
+        // Load annotations and create overlay markers
+        console.log('Loading annotations for dashboard timeline...');
+        fetch('/api/annotations')
+          .then(response => response.json())
+          .then(annotations => {
+            console.log('Dashboard annotations loaded:', annotations.length, 'annotations');
+            createAnnotationOverlay(annotations);
+          })
+          .catch(error => {
+            console.warn('Error loading annotations for dashboard:', error);
+          });
       });
+      
+      function createAnnotationOverlay(annotations) {
+        if (!annotations || annotations.length === 0) {
+          console.log('No annotations to display on dashboard timeline');
+          return;
+        }
+        
+        const canvas = document.getElementById('timelineChart');
+        const overlay = document.getElementById('annotationOverlay');
+        
+        if (!canvas || !overlay) {
+          console.warn('Canvas or overlay not found');
+          return;
+        }
+        
+        // Get chart dimensions and position
+        const rect = canvas.getBoundingClientRect();
+        const chartArea = window.timelineChart.chartArea;
+        
+        // Group annotations by start date only (markers only on start dates)
+        const annotationsByStartDate = {};
+        const dateLabels = ${JSON.stringify(date_labels)};
+        
+        annotations.forEach(annotation => {
+          const startDate = annotation.startDate;
+          if (!annotationsByStartDate[startDate]) {
+            annotationsByStartDate[startDate] = [];
+          }
+          annotationsByStartDate[startDate].push(annotation);
+        });
+        
+        // Create SVG overlay
+        const svg = d3.select(overlay)
+          .append('svg')
+          .attr('width', '100%')
+          .attr('height', '100%')
+          .style('position', 'absolute')
+          .style('top', 0)
+          .style('left', 0);
+        
+        // Add annotation markers
+        Object.entries(annotationsByStartDate).forEach(([date, dayAnnotations]) => {
+          const dateIndex = dateLabels.findIndex(label => {
+            const labelDate = new Date(label).toISOString().split('T')[0];
+            return labelDate === date;
+          });
+          
+          if (dateIndex !== -1) {
+            const xPosition = chartArea.left + (dateIndex / (dateLabels.length - 1)) * chartArea.width;
+            const yPosition = chartArea.top - 10; // Position above the chart
+            
+            const marker = svg.append('text')
+              .attr('class', 'annotation-marker')
+              .attr('x', xPosition)
+              .attr('y', yPosition)
+              .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'middle')
+              .style('font-size', '12px')
+              .style('cursor', 'pointer')
+              .style('fill', '#666')
+              .style('pointer-events', 'all')
+              .text('💬');
+            
+            // Add hover tooltip
+            marker.on('mouseenter', function(event) {
+              d3.selectAll('.annotation-tooltip').remove();
+              
+              const tooltip = d3.select('body').append('div')
+                .attr('class', 'd3-tooltip annotation-tooltip')
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+              
+              let tooltipContent = '<strong>Annotations on ' + new Date(date).toLocaleDateString() + ':</strong><br><br>';
+              dayAnnotations.forEach(annotation => {
+                const endDate = annotation.endDate !== annotation.startDate ? 
+                  ' to ' + new Date(annotation.endDate).toLocaleDateString() : '';
+                const createdBy = annotation.createdBy.includes('magnus') ? 'Magnus' : 'Wendy';
+                
+                tooltipContent += '<div style="background: rgba(255,255,255,0.1); padding: 8px; margin-bottom: 8px; border-radius: 4px;">';
+                tooltipContent += '<div style="display: flex; justify-content: space-between; align-items: flex-start;">';
+                tooltipContent += '<div style="flex: 1;">';
+                tooltipContent += '<strong>' + annotation.title + '</strong><br>';
+                tooltipContent += '<span style="color: #ccc; font-size: 11px;">Category: ' + annotation.category.charAt(0).toUpperCase() + annotation.category.slice(1) + '</span><br>';
+                tooltipContent += '<span style="color: #ccc; font-size: 11px;">Date: ' + new Date(annotation.startDate).toLocaleDateString() + endDate + '</span><br>';
+                
+                if (annotation.description && annotation.description.trim() !== '') {
+                  const truncatedDesc = annotation.description.length > 100 ? 
+                    annotation.description.substring(0, 100) + '...' : annotation.description;
+                  tooltipContent += '<div style="margin-top: 4px; font-size: 11px; color: #eee;">' + truncatedDesc + '</div>';
+                }
+                
+                tooltipContent += '<div style="margin-top: 4px; font-size: 10px; color: #aaa;">By: ' + createdBy + '</div>';
+                tooltipContent += '</div></div>';
+              });
+              
+              tooltip.html(tooltipContent);
+            })
+            .on('mouseleave', function() {
+              setTimeout(() => {
+                if (!d3.select('.annotation-tooltip:hover').node()) {
+                  d3.selectAll('.annotation-tooltip').remove();
+                }
+              }, 150);
+            });
+          }
+        });
+        
+        // Global click handler to close tooltips
+        document.addEventListener('click', function(event) {
+          if (event.target.textContent === '💬' || 
+              event.target.closest('.d3-tooltip')) {
+            return;
+          }
+          d3.selectAll('.annotation-tooltip').remove();
+        });
+        
+        console.log('Dashboard annotation overlay created with', Object.keys(annotationsByStartDate).length, 'annotation start dates');
+      }
     </script>
   `;
 }
