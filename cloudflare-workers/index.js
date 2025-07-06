@@ -1735,13 +1735,6 @@ function getDownloadPage(email) {
                     <a href="/api/download/dataset.json" class="btn btn-secondary">Download JSON</a>
                 </div>
                 
-                <div class="card">
-                    <h3>Processing History</h3>
-                    <p>Recent file uploads and processing results will appear here.</p>
-                    <div id="processing-history">
-                        <p style="color: #666; font-style: italic;">No recent activity</p>
-                    </div>
-                </div>
                 
                 <script>
                     // Load dashboard data
@@ -3170,6 +3163,93 @@ function getUploadPage(email) {
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         ${getSharedCSS()}
+        
+        /* Processing History Styles */
+        .processing-history-list {
+            margin: 20px 0;
+        }
+        
+        .history-item {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #28a745;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .history-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .history-status {
+            font-size: 1.2em;
+        }
+        
+        .history-user {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .history-date {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .stat {
+            color: #666;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            background: #f5f5f5;
+            border-color: #2196f3;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-info {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin: 1rem 0;
+        }
+        
         .upload-area {
             border: 2px dashed #e0e0e0;
             border-radius: 8px;
@@ -3266,6 +3346,14 @@ function getUploadPage(email) {
                     </form>
                 </div>
                 
+                <div class="card">
+                    <h3>Processing History</h3>
+                    <p>Complete history of file uploads and processing results.</p>
+                    <div id="processing-history">
+                        <p style="color: #666; font-style: italic;">Loading processing history...</p>
+                    </div>
+                </div>
+                
                 <script>
                     const uploadArea = document.getElementById('upload-area');
                     const fileInput = document.getElementById('pdf-file');
@@ -3354,6 +3442,131 @@ function getUploadPage(email) {
                     function showMessage(text, type) {
                         messageContainer.innerHTML = \`<div class="message \${type}">\${text}</div>\`;
                     }
+                </script>
+
+                <script>
+                    // Processing History Pagination Variables
+                    let allProcessingHistory = [];
+                    let currentHistoryPage = 1;
+                    const historyPageSize = 10;
+
+                    async function loadProcessingHistory() {
+                        try {
+                            const response = await fetch('/api/processing-metrics');
+                            if (!response.ok) {
+                                document.getElementById('processing-history').innerHTML = '<p style="color: #666; font-style: italic;">Processing history not available</p>';
+                                return;
+                            }
+                            
+                            const data = await response.json();
+                            
+                            // Extract metrics array from the data structure
+                            const metrics = data.metrics || data;
+                            
+                            if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+                                document.getElementById('processing-history').innerHTML = '<p style="color: #666; font-style: italic;">No processing history available</p>';
+                                return;
+                            }
+                            
+                            // Filter out non-upload metrics (only show actual PDF uploads)
+                            const uploadMetrics = metrics.filter(metric => 
+                                metric.processing_status === 'success' || 
+                                (metric.processing_status !== 'historical_gap_detected' && metric.filename && metric.filename !== 'HISTORICAL_GAP_ANALYSIS')
+                            );
+                            
+                            if (uploadMetrics.length === 0) {
+                                document.getElementById('processing-history').innerHTML = '<p style="color: #666; font-style: italic;">No processing history available</p>';
+                                return;
+                            }
+                            
+                            // Sort by timestamp (latest first)
+                            allProcessingHistory = uploadMetrics.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                            
+                            // Display first page
+                            displayProcessingHistory();
+                        } catch (error) {
+                            console.error('Error loading processing history:', error);
+                            document.getElementById('processing-history').innerHTML = '<p style="color: #666; font-style: italic;">Error loading processing history</p>';
+                        }
+                    }
+
+                    function displayProcessingHistory() {
+                        const totalPages = Math.ceil(allProcessingHistory.length / historyPageSize);
+                        const startIndex = (currentHistoryPage - 1) * historyPageSize;
+                        const endIndex = startIndex + historyPageSize;
+                        const pageHistory = allProcessingHistory.slice(startIndex, endIndex);
+
+                        let historyHtml = '';
+                        
+                        if (pageHistory.length === 0) {
+                            historyHtml = '<p style="color: #666; font-style: italic;">No processing history available</p>';
+                        } else {
+                            historyHtml = '<div class="processing-history-list">';
+                            
+                            pageHistory.forEach(metric => {
+                                const date = new Date(metric.timestamp).toLocaleDateString();
+                                const time = new Date(metric.timestamp).toLocaleTimeString();
+                                const status = metric.processing_status === 'success' ? '✅' : '❌';
+                                const duplicateRate = metric.duplicate_rate_percent || 0;
+                                const newSessions = metric.unique_new_sessions_added || 0;
+                                
+                                historyHtml += 
+                                    '<div class="history-item">' +
+                                        '<div class="history-header">' +
+                                            '<span class="history-status">' + status + '</span>' +
+                                            '<span class="history-date">' + date + ' ' + time + '</span>' +
+                                            '<span class="history-user">' + metric.uploader + '</span>' +
+                                        '</div>' +
+                                        '<div class="history-stats">' +
+                                            '<span class="stat">' + newSessions + ' new sessions</span>' +
+                                            '<span class="stat">' + duplicateRate.toFixed(1) + '% duplicates</span>' +
+                                        '</div>' +
+                                    '</div>';
+                            });
+                            
+                            historyHtml += '</div>';
+                            
+                            // Add pagination controls
+                            if (totalPages > 1) {
+                                historyHtml += '<div class="pagination">';
+                                
+                                // Previous button
+                                var prevDisabled = currentHistoryPage === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '';
+                                historyHtml += '<button ' + prevDisabled + ' onclick="changeHistoryPage(' + (currentHistoryPage - 1) + ')" style="margin: 0 5px; padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">Previous</button>';
+                                
+                                // Page numbers
+                                for (let i = 1; i <= totalPages; i++) {
+                                    const isActive = i === currentHistoryPage;
+                                    var buttonStyle = 'margin: 0 5px; padding: 8px 16px; border: 1px solid ' + (isActive ? '#667eea' : '#ddd') + '; background: ' + (isActive ? '#667eea' : 'white') + '; color: ' + (isActive ? 'white' : '#333') + '; cursor: pointer; border-radius: 4px;';
+                                    historyHtml += '<button onclick="changeHistoryPage(' + i + ')" style="' + buttonStyle + '">' + i + '</button>';
+                                }
+                                
+                                // Next button
+                                var nextDisabled = currentHistoryPage === totalPages ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '';
+                                historyHtml += '<button ' + nextDisabled + ' onclick="changeHistoryPage(' + (currentHistoryPage + 1) + ')" style="margin: 0 5px; padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px;">Next</button>';
+                                
+                                historyHtml += '</div>';
+                                
+                                // Add page info
+                                const startItem = startIndex + 1;
+                                const endItem = Math.min(endIndex, allProcessingHistory.length);
+                                historyHtml += '<div class="pagination-info">Showing ' + startItem + '-' + endItem + ' of ' + allProcessingHistory.length + ' uploads</div>';
+                            }
+                        }
+                        
+                        document.getElementById('processing-history').innerHTML = historyHtml;
+                    }
+
+                    function changeHistoryPage(page) {
+                        const totalPages = Math.ceil(allProcessingHistory.length / historyPageSize);
+                        if (page >= 1 && page <= totalPages) {
+                            currentHistoryPage = page;
+                            displayProcessingHistory();
+                        }
+                    }
+
+                    // Load processing history after functions are defined
+                    loadProcessingHistory();
                 </script>
                 
                 ${getSidebarScript()}
@@ -6058,9 +6271,6 @@ ${getSharedCSS()}
             const successfulRuns = processingMetrics.filter(m => m.processing_status === 'success').length;
             const successRate = totalProcessingRuns > 0 ? (successfulRuns / totalProcessingRuns * 100) : 0;
             
-            // Calculate duplicate rates over time
-            const duplicateRates = processingMetrics.map(m => m.duplicate_rate_percent || 0);
-            const avgDuplicateRate = duplicateRates.length > 0 ? duplicateRates.reduce((a, b) => a + b) / duplicateRates.length : 0;
             
             // Calculate new sessions over time
             const newSessionCounts = processingMetrics.map(m => m.unique_new_sessions_added || 0);
@@ -6086,7 +6296,6 @@ ${getSharedCSS()}
                 summary: {
                     totalProcessingRuns,
                     successRate,
-                    avgDuplicateRate,
                     avgNewSessions,
                     totalNewSessions,
                     totalMissingWeeks,
@@ -6143,12 +6352,6 @@ ${getSharedCSS()}
                             <span class="metric-label">Processing Success Rate</span>
                             <span class="metric-value \${summary.successRate === 100 ? 'success' : summary.successRate > 80 ? 'warning' : 'error'}">
                                 \${summary.successRate.toFixed(1)}%
-                            </span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Average Duplicate Rate</span>
-                            <span class="metric-value">
-                                \${summary.avgDuplicateRate.toFixed(1)}%
                             </span>
                         </div>
                         <div class="metric-item">
