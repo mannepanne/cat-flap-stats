@@ -6911,7 +6911,7 @@ function getDashboardContent(dashboardMetrics) {
                     const date = new Date(this.getLabelForValue(value));
                     const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
                     
-                    // Always show Mondays with "Mon" prefix
+                    // Show Mondays with "Mon" prefix
                     if (dayOfWeek === 1) {
                       return 'Mon ' + date.toLocaleDateString('en-GB', { 
                         day: 'numeric', 
@@ -6919,8 +6919,8 @@ function getDashboardContent(dashboardMetrics) {
                       });
                     }
                     
-                    // Show every 4th non-Monday date to avoid crowding
-                    if (index % 4 === 0) {
+                    // Show Wednesdays and Fridays with date only
+                    if (dayOfWeek === 3 || dayOfWeek === 5) {
                       return date.toLocaleDateString('en-GB', { 
                         day: 'numeric', 
                         month: 'short' 
