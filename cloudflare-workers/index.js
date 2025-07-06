@@ -1684,49 +1684,10 @@ function getDownloadPage(email) {
         
         <div class="main-content sidebar-expanded">
             <div class="content-header">
-                <h2>📥 Download & Data Overview</h2>
+                <h2>📥 Downloads</h2>
             </div>
             
             <div class="content-body">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="total-sessions">1,250</div>
-                        <div class="stat-label">Total Sessions</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="info-icon">
-                            i
-                            <div class="tooltip" id="days-data-tooltip">
-                                <strong>Days of Data: 455</strong><br><br>
-                                Total calendar days from first to last recorded session.<br><br>
-                                <strong>Date Range:</strong> <span id="tooltip-date-range">Loading...</span><br>
-                                <strong>Calculation:</strong> End date - Start date + 1<br><br>
-                                This represents the complete timespan covered by the dataset, including days with no activity.
-                            </div>
-                        </div>
-                        <div class="stat-number" id="date-range">365</div>
-                        <div class="stat-label">Days of Data</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="last-update">Today</div>
-                        <div class="stat-label">Last Updated</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="info-icon">
-                            i
-                            <div class="tooltip">
-                                <strong>Data Quality: 89%</strong><br><br>
-                                Based on days with complete behavioral data (≥2 sessions per day).<br><br>
-                                <strong>Formula:</strong> Complete days ÷ Total days<br>
-                                <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
-                                There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
-                            </div>
-                        </div>
-                        <div class="stat-number" id="data-quality">98%</div>
-                        <div class="stat-label">Data Quality</div>
-                    </div>
-                </div>
-                
                 <div class="card">
                     <h3>Download Dataset</h3>
                     <p>Download the complete dataset in CSV or JSON format for analysis.</p>
@@ -1735,57 +1696,6 @@ function getDownloadPage(email) {
                     <a href="/api/download/dataset.json" class="btn btn-secondary">Download JSON</a>
                 </div>
                 
-                
-                <script>
-                    // Load dashboard data
-                    Promise.all([
-                        fetch('/api/dataset').then(r => r.json()),
-                        fetch('/api/analytics').then(r => r.json())
-                    ])
-                    .then(([datasetInfo, analyticsData]) => {
-                        // Update basic stats
-                        if (datasetInfo.total_sessions) {
-                            document.getElementById('total-sessions').textContent = datasetInfo.total_sessions.toLocaleString();
-                        }
-                        if (datasetInfo.last_updated) {
-                            const date = new Date(datasetInfo.last_updated);
-                            document.getElementById('last-update').textContent = date.toLocaleDateString();
-                        }
-                        
-                        // Calculate and update days of data from date range
-                        if (analyticsData.metadata && analyticsData.metadata.dateRange) {
-                            const dateRange = analyticsData.metadata.dateRange;
-                            if (dateRange.includes(' to ')) {
-                                const [startDate, endDate] = dateRange.split(' to ');
-                                const start = new Date(startDate);
-                                const end = new Date(endDate);
-                                const timeDiff = end - start;
-                                const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
-                                document.getElementById('date-range').textContent = daysDiff.toLocaleString();
-                                
-                                // Update tooltip with real data
-                                const formattedStart = start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                                const formattedEnd = end.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                                const tooltipElement = document.getElementById('days-data-tooltip');
-                                if (tooltipElement) {
-                                    tooltipElement.innerHTML = 
-                                        '<strong>Days of Data: ' + daysDiff.toLocaleString() + '</strong><br><br>' +
-                                        'Total calendar days from first to last recorded session.<br><br>' +
-                                        '<strong>Date Range:</strong> ' + formattedStart + ' to ' + formattedEnd + '<br>' +
-                                        '<strong>Calculation:</strong> End date - Start date + 1<br><br>' +
-                                        'This represents the complete timespan covered by the dataset, including days with no activity.';
-                                }
-                            }
-                        }
-                        
-                        // Update data quality with real calculated value
-                        if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
-                            const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
-                            document.getElementById('data-quality').textContent = qualityScore + '%';
-                        }
-                    })
-                    .catch(error => console.error('Error loading dashboard data:', error));
-                </script>
                 
                 ${getSidebarScript()}
             </div>
@@ -5853,6 +5763,45 @@ ${getSharedCSS()}
                     <h1>📊 Data Quality Dashboard</h1>
                     <p class="subtitle">Comprehensive analysis of data completeness and reliability</p>
                 </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-sessions">1,250</div>
+                        <div class="stat-label">Total Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="info-icon">
+                            i
+                            <div class="tooltip" id="days-data-tooltip">
+                                <strong>Days of Data: 455</strong><br><br>
+                                Total calendar days from first to last recorded session.<br><br>
+                                <strong>Date Range:</strong> <span id="tooltip-date-range">Loading...</span><br>
+                                <strong>Calculation:</strong> End date - Start date + 1<br><br>
+                                This represents the complete timespan covered by the dataset, including days with no activity.
+                            </div>
+                        </div>
+                        <div class="stat-number" id="date-range">365</div>
+                        <div class="stat-label">Days of Data</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="last-update">Today</div>
+                        <div class="stat-label">Last Updated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="info-icon">
+                            i
+                            <div class="tooltip">
+                                <strong>Data Quality: 89%</strong><br><br>
+                                Based on days with complete behavioral data (≥2 sessions per day).<br><br>
+                                <strong>Formula:</strong> Complete days ÷ Total days<br>
+                                <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
+                                There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
+                            </div>
+                        </div>
+                        <div class="stat-number" id="data-quality">98%</div>
+                        <div class="stat-label">Data Quality</div>
+                    </div>
+                </div>
         
                 <div class="card">
                     <h2>📋 Processing Report Trends</h2>
@@ -6720,6 +6669,57 @@ ${getSharedCSS()}
             
             container.innerHTML = html;
         }
+    </script>
+
+    <script>
+        // Load dashboard data for widgets
+        Promise.all([
+            fetch('/api/dataset').then(r => r.json()),
+            fetch('/api/analytics').then(r => r.json())
+        ])
+        .then(([datasetInfo, analyticsData]) => {
+            // Update basic stats
+            if (datasetInfo.total_sessions) {
+                document.getElementById('total-sessions').textContent = datasetInfo.total_sessions.toLocaleString();
+            }
+            if (datasetInfo.last_updated) {
+                const date = new Date(datasetInfo.last_updated);
+                document.getElementById('last-update').textContent = date.toLocaleDateString();
+            }
+            
+            // Calculate and update days of data from date range
+            if (analyticsData.metadata && analyticsData.metadata.dateRange) {
+                const dateRange = analyticsData.metadata.dateRange;
+                if (dateRange.includes(' to ')) {
+                    const [startDate, endDate] = dateRange.split(' to ');
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const timeDiff = end - start;
+                    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
+                    document.getElementById('date-range').textContent = daysDiff.toLocaleString();
+                    
+                    // Update tooltip with real data
+                    const formattedStart = start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const formattedEnd = end.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const tooltipElement = document.getElementById('days-data-tooltip');
+                    if (tooltipElement) {
+                        tooltipElement.innerHTML = 
+                            '<strong>Days of Data: ' + daysDiff.toLocaleString() + '</strong><br><br>' +
+                            'Total calendar days from first to last recorded session.<br><br>' +
+                            '<strong>Date Range:</strong> ' + formattedStart + ' to ' + formattedEnd + '<br>' +
+                            '<strong>Calculation:</strong> End date - Start date + 1<br><br>' +
+                            'This represents the complete timespan covered by the dataset, including days with no activity.';
+                    }
+                }
+            }
+            
+            // Update data quality with real calculated value
+            if (analyticsData.metadata && analyticsData.metadata.dataQuality) {
+                const qualityScore = Math.round(analyticsData.metadata.dataQuality.confidenceScore * 100);
+                document.getElementById('data-quality').textContent = qualityScore + '%';
+            }
+        })
+        .catch(error => console.error('Error loading dashboard data:', error));
     </script>
     
     ${getSidebarScript()}
