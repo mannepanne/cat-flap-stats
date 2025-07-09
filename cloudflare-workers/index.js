@@ -812,6 +812,65 @@ async function handleUpload(request, env) {
   return createSecureHtmlResponse(getUploadPage(email));
 }
 
+// Enhanced PDF file validation with security checks
+async function validatePDFFile(file) {
+  // 1. Basic checks
+  if (!file || file.size === 0) {
+    throw new Error('No file provided or file is empty');
+  }
+  
+  // 2. Size validation (10MB max)
+  const maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    throw new Error('File too large (max 10MB)');
+  }
+  
+  // 3. MIME type validation
+  if (file.type !== 'application/pdf') {
+    throw new Error('Invalid file type. Only PDF files are allowed');
+  }
+  
+  // 4. File extension validation
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    throw new Error('Invalid file extension. Only .pdf files are allowed');
+  }
+  
+  // 5. Magic byte validation (PDF signature)
+  const fileBuffer = await file.arrayBuffer();
+  const header = new Uint8Array(fileBuffer.slice(0, 5));
+  
+  // PDF files start with "%PDF-" (0x25, 0x50, 0x44, 0x46, 0x2D)
+  if (header[0] !== 0x25 || header[1] !== 0x50 || header[2] !== 0x44 || header[3] !== 0x46 || header[4] !== 0x2D) {
+    throw new Error('Invalid PDF signature. File does not appear to be a valid PDF');
+  }
+  
+  // 6. Filename sanitization  
+  const sanitizedName = sanitizeFilename(file.name);
+  
+  return {
+    isValid: true,
+    sanitizedName,
+    fileBuffer
+  };
+}
+
+// Sanitize filename to prevent directory traversal and malicious names
+function sanitizeFilename(filename) {
+  // Remove path components and dangerous characters
+  const sanitized = filename
+    .replace(/[\/\\:*?"<>|]/g, '_') // Replace dangerous characters
+    .replace(/^\.+/, '') // Remove leading dots
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .substring(0, 255); // Limit length
+  
+  // Ensure it ends with .pdf
+  if (!sanitized.toLowerCase().endsWith('.pdf')) {
+    return sanitized + '.pdf';
+  }
+  
+  return sanitized;
+}
+
 async function handleApiUpload(request, env) {
   const authToken = getCookie(request, 'auth_token');
   const email = await validateAuthToken(authToken, env);
@@ -828,31 +887,28 @@ async function handleApiUpload(request, env) {
     const formData = await request.formData();
     const file = formData.get('pdf_file');
     
-    if (!file || file.type !== 'application/pdf') {
-      return new Response(JSON.stringify({ error: 'Invalid PDF file' }), {
+    // Enhanced file validation
+    let validationResult;
+    try {
+      validationResult = await validatePDFFile(file);
+      console.log(`File validation passed: ${file.name} -> ${validationResult.sanitizedName}`);
+    } catch (validationError) {
+      console.log(`File validation failed for ${file.name}: ${validationError.message} (Size: ${file.size}, Type: ${file.type})`);
+      return new Response(JSON.stringify({ error: validationError.message }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
     
-    // Basic file validation
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      return new Response(JSON.stringify({ error: 'File too large (max 10MB)' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Store file temporarily
+    // Store file temporarily with sanitized filename
     const fileId = crypto.randomUUID();
     const fileKey = `upload:${fileId}`;
     
-    const fileData = await file.arrayBuffer();
-    await env.CAT_FLAP_KV.put(fileKey, fileData, { 
+    await env.CAT_FLAP_KV.put(fileKey, validationResult.fileBuffer, { 
       expirationTtl: 3600, // 1 hour
       metadata: {
-        filename: file.name,
+        filename: validationResult.sanitizedName,
+        originalFilename: file.name,
         size: file.size,
         uploaded_by: email,
         uploaded_at: new Date().toISOString()
@@ -860,10 +916,10 @@ async function handleApiUpload(request, env) {
     });
     
     // Trigger GitHub Actions workflow
-    console.log(`File uploaded: ${file.name} (${file.size} bytes) by ${email}`);
+    console.log(`File uploaded: ${validationResult.sanitizedName} (${file.size} bytes) by ${email}`);
     
     try {
-      await triggerGitHubProcessing(fileId, file.name, email, env);
+      await triggerGitHubProcessing(fileId, validationResult.sanitizedName, email, env);
       console.log('GitHub Actions workflow triggered successfully');
       
       return new Response(JSON.stringify({ 
