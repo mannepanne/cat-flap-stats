@@ -1,6 +1,47 @@
 // ABOUT: CloudFlare Workers main handler for Cat Flap Stats upload interface
 // ABOUT: Handles authentication, file uploads, and web interface serving
 
+// CORS headers for all responses
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Security headers for all HTML responses
+const securityHeaders = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' https://cdn.jsdelivr.net https://d3js.org 'unsafe-inline'",
+    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
+    "font-src https://fonts.gstatic.com",
+    "connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://api.resend.com",
+    "img-src 'self' data:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "report-uri /api/csp-report"
+  ].join('; '),
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-XSS-Protection': '1; mode=block'
+};
+
+// Helper function to create secure HTML responses
+function createSecureHtmlResponse(body, options = {}) {
+  const headers = {
+    'Content-Type': 'text/html',
+    ...securityHeaders,
+    ...corsHeaders,
+    ...options.headers
+  };
+  return new Response(body, { 
+    status: options.status || 200,
+    headers 
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -8,47 +49,6 @@ export default {
 
     // Enhanced logging for debugging
     console.log(`[${new Date().toISOString()}] ${request.method} ${url.pathname}`);
-
-    // CORS headers for all responses
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
-
-    // Security headers for all HTML responses
-    const securityHeaders = {
-      'Content-Security-Policy': [
-        "default-src 'self'",
-        "script-src 'self' https://cdn.jsdelivr.net https://d3js.org 'unsafe-inline'",
-        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
-        "font-src https://fonts.gstatic.com",
-        "connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://api.resend.com",
-        "img-src 'self' data:",
-        "frame-ancestors 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "report-uri /api/csp-report"
-      ].join('; '),
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'X-XSS-Protection': '1; mode=block'
-    };
-
-    // Helper function to create secure HTML responses
-    function createSecureHtmlResponse(body, options = {}) {
-      const headers = {
-        'Content-Type': 'text/html',
-        ...securityHeaders,
-        ...corsHeaders,
-        ...options.headers
-      };
-      return new Response(body, { 
-        status: options.status || 200,
-        headers 
-      });
-    }
 
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
