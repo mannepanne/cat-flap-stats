@@ -1,6 +1,9 @@
 // ABOUT: CloudFlare Workers main handler for Cat Flap Stats upload interface
 // ABOUT: Handles authentication, file uploads, and web interface serving
 
+// Import centralized configuration
+import { getConfig, getSecurityHeaders, getCacheHeaders, ANALYTICS_SETTINGS, UI_CONSTANTS } from '../config/settings.js';
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,28 +11,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// Security headers for all HTML responses
-const securityHeaders = {
-  'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self' https://cdn.jsdelivr.net https://d3js.org 'unsafe-inline'",
-    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
-    "font-src https://fonts.gstatic.com",
-    "connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://api.resend.com",
-    "img-src 'self' data:",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "report-uri /api/csp-report"
-  ].join('; '),
-  'X-Frame-Options': 'DENY',
-  'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'X-XSS-Protection': '1; mode=block'
-};
+// Security headers will be loaded from centralized configuration
+
+// Global env reference for configuration access (set in main fetch function)
+let currentEnv = null;
 
 // Helper function to create secure HTML responses
 function createSecureHtmlResponse(body, options = {}) {
+  const env = options.env || currentEnv;
+  const appConfig = getConfig(env);
+  const securityHeaders = getSecurityHeaders(appConfig);
   const headers = {
     'Content-Type': 'text/html',
     ...securityHeaders,
@@ -42,18 +33,14 @@ function createSecureHtmlResponse(body, options = {}) {
   });
 }
 
-// Rate limiting configuration
-const RATE_LIMITS = {
-  '/api/upload': { requests: 5, window: 3600 }, // 5 uploads per hour
-  '/api/annotations': { requests: 30, window: 3600 }, // 30 annotation ops per hour
-  'default': { requests: 100, window: 3600 } // 100 requests per hour for other APIs
-};
+// Rate limiting configuration will be loaded from centralized config
 
 // Rate limiting function using CloudFlare KV with sliding window
 async function checkRateLimit(email, endpoint, env) {
   const key = `rate_limit:${email}:${endpoint}`;
   const now = Date.now();
-  const config = RATE_LIMITS[endpoint] || RATE_LIMITS.default;
+  const appConfig = getConfig(env);
+  const config = appConfig.RATE_LIMITS[endpoint] || appConfig.RATE_LIMITS.default;
   
   try {
     // Get current request timestamps
@@ -105,8 +92,9 @@ async function checkRateLimit(email, endpoint, env) {
 }
 
 // Helper function to create rate limit error response
-function createRateLimitResponse(rateLimitResult, endpoint = 'default') {
-  const config = RATE_LIMITS[endpoint] || RATE_LIMITS.default;
+function createRateLimitResponse(rateLimitResult, endpoint = 'default', env) {
+  const appConfig = getConfig(env);
+  const config = appConfig.RATE_LIMITS[endpoint] || appConfig.RATE_LIMITS.default;
   const headers = {
     'Content-Type': 'application/json',
     'X-RateLimit-Limit': config.requests,
@@ -127,6 +115,9 @@ function createRateLimitResponse(rateLimitResult, endpoint = 'default') {
 
 export default {
   async fetch(request, env, ctx) {
+    // Set global env reference for configuration access
+    currentEnv = env;
+    
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -215,12 +206,13 @@ const AUTHORIZED_EMAILS = [
 
 async function generateAuthToken(email, env) {
   const token = crypto.randomUUID();
-  const expires = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+  const appConfig = getConfig(currentEnv);
+  const expires = Date.now() + appConfig.AUTH.MAGIC_LINK_EXPIRY;
   
   await env.CAT_FLAP_KV.put(`auth:${token}`, JSON.stringify({
     email,
     expires
-  }), { expirationTtl: 86400 }); // 24 hours TTL
+  }), { expirationTtl: appConfig.AUTH.TOKEN_TTL });
   
   return token;
 }
@@ -801,6 +793,7 @@ async function handleAuth(request, env) {
   }
   
   console.log(`Token validated for email: ${email}, setting cookie and redirecting to dashboard`);
+  const appConfig = getConfig(env);
   
   // Instead of immediate redirect, show success page with auto-redirect
   // This ensures the cookie gets set properly before the next request
@@ -826,7 +819,7 @@ async function handleAuth(request, env) {
 
   return createSecureHtmlResponse(successPage, {
     headers: {
-      'Set-Cookie': `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/`
+      'Set-Cookie': `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=${appConfig.AUTH.COOKIE_MAX_AGE}; Path=/`
     }
   });
 }
@@ -903,7 +896,8 @@ async function validatePDFFile(file) {
   }
   
   // 2. Size validation (10MB max)
-  const maxSize = 10 * 1024 * 1024;
+  const appConfig = getConfig(currentEnv);
+  const maxSize = appConfig.FILE_PROCESSING.MAX_FILE_SIZE;
   if (file.size > maxSize) {
     throw new Error('File too large (max 10MB)');
   }
@@ -970,10 +964,11 @@ async function handleApiUpload(request, env) {
   const rateLimitResult = await checkRateLimit(email, '/api/upload', env);
   if (!rateLimitResult.allowed) {
     console.log(`Rate limit exceeded for ${email} on /api/upload`);
-    return createRateLimitResponse(rateLimitResult, '/api/upload');
+    return createRateLimitResponse(rateLimitResult, '/api/upload', env);
   }
   
   try {
+    const appConfig = getConfig(env);
     const formData = await request.formData();
     const file = formData.get('pdf_file');
     
@@ -995,7 +990,7 @@ async function handleApiUpload(request, env) {
     const fileKey = `upload:${fileId}`;
     
     await env.CAT_FLAP_KV.put(fileKey, validationResult.fileBuffer, { 
-      expirationTtl: 3600, // 1 hour
+      expirationTtl: appConfig.FILE_PROCESSING.UPLOAD_TTL,
       metadata: {
         filename: validationResult.sanitizedName,
         originalFilename: file.name,
@@ -1565,12 +1560,12 @@ function calculateZeitgeberInfluence(sessions) {
   // Analyze how external time cues (sunrise/sunset) influence behavior
   const morningActivity = sessions.filter(s => {
     const hour = parseInt(s.exitTime.split(':')[0]);
-    return hour >= 5 && hour <= 10;
+    return hour >= ANALYTICS_SETTINGS.MORNING_START_HOUR && hour <= ANALYTICS_SETTINGS.MORNING_END_HOUR;
   }).length;
   
   const eveningActivity = sessions.filter(s => {
     const hour = parseInt(s.exitTime.split(':')[0]);
-    return hour >= 17 && hour <= 22;
+    return hour >= ANALYTICS_SETTINGS.EVENING_START_HOUR && hour <= ANALYTICS_SETTINGS.EVENING_END_HOUR;
   }).length;
   
   const totalActivity = sessions.length;
@@ -1587,9 +1582,13 @@ function calculateZeitgeberInfluence(sessions) {
 
 function getSeason(date) {
   const month = date.getMonth() + 1;
-  if (month >= 3 && month <= 5) return 'spring';
-  if (month >= 6 && month <= 8) return 'summer';
-  if (month >= 9 && month <= 11) return 'autumn';
+  const [springMin, , springMax] = ANALYTICS_SETTINGS.SPRING_MONTHS;
+  const [summerMin, , summerMax] = ANALYTICS_SETTINGS.SUMMER_MONTHS;
+  const [autumnMin, , autumnMax] = ANALYTICS_SETTINGS.AUTUMN_MONTHS;
+  
+  if (month >= springMin && month <= springMax) return 'spring';
+  if (month >= summerMin && month <= summerMax) return 'summer';
+  if (month >= autumnMin && month <= autumnMax) return 'autumn';
   return 'winter';
 }
 
@@ -3758,7 +3757,7 @@ async function handleAnnotationsApi(request, env) {
     const rateLimitResult = await checkRateLimit(email, '/api/annotations', env);
     if (!rateLimitResult.allowed) {
       console.log(`Rate limit exceeded for ${email} on /api/annotations`);
-      return createRateLimitResponse(rateLimitResult, '/api/annotations');
+      return createRateLimitResponse(rateLimitResult, '/api/annotations', env);
     }
   }
 

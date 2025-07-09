@@ -12,12 +12,16 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+# Import centralized configuration
+from config import settings
+
 
 class ProductionCatFlapExtractor:
     """Production-ready cat flap session extractor with comprehensive robustness features"""
     
     def __init__(self):
         self.extracted_data = []
+        self.config = settings  # Use centralized configuration
         self.errors = []
         self.warnings = []
         self.state_issues = []
@@ -227,7 +231,7 @@ class ProductionCatFlapExtractor:
             # Handle seconds
             elif 's' in duration_str:
                 secs_part = duration_str.split('s')[0].strip()
-                return float(secs_part) / 3600
+                return float(secs_part) / self.config.time_thresholds.SECONDS_PER_HOUR
         
         except:
             pass
@@ -540,13 +544,13 @@ class ProductionCatFlapExtractor:
                 reported_count = day_data['daily_visits']
                 difference = abs(extracted_count - reported_count)
                 
-                # Only flag significant mismatches (>2x or difference > 2)
-                if difference > 2 or (reported_count > 0 and extracted_count > reported_count * 2):
+                # Only flag significant mismatches (>configured ratio or difference > configured threshold)
+                if difference > self.config.validation.SIGNIFICANT_MISMATCH_THRESHOLD or (reported_count > 0 and extracted_count > reported_count * self.config.validation.MAX_VISIT_COUNT_RATIO):
                     self.state_issues.append(
                         f"{pdf_filename} - {date_str}: Significant mismatch - extracted {extracted_count} "
                         f"complete sessions but PDF reports {reported_count} visits (diff: {difference})"
                     )
-                elif difference > 1:
+                elif difference > self.config.validation.MINOR_MISMATCH_THRESHOLD:
                     # Minor mismatch - just note it
                     self.warnings.append(
                         f"{pdf_filename} - {date_str}: Minor visit count difference - "
@@ -577,14 +581,14 @@ class ProductionCatFlapExtractor:
             return "entry"  # fallback
         
         # Rule 3/4: Use timestamp + duration analysis
-        is_morning = timestamp_minutes < 12 * 60  # before 12:00
-        duration_under_12h = duration_hours < 12
+        is_morning = timestamp_minutes < self.config.time_thresholds.MORNING_HOUR_THRESHOLD * 60  # before configured morning threshold
+        duration_under_12h = duration_hours < self.config.time_thresholds.SHORT_DURATION_HOURS
         
         if is_morning and duration_under_12h:
             # Rule 3: Morning timestamp + short duration = ENTRY
             # (Duration matches time since midnight)
             expected_since_midnight = timestamp_minutes / 60
-            if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+            if abs(duration_hours - expected_since_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                 self.confidence_issues.append(
                     f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (since midnight pattern)"
                 )
@@ -595,9 +599,9 @@ class ProductionCatFlapExtractor:
         elif not is_morning and duration_under_12h:
             # Rule 4: Afternoon/evening timestamp + short duration = EXIT
             # (Duration matches time until midnight)
-            minutes_to_midnight = (24 * 60) - timestamp_minutes
+            minutes_to_midnight = self.config.time_thresholds.MINUTES_PER_DAY - timestamp_minutes
             expected_to_midnight = minutes_to_midnight / 60
-            if abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+            if abs(duration_hours - expected_to_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                 self.confidence_issues.append(
                     f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (until midnight pattern)"
                 )
@@ -606,21 +610,21 @@ class ProductionCatFlapExtractor:
                 return "entry"  # Afternoon entry with different duration
         
         # Long duration cases (>= 12h) - Rules 3b and 4b
-        if duration_hours >= 12:
+        if duration_hours >= self.config.time_thresholds.SHORT_DURATION_HOURS:
             if is_morning:
                 # Rule 3b: Morning timestamp + long duration
                 # Check if duration matches time since preceding midnight (ENTRY)
                 expected_since_midnight = timestamp_minutes / 60
                 # Check if duration matches time until following midnight (EXIT)  
-                minutes_to_midnight = (24 * 60) - timestamp_minutes
+                minutes_to_midnight = self.config.time_thresholds.MINUTES_PER_DAY - timestamp_minutes
                 expected_to_midnight = minutes_to_midnight / 60
                 
-                if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+                if abs(duration_hours - expected_since_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                     self.confidence_issues.append(
                         f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (long duration since midnight pattern)"
                     )
                     return "entry"
-                elif abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+                elif abs(duration_hours - expected_to_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                     self.confidence_issues.append(
                         f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (long duration until midnight pattern)"
                     )
@@ -633,15 +637,15 @@ class ProductionCatFlapExtractor:
                 # Check if duration matches time since preceding midnight (ENTRY)
                 expected_since_midnight = timestamp_minutes / 60  
                 # Check if duration matches time until following midnight (EXIT)
-                minutes_to_midnight = (24 * 60) - timestamp_minutes
+                minutes_to_midnight = self.config.time_thresholds.MINUTES_PER_DAY - timestamp_minutes
                 expected_to_midnight = minutes_to_midnight / 60
                 
-                if abs(duration_hours - expected_since_midnight) < 0.5:  # within 30 minutes
+                if abs(duration_hours - expected_since_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                     self.confidence_issues.append(
                         f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = ENTRY (long duration since midnight pattern)"
                     )
                     return "entry"
-                elif abs(duration_hours - expected_to_midnight) < 0.5:  # within 30 minutes
+                elif abs(duration_hours - expected_to_midnight) < self.config.time_thresholds.TOLERANCE_HOURS:  # within 30 minutes
                     self.confidence_issues.append(
                         f"{pdf_filename} - {date_str}: {timestamp} + {duration_str} = EXIT (long duration until midnight pattern)"
                     )
@@ -688,7 +692,7 @@ class ProductionCatFlapExtractor:
                     
                     if last_timestamp_mins and first_timestamp_mins:
                         # Check if last timestamp + duration ≈ time to midnight
-                        minutes_to_midnight = (24 * 60) - last_timestamp_mins
+                        minutes_to_midnight = self.config.time_thresholds.MINUTES_PER_DAY - last_timestamp_mins
                         duration_hours_today = self.parse_duration_hours(last_duration_today)
                         
                         # Check if first timestamp + duration ≈ time from midnight
@@ -740,7 +744,7 @@ class ProductionCatFlapExtractor:
             tomorrow_mins = self.parse_timestamp_to_minutes(tomorrow['timestamp'])
             
             if (today_mins and tomorrow_mins and 
-                today_mins > 20 * 60 and tomorrow_mins < 8 * 60):  # After 20:00 and before 08:00
+                today_mins > self.config.time_thresholds.LATE_EVENING_HOUR * 60 and tomorrow_mins < self.config.time_thresholds.EARLY_MORNING_HOUR * 60):  # After configured late evening and before configured early morning
                 
                 # Check duration patterns for Rule 5
                 today_duration = self.parse_duration_hours(today['duration'])
@@ -748,7 +752,7 @@ class ProductionCatFlapExtractor:
                 
                 if today_duration and tomorrow_duration:
                     # Check if durations match cross-midnight pattern
-                    mins_to_midnight = (24 * 60) - today_mins
+                    mins_to_midnight = self.config.time_thresholds.MINUTES_PER_DAY - today_mins
                     if (abs(today_duration - (mins_to_midnight / 60)) < 0.5 and
                         abs(tomorrow_duration - (tomorrow_mins / 60)) < 0.5):
                         
@@ -984,7 +988,7 @@ class ProductionCatFlapExtractor:
             prev_date, prev_file = dates[i-1]
             gap_days = (current_date - prev_date).days
             
-            if gap_days > 14:  # More than 2 weeks gap
+            if gap_days > self.config.validation.GAP_DETECTION_DAYS:  # More than configured gap threshold
                 self.warnings.append(
                     f"Large gap detected: {gap_days} days between {prev_file} and {current_file}. "
                     f"State tracking may be affected."
