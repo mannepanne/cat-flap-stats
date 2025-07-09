@@ -16,6 +16,40 @@ export default {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
+    // Security headers for all HTML responses
+    const securityHeaders = {
+      'Content-Security-Policy': [
+        "default-src 'self'",
+        "script-src 'self' https://cdn.jsdelivr.net https://d3js.org 'unsafe-inline'",
+        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
+        "font-src https://fonts.gstatic.com",
+        "connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://api.resend.com",
+        "img-src 'self' data:",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "report-uri /api/csp-report"
+      ].join('; '),
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-XSS-Protection': '1; mode=block'
+    };
+
+    // Helper function to create secure HTML responses
+    function createSecureHtmlResponse(body, options = {}) {
+      const headers = {
+        'Content-Type': 'text/html',
+        ...securityHeaders,
+        ...corsHeaders,
+        ...options.headers
+      };
+      return new Response(body, { 
+        status: options.status || 200,
+        headers 
+      });
+    }
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
@@ -66,6 +100,8 @@ export default {
           return await handleCircadianApi(request, env);
         case '/api/processing-metrics':
           return await handleProcessingMetricsApi(request, env);
+        case '/api/csp-report':
+          return await handleCspReport(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -642,9 +678,7 @@ async function handleHome(request, env) {
   }
   
   console.log('Showing login page');
-  return new Response(getLoginPage(), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getLoginPage());
 }
 
 async function handleLogin(request, env) {
@@ -660,9 +694,7 @@ async function handleLogin(request, env) {
   
   if (!email || !AUTHORIZED_EMAILS.includes(email)) {
     console.log(`Login failed: Invalid email ${email}`);
-    return new Response(getLoginPage('Invalid email address'), {
-      headers: { 'Content-Type': 'text/html' }
-    });
+    return createSecureHtmlResponse(getLoginPage('Invalid email address'));
   }
   
   console.log(`Generating auth token for authorized email: ${email}`);
@@ -670,9 +702,7 @@ async function handleLogin(request, env) {
   await sendMagicLink(email, token, env);
   
   console.log(`Magic link generated successfully for ${email}`);
-  return new Response(getLoginPage(`Magic link sent to ${email}!`), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getLoginPage(`Magic link sent to ${email}!`));
 }
 
 async function handleAuth(request, env) {
@@ -711,9 +741,8 @@ async function handleAuth(request, env) {
 </body>
 </html>`;
 
-  return new Response(successPage, {
+  return createSecureHtmlResponse(successPage, {
     headers: {
-      'Content-Type': 'text/html',
       'Set-Cookie': `auth_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=86400; Path=/`
     }
   });
@@ -758,9 +787,7 @@ async function handleDashboard(request, env) {
     console.error('Error fetching dashboard metrics:', error);
   }
   
-  return new Response(getDashboardPage(email, dashboardMetrics), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getDashboardPage(email, dashboardMetrics));
 }
 
 async function handleDownload(request, env) {
@@ -771,9 +798,7 @@ async function handleDownload(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getDownloadPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getDownloadPage(email));
 }
 
 async function handleUpload(request, env) {
@@ -784,9 +809,7 @@ async function handleUpload(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getUploadPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getUploadPage(email));
 }
 
 async function handleApiUpload(request, env) {
@@ -963,9 +986,7 @@ async function handlePatterns(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getPatternsPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getPatternsPage(email));
 }
 
 async function handleAnalyticsApi(request, env) {
@@ -1083,9 +1104,7 @@ async function handleCircadian(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getCircadianPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getCircadianPage(email));
 }
 
 async function handleCircadianApi(request, env) {
@@ -1159,9 +1178,7 @@ async function handleSeasonal(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getSeasonalPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getSeasonalPage(email));
 }
 
 async function handleHealth(request, env) {
@@ -1172,9 +1189,7 @@ async function handleHealth(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getHealthPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getHealthPage(email));
 }
 
 async function handleDataQuality(request, env) {
@@ -1185,9 +1200,7 @@ async function handleDataQuality(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  return new Response(getDataQualityPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getDataQualityPage(email));
 }
 
 // Advanced circadian rhythm analysis
@@ -3580,14 +3593,10 @@ async function handleAnnotations(request, env) {
   const email = await validateAuthToken(authToken, env);
   
   if (!email) {
-    return new Response(getLoginPage(), {
-      headers: { 'Content-Type': 'text/html' }
-    });
+    return createSecureHtmlResponse(getLoginPage());
   }
 
-  return new Response(getAnnotationsPage(email), {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return createSecureHtmlResponse(getAnnotationsPage(email));
 }
 
 async function handleAnnotationsApi(request, env) {
@@ -3814,6 +3823,30 @@ async function triggerAnnotationUpdate(env, annotations) {
     }
   } catch (error) {
     console.log('GitHub dispatch not available, using KV storage only:', error.message);
+  }
+}
+
+async function handleCspReport(request, env) {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const cspReport = await request.json();
+    
+    // Log CSP violations for monitoring
+    console.log('CSP Violation Report:', JSON.stringify(cspReport, null, 2));
+    
+    // In production, you might want to store these in KV or send to monitoring service
+    // For now, we'll just log them
+    
+    return new Response('OK', { 
+      status: 204,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  } catch (error) {
+    console.error('Error processing CSP report:', error);
+    return new Response('Bad Request', { status: 400 });
   }
 }
 
