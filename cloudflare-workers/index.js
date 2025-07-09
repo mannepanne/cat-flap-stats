@@ -3896,9 +3896,8 @@ async function handleCspReport(request, env) {
     // In production, you might want to store these in KV or send to monitoring service
     // For now, we'll just log them
     
-    return new Response('OK', { 
-      status: 204,
-      headers: { 'Content-Type': 'text/plain' }
+    return new Response(null, { 
+      status: 204
     });
   } catch (error) {
     console.error('Error processing CSP report:', error);
