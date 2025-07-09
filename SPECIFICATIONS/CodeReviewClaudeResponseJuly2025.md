@@ -436,8 +436,8 @@ The existing Gemini code review correctly identifies this as exceptional softwar
 **Recommended Immediate Actions:**
 1. ✅ **COMPLETED**: Implement CSP headers (security) - Merged to main
 2. ✅ **COMPLETED**: Enhanced input validation (security) - Merged to main
-3. ✅ **COMPLETED**: Fix CSP violation reporting (security) - Branch: `fix/csp-report-handler`
-4. 🔄 **IN PROGRESS**: Implement rate limiting (security) - Next implementation
+3. ✅ **COMPLETED**: Fix CSP violation reporting (security) - Merged to main
+4. ✅ **COMPLETED**: Implement rate limiting (security) - Deployed to production
 5. Centralize configuration management (maintainability)
 6. Add performance regression tests (quality assurance)
 
@@ -454,6 +454,13 @@ The existing Gemini code review correctly identifies this as exceptional softwar
 - Filename sanitization preventing directory traversal attacks
 - File type spoofing prevention through signature validation
 - Comprehensive security logging for monitoring
+
+**Rate Limiting Implementation:**
+- Sliding window rate limiting using CloudFlare KV storage
+- Endpoint-specific limits: Upload (5/hour), Annotations (30/hour), Default (100/hour)
+- Proper HTTP 429 responses with Retry-After headers
+- Rate limiting applied to write operations (POST/PUT/DELETE) while preserving read access
+- Graceful degradation with fail-open strategy for system resilience
 
 **Production Status:** All security enhancements deployed and tested at https://cat-flap-stats.herrings.workers.dev
 

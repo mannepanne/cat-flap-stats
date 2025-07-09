@@ -42,6 +42,89 @@ function createSecureHtmlResponse(body, options = {}) {
   });
 }
 
+// Rate limiting configuration
+const RATE_LIMITS = {
+  '/api/upload': { requests: 5, window: 3600 }, // 5 uploads per hour
+  '/api/annotations': { requests: 30, window: 3600 }, // 30 annotation ops per hour
+  'default': { requests: 100, window: 3600 } // 100 requests per hour for other APIs
+};
+
+// Rate limiting function using CloudFlare KV with sliding window
+async function checkRateLimit(email, endpoint, env) {
+  const key = `rate_limit:${email}:${endpoint}`;
+  const now = Date.now();
+  const config = RATE_LIMITS[endpoint] || RATE_LIMITS.default;
+  
+  try {
+    // Get current request timestamps
+    const requestsJson = await env.CAT_FLAP_KV.get(key);
+    const requests = requestsJson ? JSON.parse(requestsJson) : [];
+    
+    // Remove expired requests (sliding window)
+    const validRequests = requests.filter(timestamp => 
+      now - timestamp < config.window * 1000
+    );
+    
+    // Check if limit exceeded
+    if (validRequests.length >= config.requests) {
+      const oldestRequest = Math.min(...validRequests);
+      const resetTime = oldestRequest + (config.window * 1000);
+      
+      return { 
+        allowed: false, 
+        remaining: 0, 
+        resetTime: resetTime,
+        retryAfter: Math.ceil((resetTime - now) / 1000)
+      };
+    }
+    
+    // Add current request
+    validRequests.push(now);
+    
+    // Store updated requests
+    await env.CAT_FLAP_KV.put(key, JSON.stringify(validRequests), {
+      expirationTtl: config.window
+    });
+    
+    return {
+      allowed: true,
+      remaining: config.requests - validRequests.length,
+      resetTime: now + (config.window * 1000),
+      retryAfter: 0
+    };
+  } catch (error) {
+    console.error('Rate limiting error:', error);
+    // Fail open - allow the request if rate limiting fails
+    return {
+      allowed: true,
+      remaining: 999,
+      resetTime: now + (config.window * 1000),
+      retryAfter: 0
+    };
+  }
+}
+
+// Helper function to create rate limit error response
+function createRateLimitResponse(rateLimitResult, endpoint = 'default') {
+  const config = RATE_LIMITS[endpoint] || RATE_LIMITS.default;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-RateLimit-Limit': config.requests,
+    'X-RateLimit-Remaining': rateLimitResult.remaining,
+    'X-RateLimit-Reset': Math.floor(rateLimitResult.resetTime / 1000),
+    'Retry-After': rateLimitResult.retryAfter
+  };
+  
+  return new Response(JSON.stringify({
+    error: 'Rate limit exceeded',
+    message: `Too many requests. Try again in ${rateLimitResult.retryAfter} seconds.`,
+    retryAfter: rateLimitResult.retryAfter
+  }), {
+    status: 429,
+    headers
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -881,6 +964,13 @@ async function handleApiUpload(request, env) {
   
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+  
+  // Rate limiting check
+  const rateLimitResult = await checkRateLimit(email, '/api/upload', env);
+  if (!rateLimitResult.allowed) {
+    console.log(`Rate limit exceeded for ${email} on /api/upload`);
+    return createRateLimitResponse(rateLimitResult, '/api/upload');
   }
   
   try {
@@ -3661,6 +3751,15 @@ async function handleAnnotationsApi(request, env) {
   
   if (!email) {
     return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Rate limiting check for write operations
+  if (['POST', 'PUT', 'DELETE'].includes(request.method)) {
+    const rateLimitResult = await checkRateLimit(email, '/api/annotations', env);
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for ${email} on /api/annotations`);
+      return createRateLimitResponse(rateLimitResult, '/api/annotations');
+    }
   }
 
   if (request.method === 'GET') {
