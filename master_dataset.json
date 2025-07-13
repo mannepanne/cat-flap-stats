@@ -10668,15 +10668,6 @@
         }
       },
       "weekdayPatterns": {
-        "weekdays": {
-          "avgFirstExit": "06:11",
-          "avgLastEntry": "17:03"
-        },
-        "weekends": {
-          "avgFirstExit": "05:16",
-          "avgLastEntry": "14:08"
-        }
-      },
       "durationAnomalies": {
         "anomalies": [
           {
