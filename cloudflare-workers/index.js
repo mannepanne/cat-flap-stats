@@ -2244,7 +2244,17 @@ function getPatternsPage(email) {
         
         <div class="card">
             <h3>🕐 Chronobiological Actogram</h3>
-            <p>Scientific visualization showing Sven's daily activity patterns over time. Each row represents one day, with time of day on the horizontal axis.</p>
+            <p>Scientific visualization showing Sven's daily activity patterns over the last 30 days. Each row represents one day, with time of day on the horizontal axis.</p>
+            <div class="interpretation-guide">
+                <h4>📖 How to Read This Chart:</h4>
+                <ul>
+                    <li><strong>Look for vertical lines of activity</strong> - consistent timing patterns show healthy routines</li>
+                    <li><strong>Red dots</strong> = first exit of the day (morning activity)</li>
+                    <li><strong>Teal dots</strong> = last entry of the day (evening activity)</li>
+                    <li><strong>Gray areas</strong> = nighttime periods (6PM-6AM)</li>
+                    <li><strong>Pattern changes</strong> are highlighted with callouts when significant</li>
+                </ul>
+            </div>
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #ff6b6b;"></div>
@@ -2784,12 +2794,12 @@ function getPatternsPage(email) {
                 return;
             }
             
-            // Take last 60 days for better performance
-            const recentDays = dailySummaries.slice(-60);
+            // Take last 30 days for better readability and focus
+            const recentDays = dailySummaries.slice(-30);
             
             const margin = { top: 20, right: 30, bottom: 40, left: 100 };
             const width = Math.max(800, container.clientWidth) - margin.left - margin.right;
-            const height = recentDays.length * 15; // 15 pixels per day
+            const height = recentDays.length * 25; // 25 pixels per day for better visibility
             
             const svg = d3.select(container)
                 .append('svg')
