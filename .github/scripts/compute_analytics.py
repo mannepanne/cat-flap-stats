@@ -5,11 +5,39 @@ ABOUT: Generates statistical summaries and patterns for dashboard visualization
 """
 
 import json
-import pandas as pd
 from datetime import datetime, timedelta
-import numpy as np
 from collections import defaultdict
 import math
+
+# Try to import pandas and numpy - they're required for most functionality but not for basic imports
+try:
+    import pandas as pd
+    import numpy as np
+    PANDAS_AVAILABLE = True
+except ImportError:
+    print("Warning: pandas/numpy not available - some functionality will be limited")
+    PANDAS_AVAILABLE = False
+    # Create minimal stubs for basic functionality
+    class pd:
+        @staticmethod
+        def isna(value):
+            return value is None or (isinstance(value, float) and (math.isnan(value) or math.isinf(value)))
+        @staticmethod
+        def notna(value):
+            return not pd.isna(value)
+        @staticmethod
+        def read_csv(path):
+            raise ImportError("pandas not available")
+    class np:
+        @staticmethod
+        def mean(values):
+            return sum(values) / len(values) if values else 0
+        @staticmethod
+        def std(values):
+            if not values:
+                return 0
+            mean_val = np.mean(values)
+            return math.sqrt(sum((x - mean_val) ** 2 for x in values) / len(values))
 
 class CatFlapAnalytics:
     """Compute behavioral analytics from cat flap session data"""
@@ -22,11 +50,13 @@ class CatFlapAnalytics:
         # Flatten session data for analysis
         self.sessions = []
         
-        # Always use CSV for now to ensure clean data
-        print("Using CSV for data source...")
+        # Try CSV first for clean data, fallback to JSON parsing
         csv_file = json_path.replace('.json', '.csv')
+        csv_loaded = False
+        
         try:
             import pandas as pd
+            print("Using CSV for data source...")
             df = pd.read_csv(csv_file)
             # Convert CSV back to session format for analysis
             for _, row in df.iterrows():
@@ -38,9 +68,24 @@ class CatFlapAnalytics:
                     'pet_name': row.get('pet_name', 'Sven')
                 }
                 self.sessions.append(session)
+            csv_loaded = True
         except Exception as e:
-            print(f"Could not load CSV: {e}")
-            return
+            print(f"Could not load CSV: {e}, falling back to JSON parsing...")
+            
+        # Fallback to JSON parsing if CSV failed
+        if not csv_loaded:
+            # Check if data is in raw format (list) or enhanced format (dict with precomputed)
+            if isinstance(self.data, list):
+                # Raw format
+                self._extract_sessions(self.data)
+            elif isinstance(self.data, dict) and 'precomputed' in self.data:
+                # Enhanced format - try to extract from sessions if available
+                if 'sessions' in self.data:
+                    self.sessions = self.data['sessions']
+                else:
+                    print("Warning: Enhanced format without raw sessions data")
+            else:
+                print(f"Unknown data format: {type(self.data)}")
         
         print(f"Loaded {len(self.sessions)} sessions for analysis")
         
