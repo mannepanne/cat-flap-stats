@@ -2486,37 +2486,55 @@ function getPatternsPage(email) {
             
             const messages = {
                 'all': 'Showing all-time activity patterns (average events per day)',
-                '3months': 'Showing last 3 months activity patterns (average events per day)',
-                '30days': 'Showing last 30 days activity patterns (average events per day)',
-                '7days': 'Showing last 7 days activity patterns (average events per day)'
+                '3months': 'Showing last 3 months of data (average events per day)',
+                '30days': 'Showing last 30 days of data (average events per day)', 
+                '7days': 'Showing last 7 days of data (average events per day)'
             };
             
             comparisonElement.textContent = messages[period] || messages['all'];
         }
         
         function filterDataByTimePeriod(data, period) {
-            const now = new Date();
+            // Use the latest date in the dataset as reference instead of current date
+            const dailySummaries = data.precomputed.dailySummaries;
+            if (dailySummaries.length === 0) return [];
+            
+            // Find the latest date in the dataset
+            const latestDate = new Date(dailySummaries[dailySummaries.length - 1].date);
             let cutoffDate;
             
             switch (period) {
                 case '7days':
-                    cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    cutoffDate = new Date(latestDate.getTime() - 6 * 24 * 60 * 60 * 1000); // 7 days including latest
                     break;
                 case '30days':
-                    cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    cutoffDate = new Date(latestDate.getTime() - 29 * 24 * 60 * 60 * 1000); // 30 days including latest
                     break;
                 case '3months':
-                    cutoffDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+                    cutoffDate = new Date(latestDate.getFullYear(), latestDate.getMonth() - 3, latestDate.getDate());
                     break;
                 case 'all':
                 default:
-                    return data.precomputed.dailySummaries;
+                    return dailySummaries;
             }
             
-            return data.precomputed.dailySummaries.filter(day => {
+            const filteredData = dailySummaries.filter(day => {
                 const dayDate = new Date(day.date);
                 return dayDate >= cutoffDate;
             });
+            
+            // Debug logging
+            console.log('Filtering for ' + period + ':');
+            console.log('Latest date in dataset: ' + latestDate.toISOString());
+            console.log('Cutoff date: ' + cutoffDate.toISOString());
+            console.log('Total days in dataset: ' + dailySummaries.length);
+            console.log('Days after filtering: ' + filteredData.length);
+            if (filteredData.length > 0) {
+                console.log('First filtered day: ' + filteredData[0].date);
+                console.log('Last filtered day: ' + filteredData[filteredData.length - 1].date);
+            }
+            
+            return filteredData;
         }
         
         function updatePeakHoursChartWithPeriod(data, period) {
