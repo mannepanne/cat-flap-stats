@@ -2485,10 +2485,10 @@ function getPatternsPage(email) {
             if (!comparisonElement) return;
             
             const messages = {
-                'all': 'Showing all-time activity patterns (average events per day)',
-                '3months': 'Showing last 3 months of data (average events per day)',
-                '30days': 'Showing last 30 days of data (average events per day)', 
-                '7days': 'Showing last 7 days of data (average events per day)'
+                'all': 'Showing all-time activity patterns (average events per hour of day)',
+                '3months': 'Showing last 3 months of data (average events per hour of day)',
+                '30days': 'Showing last 30 days of data (average events per hour of day)', 
+                '7days': 'Showing last 7 days of data (average events per hour of day)'
             };
             
             comparisonElement.textContent = messages[period] || messages['all'];
@@ -2653,7 +2653,7 @@ function getPatternsPage(email) {
                 .attr('x', 0 - (height / 2))
                 .attr('dy', '1em')
                 .style('text-anchor', 'middle')
-                .text('Events per Day');
+                .text('Events per Hour of Day');
             
             g.append('text')
                 .attr('transform', \`translate(\${width / 2}, \${height + margin.bottom})\`)
