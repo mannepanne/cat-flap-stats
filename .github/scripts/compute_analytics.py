@@ -119,7 +119,7 @@ class CatFlapAnalytics:
             return
             
         self.df = pd.DataFrame(self.sessions)
-        if not self.df.empty:
+        if self.df is not None and not self.df.empty:
             self.df['date_full'] = pd.to_datetime(self.df['date_full'])
             # Add helper columns
             self.df['weekday'] = self.df['date_full'].dt.day_name()
@@ -193,7 +193,7 @@ class CatFlapAnalytics:
     
     def compute_daily_summaries(self):
         """Compute daily activity summaries"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return []
         
         daily_groups = self.df.groupby('date_full')
@@ -224,7 +224,7 @@ class CatFlapAnalytics:
     
     def compute_peak_hours(self):
         """Compute peak activity hours"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return []
         
         # Count exits and entries by hour
@@ -254,7 +254,7 @@ class CatFlapAnalytics:
     
     def compute_seasonal_stats(self):
         """Compute comprehensive seasonal behavioral statistics"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return {}
         
         try:
@@ -593,7 +593,7 @@ class CatFlapAnalytics:
     
     def compute_weekday_patterns(self):
         """Compute weekday vs weekend patterns"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return {}
         
         patterns = {}
@@ -644,7 +644,7 @@ class CatFlapAnalytics:
     
     def compute_duration_anomalies(self):
         """Compute duration-based health anomalies using statistical thresholds"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return {
                 'anomalies': [],
                 'baselines': {},
@@ -770,7 +770,7 @@ class CatFlapAnalytics:
 
     def compute_data_quality(self):
         """Compute data quality metrics"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return {
                 'completeDays': 0,
                 'partialDays': 0,
@@ -794,7 +794,7 @@ class CatFlapAnalytics:
     
     def compute_dashboard_metrics(self):
         """Compute 21-day rolling window dashboard metrics"""
-        if self.df.empty:
+        if self.df is None or self.df.empty:
             return {
                 'peak_hours_21day': [],
                 'time_outside_21day': [],
