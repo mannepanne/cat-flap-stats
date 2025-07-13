@@ -1972,6 +1972,80 @@ function getPatternsPage(email) {
             pointer-events: none;
             z-index: 1000;
         }
+        
+        /* Activity Averages Widget Styles */
+        .activity-averages-container {
+            padding: 1rem 0;
+        }
+        .activity-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .nav-btn:hover {
+            background: #5a6fd8;
+        }
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        .current-period {
+            font-weight: 500;
+            font-size: 1.1rem;
+            color: #333;
+            min-width: 120px;
+            text-align: center;
+        }
+        .activity-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .activity-stat {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .activity-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .activity-value {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .trend-indicator {
+            font-size: 1rem;
+            font-weight: normal;
+        }
+        .trend-up { color: #28a745; }
+        .trend-down { color: #dc3545; }
+        .trend-stable { color: #6c757d; }
     </style>
 </head>
 <body>
@@ -2012,16 +2086,19 @@ function getPatternsPage(email) {
             <div class="stat-card">
                 <div class="info-icon">
                     i
-                    <div class="tooltip">
-                        <strong>Data Quality: 89%</strong><br><br>
-                        Based on days with complete behavioral data (≥2 sessions per day).<br><br>
-                        <strong>Formula:</strong> Complete days ÷ Total days<br>
-                        <strong>Current:</strong> 404 complete days out of 455 total days<br><br>
-                        There will always be some incomplete days due to alternative entry/exit methods, weather, mood, or other factors. This is a very high confidence score for behavioral analysis!
+                    <div class="tooltip" id="pattern-change-tooltip">
+                        <strong>Recent Pattern Changes</strong><br><br>
+                        Shows the most significant behavioral change detected in the last 30 days compared to the previous 30 days.<br><br>
+                        <strong>Types of changes tracked:</strong><br>
+                        • Peak activity hour shifts<br>
+                        • Activity level increases/decreases<br>
+                        • Timing pattern changes<br>
+                        • Routine disruptions<br><br>
+                        This helps identify important behavioral trends that may need attention.
                     </div>
                 </div>
-                <div class="stat-number" id="data-quality">0%</div>
-                <div class="stat-label">Data Quality</div>
+                <div class="stat-number" id="pattern-change">Loading...</div>
+                <div class="stat-label">Biggest Recent Change</div>
             </div>
         </div>
         
@@ -2043,18 +2120,39 @@ function getPatternsPage(email) {
             </div>
         </div>
         
-        <div class="section-grid">
-            <div class="card">
-                <h3>📅 Weekday vs Weekend Patterns</h3>
-                <div class="chart-container" id="weekday-patterns-chart">
-                    <div class="loading">Loading weekday patterns...</div>
-                </div>
-            </div>
+        <div class="card">
+            <h3>📊 Activity Averages</h3>
+            <p>Compare activity patterns across different time periods. Use the navigation to cycle through weekdays, weekends, and seasons.</p>
             
-            <div class="card">
-                <h3>🌱 Seasonal Activity Patterns</h3>
-                <div class="chart-container" id="seasonal-patterns-chart">
-                    <div class="loading">Loading seasonal patterns...</div>
+            <div class="activity-averages-container">
+                <div class="activity-nav">
+                    <button class="nav-btn" id="prev-period">←</button>
+                    <span class="current-period" id="current-period">Weekdays</span>
+                    <button class="nav-btn" id="next-period">→</button>
+                </div>
+                
+                <div class="activity-stats">
+                    <div class="activity-stat">
+                        <div class="activity-label">First Exit</div>
+                        <div class="activity-value">
+                            <span id="first-exit-time">--:--</span>
+                            <span class="trend-indicator" id="first-exit-trend"></span>
+                        </div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-label">Last Entry</div>
+                        <div class="activity-value">
+                            <span id="last-entry-time">--:--</span>
+                            <span class="trend-indicator" id="last-entry-trend"></span>
+                        </div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-label">Avg Sessions</div>
+                        <div class="activity-value">
+                            <span id="avg-period-sessions">--</span>
+                            <span class="trend-indicator" id="sessions-trend"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2127,8 +2225,6 @@ function getPatternsPage(email) {
                 analyticsData = data;
                 updateSummaryStats(data);
                 renderPeakHoursChart(data.precomputed.peakHours);
-                renderWeekdayPatternsChart(data.precomputed.weekdayPatterns);
-                renderSeasonalPatternsChart(data.precomputed.seasonalStats);
                 
                 // Load annotations separately (optional)
                 console.log('Loading annotations...');
@@ -2159,7 +2255,9 @@ function getPatternsPage(email) {
         function updateSummaryStats(data) {
             const totalDaysAnalyzed = data.precomputed.dailySummaries.length;
             document.getElementById('total-days').textContent = totalDaysAnalyzed;
-            document.getElementById('data-quality').textContent = Math.round(data.metadata.dataQuality.confidenceScore * 100) + '%';
+            
+            // Calculate biggest recent pattern change
+            calculatePatternChange(data);
             
             // Update Days Analyzed tooltip with real data
             if (data.metadata && data.metadata.dateRange) {
@@ -2198,6 +2296,113 @@ function getPatternsPage(email) {
             // Calculate average daily sessions
             const avgSessions = data.precomputed.dailySummaries.reduce((sum, day) => sum + day.sessions, 0) / data.precomputed.dailySummaries.length;
             document.getElementById('avg-sessions').textContent = avgSessions.toFixed(1);
+            
+            // Initialize activity averages widget
+            initializeActivityAverages(data);
+        }
+        
+        function calculatePatternChange(data) {
+            // Simple pattern change detection - compare recent vs older data
+            const dailySummaries = data.precomputed.dailySummaries;
+            const totalDays = dailySummaries.length;
+            
+            if (totalDays < 60) {
+                document.getElementById('pattern-change').textContent = 'Need more data';
+                return;
+            }
+            
+            // Split into recent 30 days vs previous 30 days
+            const recent30 = dailySummaries.slice(-30);
+            const previous30 = dailySummaries.slice(-60, -30);
+            
+            // Calculate averages for comparison
+            const recentAvgSessions = recent30.reduce((sum, day) => sum + day.sessions, 0) / 30;
+            const previousAvgSessions = previous30.reduce((sum, day) => sum + day.sessions, 0) / 30;
+            
+            const sessionChange = ((recentAvgSessions - previousAvgSessions) / previousAvgSessions) * 100;
+            
+            // Check for peak hour shift
+            const peakHours = data.precomputed.peakHours;
+            const maxActivity = Math.max(...peakHours.map(h => h.exitFrequency + h.entryFrequency));
+            const currentPeakHour = peakHours.find(h => (h.exitFrequency + h.entryFrequency) === maxActivity);
+            
+            // Determine the most significant change
+            let changeText = '';
+            if (Math.abs(sessionChange) > 15) {
+                const direction = sessionChange > 0 ? 'increased' : 'decreased';
+                changeText = 'Activity ' + direction + ' ' + Math.abs(sessionChange).toFixed(0) + '%';
+            } else {
+                changeText = 'Patterns stable';
+            }
+            
+            document.getElementById('pattern-change').textContent = changeText;
+        }
+        
+        // Activity averages widget state
+        let currentPeriodIndex = 0;
+        const periods = ['weekdays', 'weekends', 'spring', 'summer', 'autumn', 'winter'];
+        const periodNames = ['Weekdays', 'Weekends', 'Spring', 'Summer', 'Autumn', 'Winter'];
+        
+        function initializeActivityAverages(data) {
+            // Set up navigation event listeners
+            document.getElementById('prev-period').addEventListener('click', () => {
+                currentPeriodIndex = (currentPeriodIndex - 1 + periods.length) % periods.length;
+                updateActivityAveragesDisplay(data);
+            });
+            
+            document.getElementById('next-period').addEventListener('click', () => {
+                currentPeriodIndex = (currentPeriodIndex + 1) % periods.length;
+                updateActivityAveragesDisplay(data);
+            });
+            
+            // Initial display
+            updateActivityAveragesDisplay(data);
+        }
+        
+        function updateActivityAveragesDisplay(data) {
+            const currentPeriod = periods[currentPeriodIndex];
+            const periodName = periodNames[currentPeriodIndex];
+            
+            document.getElementById('current-period').textContent = periodName;
+            
+            let periodData;
+            if (currentPeriod === 'weekdays' || currentPeriod === 'weekends') {
+                periodData = data.precomputed.weekdayPatterns[currentPeriod];
+            } else {
+                // Seasonal data
+                periodData = data.precomputed.seasonalStats[currentPeriod];
+                if (periodData && periodData.timing_metrics) {
+                    // Transform seasonal data structure to match weekday structure
+                    periodData = {
+                        avgFirstExit: periodData.timing_metrics.avg_first_exit,
+                        avgLastEntry: periodData.timing_metrics.avg_last_entry
+                    };
+                    // Add average sessions from frequency metrics
+                    if (periodData.frequency_metrics) {
+                        periodData.avgSessions = periodData.frequency_metrics.avg_daily_sessions;
+                    }
+                }
+            }
+            
+            if (periodData) {
+                document.getElementById('first-exit-time').textContent = periodData.avgFirstExit || '--:--';
+                document.getElementById('last-entry-time').textContent = periodData.avgLastEntry || '--:--';
+                document.getElementById('avg-period-sessions').textContent = 
+                    periodData.avgSessions ? periodData.avgSessions.toFixed(1) : '--';
+                
+                // TODO: Add trend indicators (requires historical comparison data)
+                document.getElementById('first-exit-trend').textContent = '';
+                document.getElementById('last-entry-trend').textContent = '';
+                document.getElementById('sessions-trend').textContent = '';
+            } else {
+                // No data available for this period
+                document.getElementById('first-exit-time').textContent = '--:--';
+                document.getElementById('last-entry-time').textContent = '--:--';
+                document.getElementById('avg-period-sessions').textContent = '--';
+                document.getElementById('first-exit-trend').textContent = '';
+                document.getElementById('last-entry-trend').textContent = '';
+                document.getElementById('sessions-trend').textContent = '';
+            }
         }
         
         function renderPeakHoursChart(peakHours) {
@@ -2270,62 +2475,6 @@ function getPatternsPage(email) {
                 .attr('transform', \`translate(\${width / 2}, \${height + margin.bottom})\`)
                 .style('text-anchor', 'middle')
                 .text('Hour of Day');
-        }
-        
-        function renderWeekdayPatternsChart(patterns) {
-            const container = document.getElementById('weekday-patterns-chart');
-            container.innerHTML = '';
-            
-            if (!patterns.weekdays || !patterns.weekends) {
-                container.innerHTML = '<p style="text-align: center; color: #666;">No weekday pattern data available</p>';
-                return;
-            }
-            
-            const data = [
-                { type: 'Weekdays', firstExit: patterns.weekdays.avgFirstExit, lastEntry: patterns.weekdays.avgLastEntry },
-                { type: 'Weekends', firstExit: patterns.weekends.avgFirstExit, lastEntry: patterns.weekends.avgLastEntry }
-            ];
-            
-            container.innerHTML = \`
-                <div style="padding: 1rem;">
-                    <div style="margin-bottom: 1rem;">
-                        <strong>Weekdays (Mon-Fri):</strong><br>
-                        First exit: \${patterns.weekdays.avgFirstExit}<br>
-                        Last entry: \${patterns.weekdays.avgLastEntry}
-                    </div>
-                    <div>
-                        <strong>Weekends (Sat-Sun):</strong><br>
-                        First exit: \${patterns.weekends.avgFirstExit}<br>
-                        Last entry: \${patterns.weekends.avgLastEntry}
-                    </div>
-                </div>
-            \`;
-        }
-        
-        function renderSeasonalPatternsChart(seasonalStats) {
-            const container = document.getElementById('seasonal-patterns-chart');
-            container.innerHTML = '';
-            
-            let html = '<div style="padding: 1rem;">';
-            for (const [season, stats] of Object.entries(seasonalStats)) {
-                const seasonEmoji = {
-                    spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️'
-                };
-                
-                // Handle both old and new seasonal data formats
-                const avgSessions = stats.frequency_metrics?.avg_daily_sessions || stats.avgDailySessions || 'N/A';
-                const avgFirstExit = stats.timing_metrics?.avg_first_exit || stats.avgFirstExit || 'N/A';
-                
-                html += \`
-                    <div style="margin-bottom: 1rem;">
-                        <strong>\${seasonEmoji[season] || ''} \${season.charAt(0).toUpperCase() + season.slice(1)}:</strong><br>
-                        Avg sessions: \${typeof avgSessions === 'number' ? avgSessions.toFixed(1) : avgSessions}<br>
-                        Avg first exit: \${avgFirstExit}
-                    </div>
-                \`;
-            }
-            html += '</div>';
-            container.innerHTML = html;
         }
         
         function renderActogram(dailySummaries, annotations = [], healthAnomalies = []) {
