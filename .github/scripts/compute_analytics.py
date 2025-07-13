@@ -22,37 +22,25 @@ class CatFlapAnalytics:
         # Flatten session data for analysis
         self.sessions = []
         
-        # Check if this is the enhanced format with metadata/precomputed
-        if isinstance(self.data, dict) and 'precomputed' in self.data:
-            print("Enhanced format detected, using raw data file for detailed analysis...")
-            # Try to find the raw data file
-            raw_file = json_path.replace('master_dataset.json', 'full_production_dataset.json')
-            try:
-                with open(raw_file, 'r') as f:
-                    raw_data = json.load(f)
-                self._extract_sessions(raw_data)
-            except FileNotFoundError:
-                print(f"Raw data file {raw_file} not found, using CSV...")
-                csv_file = json_path.replace('.json', '.csv')
-                try:
-                    import pandas as pd
-                    df = pd.read_csv(csv_file)
-                    # Convert CSV back to session format for analysis
-                    for _, row in df.iterrows():
-                        session = {
-                            'date_full': row['date_full'],
-                            'exit_time': row.get('exit_time', '') if pd.notna(row.get('exit_time', '')) else '',
-                            'entry_time': row.get('entry_time', '') if pd.notna(row.get('entry_time', '')) else '',
-                            'duration': row.get('duration', '') if pd.notna(row.get('duration', '')) else '',
-                            'pet_name': row.get('pet_name', 'Sven')
-                        }
-                        self.sessions.append(session)
-                except Exception as e:
-                    print(f"Could not load CSV: {e}")
-                    return
-        else:
-            # Original format
-            self._extract_sessions(self.data)
+        # Always use CSV for now to ensure clean data
+        print("Using CSV for data source...")
+        csv_file = json_path.replace('.json', '.csv')
+        try:
+            import pandas as pd
+            df = pd.read_csv(csv_file)
+            # Convert CSV back to session format for analysis
+            for _, row in df.iterrows():
+                session = {
+                    'date_full': row['date_full'],
+                    'exit_time': row.get('exit_time', '') if pd.notna(row.get('exit_time', '')) else '',
+                    'entry_time': row.get('entry_time', '') if pd.notna(row.get('entry_time', '')) else '',
+                    'duration': row.get('duration', '') if pd.notna(row.get('duration', '')) else '',
+                    'pet_name': row.get('pet_name', 'Sven')
+                }
+                self.sessions.append(session)
+        except Exception as e:
+            print(f"Could not load CSV: {e}")
+            return
         
         print(f"Loaded {len(self.sessions)} sessions for analysis")
         
