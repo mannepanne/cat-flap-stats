@@ -2057,6 +2057,7 @@ function getPatternsPage(email) {
             background: #f8f9fa;
             border-radius: 8px;
             border: 1px solid #e9ecef;
+            flex-wrap: wrap;
         }
         .time-period-selector label {
             font-weight: 500;
@@ -2086,6 +2087,27 @@ function getPatternsPage(email) {
             color: #666;
             font-size: 0.95rem;
             font-style: italic;
+        }
+        .period-metrics {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            padding-left: 1rem;
+            border-left: 1px solid #ddd;
+        }
+        .period-metric {
+            text-align: center;
+        }
+        .period-metric-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        .period-metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
         }
     </style>
 </head>
@@ -2153,6 +2175,16 @@ function getPatternsPage(email) {
                     <option value="30days">Last 30 Days</option>
                     <option value="7days">Last 7 Days</option>
                 </select>
+                <div class="period-metrics">
+                    <div class="period-metric">
+                        <div class="period-metric-label">Peak Activity Hour</div>
+                        <div class="period-metric-value" id="period-peak-hour">--:--</div>
+                    </div>
+                    <div class="period-metric">
+                        <div class="period-metric-label">Avg Daily Sessions</div>
+                        <div class="period-metric-value" id="period-avg-sessions">--</div>
+                    </div>
+                </div>
                 <div class="comparison-info" id="comparison-info">
                     <span id="period-comparison">Showing all-time activity patterns</span>
                 </div>
@@ -2474,10 +2506,12 @@ function getPatternsPage(email) {
                 currentTimePeriod = e.target.value;
                 updatePeakHoursChartWithPeriod(data, currentTimePeriod);
                 updateComparisonInfo(currentTimePeriod);
+                updatePeriodMetrics(data, currentTimePeriod);
             });
             
             // Initial load
             updateComparisonInfo(currentTimePeriod);
+            updatePeriodMetrics(data, currentTimePeriod);
         }
         
         function updateComparisonInfo(period) {
@@ -2492,6 +2526,86 @@ function getPatternsPage(email) {
             };
             
             comparisonElement.textContent = messages[period] || messages['all'];
+        }
+        
+        function updatePeriodMetrics(data, period) {
+            const peakHourElement = document.getElementById('period-peak-hour');
+            const avgSessionsElement = document.getElementById('period-avg-sessions');
+            
+            if (!peakHourElement || !avgSessionsElement) return;
+            
+            if (period === 'all') {
+                // Use precomputed all-time metrics
+                const peakHours = data.precomputed.peakHours;
+                let maxFrequency = 0;
+                let peakHour = 0;
+                
+                // Find hour with highest combined exit+entry frequency
+                peakHours.forEach(hour => {
+                    const totalFrequency = hour.exitFrequency + hour.entryFrequency;
+                    if (totalFrequency > maxFrequency) {
+                        maxFrequency = totalFrequency;
+                        peakHour = hour.hour;
+                    }
+                });
+                
+                // Format peak hour (e.g., "14:00")
+                const peakHourText = peakHour.toString().padStart(2, '0') + ':00';
+                
+                // Calculate average daily sessions from all days
+                const totalDays = data.precomputed.dailySummaries.length;
+                const totalSessions = data.precomputed.dailySummaries.reduce((sum, day) => sum + day.sessions, 0);
+                const avgSessions = totalDays > 0 ? (totalSessions / totalDays) : 0;
+                
+                peakHourElement.textContent = peakHourText;
+                avgSessionsElement.textContent = avgSessions.toFixed(1);
+            } else {
+                // Calculate metrics for filtered period
+                const filteredDays = filterDataByTimePeriod(data, period);
+                
+                if (filteredDays.length === 0) {
+                    peakHourElement.textContent = '--:--';
+                    avgSessionsElement.textContent = '--';
+                    return;
+                }
+                
+                // Calculate average sessions for this period
+                const totalSessions = filteredDays.reduce((sum, day) => sum + day.sessions, 0);
+                const avgSessions = totalSessions / filteredDays.length;
+                
+                // Estimate peak hour for this period using proportional scaling
+                // (This is approximate since we don't have raw session data)
+                const totalFilteredDays = filteredDays.length;
+                const totalAllDays = data.precomputed.dailySummaries.length;
+                const periodRatio = totalFilteredDays / totalAllDays;
+                
+                const recalculatedPeakHours = data.precomputed.peakHours.map(hour => {
+                    const totalExits = hour.exitFrequency * totalAllDays;
+                    const totalEntries = hour.entryFrequency * totalAllDays;
+                    const periodExits = totalExits * periodRatio;
+                    const periodEntries = totalEntries * periodRatio;
+                    
+                    return {
+                        hour: hour.hour,
+                        totalFrequency: (periodExits + periodEntries) / totalFilteredDays
+                    };
+                });
+                
+                // Find peak hour for this period
+                let maxFrequency = 0;
+                let peakHour = 0;
+                recalculatedPeakHours.forEach(hour => {
+                    if (hour.totalFrequency > maxFrequency) {
+                        maxFrequency = hour.totalFrequency;
+                        peakHour = hour.hour;
+                    }
+                });
+                
+                const peakHourText = peakHour.toString().padStart(2, '0') + ':00';
+                
+                peakHourElement.textContent = peakHourText;
+                avgSessionsElement.textContent = avgSessions.toFixed(1);
+            }
         }
         
         function filterDataByTimePeriod(data, period) {
