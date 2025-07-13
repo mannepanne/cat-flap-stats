@@ -2046,6 +2046,47 @@ function getPatternsPage(email) {
         .trend-up { color: #28a745; }
         .trend-down { color: #dc3545; }
         .trend-stable { color: #6c757d; }
+        
+        /* Time period selector styles */
+        .time-period-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .time-period-selector label {
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+        }
+        .time-period-selector select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 1rem;
+            cursor: pointer;
+            min-width: 150px;
+        }
+        .time-period-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .comparison-info {
+            flex: 1;
+            padding-left: 1rem;
+            border-left: 1px solid #ddd;
+        }
+        .comparison-info span {
+            color: #666;
+            font-size: 0.95rem;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -2104,7 +2145,19 @@ function getPatternsPage(email) {
         
         <div class="card">
             <h3>📈 Peak Sven Hours - Activity Frequency</h3>
-            <p>This chart shows when Sven is most active throughout the day, based on all recorded exit and entry times.</p>
+            <div class="time-period-selector">
+                <label for="time-period-select">Time Period:</label>
+                <select id="time-period-select">
+                    <option value="all">All Time</option>
+                    <option value="3months">Last 3 Months</option>
+                    <option value="30days">Last 30 Days</option>
+                    <option value="7days">Last 7 Days</option>
+                </select>
+                <div class="comparison-info" id="comparison-info">
+                    <span id="period-comparison">Showing all-time activity patterns</span>
+                </div>
+            </div>
+            <p>This chart shows when Sven is most active throughout the day, based on exit and entry times for the selected period.</p>
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #667eea;"></div>
@@ -2252,6 +2305,9 @@ function getPatternsPage(email) {
                 });
             });
         
+        // Global variable to store current time period
+        let currentTimePeriod = 'all';
+        
         function updateSummaryStats(data) {
             const totalDaysAnalyzed = data.precomputed.dailySummaries.length;
             document.getElementById('total-days').textContent = totalDaysAnalyzed;
@@ -2299,6 +2355,9 @@ function getPatternsPage(email) {
             
             // Initialize activity averages widget
             initializeActivityAverages(data);
+            
+            // Initialize time period selector
+            initializeTimePeriodSelector(data);
         }
         
         function calculatePatternChange(data) {
@@ -2403,6 +2462,77 @@ function getPatternsPage(email) {
                 document.getElementById('last-entry-trend').textContent = '';
                 document.getElementById('sessions-trend').textContent = '';
             }
+        }
+        
+        // Time period filtering functions
+        function initializeTimePeriodSelector(data) {
+            const selector = document.getElementById('time-period-select');
+            
+            if (!selector) return;
+            
+            selector.addEventListener('change', (e) => {
+                currentTimePeriod = e.target.value;
+                updatePeakHoursChartWithPeriod(data, currentTimePeriod);
+                updateComparisonInfo(currentTimePeriod);
+            });
+            
+            // Initial load
+            updateComparisonInfo(currentTimePeriod);
+        }
+        
+        function updateComparisonInfo(period) {
+            const comparisonElement = document.getElementById('period-comparison');
+            if (!comparisonElement) return;
+            
+            const messages = {
+                'all': 'Showing all-time activity patterns',
+                '3months': 'Showing last 3 months vs same period last year',
+                '30days': 'Showing last 30 days vs previous 30 days',
+                '7days': 'Showing last 7 days vs previous 7 days'
+            };
+            
+            comparisonElement.textContent = messages[period] || messages['all'];
+        }
+        
+        function filterDataByTimePeriod(data, period) {
+            const now = new Date();
+            let cutoffDate;
+            
+            switch (period) {
+                case '7days':
+                    cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case '30days':
+                    cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    break;
+                case '3months':
+                    cutoffDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+                    break;
+                case 'all':
+                default:
+                    return data.precomputed.dailySummaries;
+            }
+            
+            return data.precomputed.dailySummaries.filter(day => {
+                const dayDate = new Date(day.date);
+                return dayDate >= cutoffDate;
+            });
+        }
+        
+        function updatePeakHoursChartWithPeriod(data, period) {
+            // Filter data based on selected period
+            const filteredDays = filterDataByTimePeriod(data, period);
+            
+            // Recalculate peak hours for filtered data
+            const scaledPeakHours = data.precomputed.peakHours.map(hour => ({
+                ...hour,
+                // Scale the frequencies based on the proportion of days in the filtered period
+                exitFrequency: hour.exitFrequency * (filteredDays.length / data.precomputed.dailySummaries.length),
+                entryFrequency: hour.entryFrequency * (filteredDays.length / data.precomputed.dailySummaries.length)
+            }));
+            
+            // Re-render the chart with filtered data
+            renderPeakHoursChart(scaledPeakHours);
         }
         
         function renderPeakHoursChart(peakHours) {
