@@ -597,9 +597,14 @@ class CatFlapAnalytics:
             avg_first_exit_mins = np.mean(first_exits) if first_exits else 0
             avg_last_entry_mins = np.mean(last_entries) if last_entries else 0
             
+            # Calculate average daily sessions
+            daily_sessions = subset.groupby('date_full').size()
+            avg_daily_sessions = daily_sessions.mean() if not daily_sessions.empty else 0
+            
             patterns[weekend_label] = {
                 'avgFirstExit': f"{int(avg_first_exit_mins // 60):02d}:{int(avg_first_exit_mins % 60):02d}",
-                'avgLastEntry': f"{int(avg_last_entry_mins // 60):02d}:{int(avg_last_entry_mins % 60):02d}"
+                'avgLastEntry': f"{int(avg_last_entry_mins // 60):02d}:{int(avg_last_entry_mins % 60):02d}",
+                'avgSessions': round(avg_daily_sessions, 1)
             }
         
         return patterns

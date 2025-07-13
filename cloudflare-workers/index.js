@@ -2370,16 +2370,16 @@ function getPatternsPage(email) {
                 periodData = data.precomputed.weekdayPatterns[currentPeriod];
             } else {
                 // Seasonal data
-                periodData = data.precomputed.seasonalStats[currentPeriod];
-                if (periodData && periodData.timing_metrics) {
+                const seasonalData = data.precomputed.seasonalStats[currentPeriod];
+                if (seasonalData && seasonalData.timing_metrics) {
                     // Transform seasonal data structure to match weekday structure
                     periodData = {
-                        avgFirstExit: periodData.timing_metrics.avg_first_exit,
-                        avgLastEntry: periodData.timing_metrics.avg_last_entry
+                        avgFirstExit: seasonalData.timing_metrics.avg_first_exit,
+                        avgLastEntry: seasonalData.timing_metrics.avg_last_entry
                     };
                     // Add average sessions from frequency metrics
-                    if (periodData.frequency_metrics) {
-                        periodData.avgSessions = periodData.frequency_metrics.avg_daily_sessions;
+                    if (seasonalData.frequency_metrics) {
+                        periodData.avgSessions = seasonalData.frequency_metrics.avg_daily_sessions;
                     }
                 }
             }
