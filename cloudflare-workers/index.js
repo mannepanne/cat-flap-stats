@@ -3095,6 +3095,70 @@ function getPatternsPage(email) {
                 });
             }
             
+            // Add pattern change callouts for significant timing shifts
+            const midpoint = Math.floor(recentDays.length / 2);
+            const firstHalf = recentDays.slice(0, midpoint);
+            const secondHalf = recentDays.slice(midpoint);
+            
+            // Calculate average first exit times for each half
+            const getAverageExitHour = (days) => {
+                const validExits = days
+                    .filter(day => day.firstExit)
+                    .map(day => parseTimeToHour(day.firstExit))
+                    .filter(hour => hour !== null);
+                return validExits.length > 0 ? validExits.reduce((sum, hour) => sum + hour, 0) / validExits.length : null;
+            };
+            
+            const firstHalfAvgExit = getAverageExitHour(firstHalf);
+            const secondHalfAvgExit = getAverageExitHour(secondHalf);
+            
+            // Add callout if there's a significant change (>1 hour difference)
+            if (firstHalfAvgExit !== null && secondHalfAvgExit !== null) {
+                const timeDiff = Math.abs(secondHalfAvgExit - firstHalfAvgExit);
+                
+                if (timeDiff > 1.0) { // Significant change of more than 1 hour
+                    const direction = secondHalfAvgExit > firstHalfAvgExit ? 'later' : 'earlier';
+                    const changeDescription = timeDiff > 2 ? 'Major' : 'Notable';
+                    
+                    // Add callout line pointing to transition area
+                    const transitionY = yScale(recentDays[midpoint].date);
+                    const calloutX = width + 10;
+                    
+                    // Add callout line
+                    g.append('line')
+                        .attr('x1', width)
+                        .attr('y1', transitionY)
+                        .attr('x2', calloutX + 60)
+                        .attr('y2', transitionY)
+                        .attr('stroke', '#ff6b6b')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', '3,3');
+                    
+                    // Add callout text background
+                    const calloutText = changeDescription + ' shift: ' + timeDiff.toFixed(1) + 'h ' + direction;
+                    const textWidth = calloutText.length * 6; // Approximate text width
+                    
+                    g.append('rect')
+                        .attr('x', calloutX + 65)
+                        .attr('y', transitionY - 15)
+                        .attr('width', textWidth)
+                        .attr('height', 20)
+                        .attr('fill', '#fff')
+                        .attr('stroke', '#ff6b6b')
+                        .attr('stroke-width', 1)
+                        .attr('rx', 3);
+                    
+                    // Add callout text
+                    g.append('text')
+                        .attr('x', calloutX + 70)
+                        .attr('y', transitionY - 2)
+                        .style('font-size', '11px')
+                        .style('fill', '#ff6b6b')
+                        .style('font-weight', 'bold')
+                        .text(calloutText);
+                }
+            }
+            
             // Axes
             const xAxis = d3.axisBottom(xScale)
                 .tickFormat(d => d + ':00')
