@@ -134,7 +134,10 @@ def main():
         if duplicates_count > 0:
             print('Duplicate sessions found:')
             for _, dup in duplicates.iterrows():
-                print(f'  - {dup[date_col]} session {dup["session_number"]} ({dup["exit_time"]} - {dup["entry_time"]})')
+                if date_col:
+                    print(f'  - {dup[date_col]} session {dup["session_number"]} ({dup["exit_time"]} - {dup["entry_time"]})')
+                else:
+                    print(f'  - session {dup["session_number"]} ({dup["exit_time"]} - {dup["entry_time"]})')
         
         # Only append unique new sessions
         if unique_count > 0:
