@@ -5939,7 +5939,7 @@ function getHealthPage(email) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Flap Stats - Health Monitoring</title>
+    <title>Cat Flap Stats - Behavioral Health Monitoring</title>
     <link rel="icon" href="/favicon.ico" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -5951,14 +5951,81 @@ ${getSharedCSS()}
             margin: 2rem auto;
             padding: 0 1rem;
         }
-        .health-grid {
+        .health-insights-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 2rem;
         }
         @media (max-width: 768px) {
-            .health-grid { grid-template-columns: 1fr; }
+            .health-insights-grid { grid-template-columns: 1fr; }
+        }
+        .health-status {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+            border-left: 4px solid #4caf50;
+            margin-bottom: 2rem;
+        }
+        .health-score {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .health-score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        .health-score.excellent .health-score-circle { background: #4caf50; }
+        .health-score.good .health-score-circle { background: #8bc34a; }
+        .health-score.concerning .health-score-circle { background: #ff9800; }
+        .health-score.critical .health-score-circle { background: #f44336; }
+        .health-metric {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        .health-metric.normal { border-left-color: #4caf50; }
+        .health-metric.concerning { border-left-color: #ff9800; }
+        .health-metric.critical { border-left-color: #f44336; }
+        .health-metric h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 1rem;
+        }
+        .health-metric p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .health-recommendations {
+            background: linear-gradient(135deg, #fff3e0 0%, #e1f5fe 100%);
+            border-left: 4px solid #2196f3;
+        }
+        .recommendation-item {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #2196f3;
+            margin-bottom: 1rem;
+        }
+        .recommendation-item h5 {
+            margin: 0 0 0.5rem 0;
+            color: #1976d2;
+            font-size: 0.95rem;
+        }
+        .recommendation-item p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
         }
         .anomaly-item {
             background: white;
@@ -6105,7 +6172,8 @@ ${getSharedCSS()}
         
         <div class="main-content sidebar-expanded">
             <div class="content-header">
-                <h2>🏥 Health Monitoring</h2>
+                <h2>🏥 Behavioral Health Monitoring</h2>
+                <p>Monitor Sven's behavioral patterns to detect potential wellness concerns and guide proactive pet care decisions.</p>
             </div>
             
             <div class="content-body">
@@ -6117,50 +6185,64 @@ ${getSharedCSS()}
         <div id="error" class="error" style="display: none;"></div>
         
         <div id="content" style="display: none;">
-            <!-- Health Summary Statistics -->
-            <div class="summary-stats" id="health-summary">
-                <!-- Populated by JavaScript -->
-            </div>
-            
-            <!-- Duration Baselines -->
-            <div class="stat-card baseline-info">
-                <h3>🎯 Duration Baselines</h3>
-                <div id="baseline-info">
+            <!-- Overall Health Status -->
+            <div class="stat-card health-status">
+                <h3>📊 Overall Behavioral Health Status</h3>
+                <div id="health-status">
                     <!-- Populated by JavaScript -->
                 </div>
             </div>
             
-            <!-- Health Grid -->
-            <div class="health-grid">
-                <!-- Recent Anomalies -->
-                <div class="stat-card">
-                    <h3>🚨 Recent Anomalies</h3>
-                    <div id="recent-anomalies">
+            <!-- Health Insights Cards -->
+            <div class="health-insights-grid">
+                <div class="stat-card activity-trend">
+                    <h3>📈 Activity Trend</h3>
+                    <div id="activity-trend">
                         <!-- Populated by JavaScript -->
                     </div>
                 </div>
                 
-                <!-- Timeline Markers Info -->
-                <div class="stat-card">
-                    <h3>📍 Timeline Integration</h3>
-                    <p>Health anomalies are marked with ⚕️ icons on all timeline visualizations:</p>
-                    <ul style="margin: 1rem 0; padding-left: 2rem;">
-                        <li><strong>Patterns page:</strong> Actogram timeline markers</li>
-                        <li><strong>Circadian page:</strong> Daily rhythm overlays</li>
-                        <li><strong>Seasonal page:</strong> Seasonal comparison charts</li>
-                    </ul>
-                    <p><small>Click any ⚕️ marker to see detailed anomaly information and correlate with behavioral annotations.</small></p>
+                <div class="stat-card routine-stability">
+                    <h3>⏰ Routine Stability</h3>
+                    <div id="routine-stability">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="stat-card session-patterns">
+                    <h3>⌛ Session Patterns</h3>
+                    <div id="session-patterns">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="stat-card usage-frequency">
+                    <h3>🚪 Usage Frequency</h3>
+                    <div id="usage-frequency">
+                        <!-- Populated by JavaScript -->
+                    </div>
                 </div>
             </div>
             
-            <!-- All Anomalies -->
-            <div class="stat-card">
-                <h3>📋 All Duration Anomalies</h3>
-                <div id="all-anomalies">
+            <!-- Health Recommendations -->
+            <div class="stat-card health-recommendations">
+                <h3>🩺 Health Recommendations</h3>
+                <div id="health-recommendations">
                     <!-- Populated by JavaScript -->
                 </div>
-                <div id="anomalies-pagination" class="pagination" style="display: none;">
-                    <!-- Pagination controls populated by JavaScript -->
+            </div>
+            
+            <!-- Timeline Integration Info -->
+            <div class="stat-card timeline-info">
+                <h3>📍 Timeline Integration</h3>
+                <p>Behavioral health patterns are integrated across all visualizations:</p>
+                <ul style="margin: 1rem 0; padding-left: 2rem;">
+                    <li><strong>Patterns page:</strong> Activity level trends and routine disruptions</li>
+                    <li><strong>Circadian page:</strong> Daily rhythm changes and timing shifts</li>
+                    <li><strong>Seasonal page:</strong> Seasonal adaptation and environmental factors</li>
+                </ul>
+                <p><small>Health insights are context-aware and factor in seasonal patterns, weather, and annotated events.</small></p>
+            </div>
                 </div>
             </div>
         </div>
@@ -6183,48 +6265,248 @@ ${getSharedCSS()}
             const contentEl = document.getElementById('content');
             
             try {
-                console.log('Loading analytics data for health monitoring...');
+                console.log('Loading analytics data for behavioral health monitoring...');
                 
                 const response = await fetch('/api/analytics');
                 if (!response.ok) {
-                    throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
                 }
                 
                 const data = await response.json();
                 console.log('Analytics data loaded:', data);
                 
-                if (data && data.precomputed && data.precomputed.durationAnomalies) {
-                    displayHealthData(data.precomputed.durationAnomalies);
+                if (data && data.precomputed && data.precomputed.dailySummaries) {
+                    // Process the daily summaries for behavioral health analysis
+                    const healthAnalysis = analyzeBehavioralHealth(data.precomputed.dailySummaries);
+                    displayBehavioralHealth(healthAnalysis);
                     loadingEl.style.display = 'none';
                     contentEl.style.display = 'block';
                 } else {
-                    throw new Error('Duration anomalies data not available in analytics');
+                    throw new Error('Daily summaries data not available for behavioral health analysis');
                 }
                 
             } catch (error) {
-                console.error('Error loading health data:', error);
+                console.error('Error loading behavioral health data:', error);
                 loadingEl.style.display = 'none';
-                errorEl.textContent = \`Error loading health monitoring data: \${error.message}\`;
+                errorEl.textContent = 'Error loading behavioral health monitoring data: ' + error.message;
                 errorEl.style.display = 'block';
             }
         }
 
-        function displayHealthData(healthData) {
-            console.log('Displaying health data:', healthData);
+        function analyzeBehavioralHealth(dailySummaries) {
+            console.log('Analyzing behavioral health patterns...');
             
-            // Display summary statistics
-            displayHealthSummary(healthData.summary);
+            // Sort summaries by date to ensure chronological order
+            const sortedData = dailySummaries.sort((a, b) => new Date(a.date) - new Date(b.date));
             
-            // Display baseline information
-            displayBaselineInfo(healthData.baselines);
+            // Get recent data periods
+            const last7Days = sortedData.slice(-7);
+            const last30Days = sortedData.slice(-30);
+            const previous30Days = sortedData.slice(-60, -30);
             
-            // Display recent anomalies (last 5)
-            displayRecentAnomalies(healthData.anomalies.slice(0, 5));
+            // Calculate behavioral health metrics
+            const activityTrend = calculateActivityTrend(last7Days, previous30Days);
+            const routineStability = calculateRoutineStability(last7Days, last30Days);
+            const sessionPatterns = calculateSessionPatterns(last7Days, last30Days);
+            const usageFrequency = calculateUsageFrequency(last7Days, last30Days);
             
-            // Store and display all anomalies with pagination
-            allAnomaliesData = healthData.anomalies;
-            currentPage = 1;
-            displayAllAnomalies();
+            // Calculate overall health score
+            const healthScore = calculateOverallHealthScore(activityTrend, routineStability, sessionPatterns, usageFrequency);
+            
+            return {
+                healthScore,
+                activityTrend,
+                routineStability, 
+                sessionPatterns,
+                usageFrequency,
+                dataQuality: {
+                    recentDays: last7Days.length,
+                    baselineDays: previous30Days.length,
+                    totalDays: sortedData.length
+                }
+            };
+        }
+
+        function displayBehavioralHealth(healthAnalysis) {
+            console.log('Displaying behavioral health analysis:', healthAnalysis);
+            
+            // Display overall health status
+            displayHealthStatus(healthAnalysis.healthScore, healthAnalysis.dataQuality);
+            
+            // Display individual health metrics
+            displayActivityTrend(healthAnalysis.activityTrend);
+            displayRoutineStability(healthAnalysis.routineStability);
+            displaySessionPatterns(healthAnalysis.sessionPatterns);
+            displayUsageFrequency(healthAnalysis.usageFrequency);
+            
+            // Display health recommendations based on analysis
+            displayHealthRecommendations(healthAnalysis);
+        }
+
+        // Core behavioral health calculation functions
+        function calculateActivityTrend(recent7Days, baseline30Days) {
+            const recentAvg = calculateAverageOutdoorTime(recent7Days);
+            const baselineAvg = calculateAverageOutdoorTime(baseline30Days);
+            
+            if (baselineAvg === 0) {
+                return { status: 'insufficient_data', change: 0, assessment: 'normal' };
+            }
+            
+            const changePercent = ((recentAvg - baselineAvg) / baselineAvg) * 100;
+            let assessment = 'normal';
+            
+            if (changePercent < -40) {
+                assessment = 'critical'; // Significant decrease
+            } else if (changePercent < -20) {
+                assessment = 'concerning'; // Notable decrease
+            } else if (changePercent > 50) {
+                assessment = 'concerning'; // Unusual increase
+            }
+            
+            return {
+                status: 'analyzed',
+                recentAvg: recentAvg,
+                baselineAvg: baselineAvg,
+                change: changePercent,
+                assessment: assessment,
+                description: generateActivityTrendDescription(changePercent, assessment)
+            };
+        }
+        
+        function calculateRoutineStability(recent7Days, baseline30Days) {
+            const recentRoutine = calculateAverageRoutineTiming(recent7Days);
+            const baselineRoutine = calculateAverageRoutineTiming(baseline30Days);
+            
+            if (!recentRoutine.firstExit || !baselineRoutine.firstExit) {
+                return { status: 'insufficient_data', assessment: 'normal' };
+            }
+            
+            // Calculate timing shifts in hours
+            const firstExitShift = Math.abs(parseTimeToHours(recentRoutine.firstExit) - parseTimeToHours(baselineRoutine.firstExit));
+            const lastEntryShift = Math.abs(parseTimeToHours(recentRoutine.lastEntry) - parseTimeToHours(baselineRoutine.lastEntry));
+            
+            const maxShift = Math.max(firstExitShift, lastEntryShift);
+            let assessment = 'normal';
+            
+            if (maxShift > 2) {
+                assessment = 'critical'; // Major routine disruption
+            } else if (maxShift > 1) {
+                assessment = 'concerning'; // Mild routine disruption
+            }
+            
+            return {
+                status: 'analyzed',
+                recentFirstExit: recentRoutine.firstExit,
+                recentLastEntry: recentRoutine.lastEntry,
+                baselineFirstExit: baselineRoutine.firstExit,
+                baselineLastEntry: baselineRoutine.lastEntry,
+                maxShift: maxShift,
+                assessment: assessment,
+                description: generateRoutineStabilityDescription(maxShift, assessment)
+            };
+        }
+        
+        function calculateSessionPatterns(recent7Days, baseline30Days) {
+            const recentAvgDuration = calculateAverageSessionDuration(recent7Days);
+            const baselineAvgDuration = calculateAverageSessionDuration(baseline30Days);
+            
+            if (baselineAvgDuration === 0) {
+                return { status: 'insufficient_data', assessment: 'normal' };
+            }
+            
+            const changePercent = ((recentAvgDuration - baselineAvgDuration) / baselineAvgDuration) * 100;
+            
+            // Check for concerning patterns
+            const shortSessions = recent7Days.filter(day => day.averageSessionDuration && day.averageSessionDuration < 15).length;
+            const longSessions = recent7Days.filter(day => day.averageSessionDuration && day.averageSessionDuration > 480).length; // 8+ hours
+            
+            let assessment = 'normal';
+            
+            if (shortSessions >= 3 || longSessions >= 2) {
+                assessment = 'concerning';
+            }
+            if (changePercent < -50 || changePercent > 100) {
+                assessment = 'critical';
+            }
+            
+            return {
+                status: 'analyzed',
+                recentAvgDuration: recentAvgDuration,
+                baselineAvgDuration: baselineAvgDuration,
+                change: changePercent,
+                shortSessions: shortSessions,
+                longSessions: longSessions,
+                assessment: assessment,
+                description: generateSessionPatternsDescription(changePercent, shortSessions, longSessions, assessment)
+            };
+        }
+        
+        function calculateUsageFrequency(recent7Days, baseline30Days) {
+            const recentAvgSessions = calculateAverageSessionsPerDay(recent7Days);
+            const baselineAvgSessions = calculateAverageSessionsPerDay(baseline30Days);
+            
+            if (baselineAvgSessions === 0) {
+                return { status: 'insufficient_data', assessment: 'normal' };
+            }
+            
+            const changePercent = ((recentAvgSessions - baselineAvgSessions) / baselineAvgSessions) * 100;
+            let assessment = 'normal';
+            
+            if (recentAvgSessions < 1 || changePercent < -50) {
+                assessment = 'critical'; // Very low usage
+            } else if (recentAvgSessions > 15 || changePercent > 100) {
+                assessment = 'concerning'; // Very high usage
+            } else if (changePercent < -25) {
+                assessment = 'concerning'; // Notable decrease
+            }
+            
+            return {
+                status: 'analyzed',
+                recentAvgSessions: recentAvgSessions,
+                baselineAvgSessions: baselineAvgSessions,
+                change: changePercent,
+                assessment: assessment,
+                description: generateUsageFrequencyDescription(changePercent, recentAvgSessions, assessment)
+            };
+        }
+        
+        function calculateOverallHealthScore(activityTrend, routineStability, sessionPatterns, usageFrequency) {
+            const metrics = [activityTrend, routineStability, sessionPatterns, usageFrequency];
+            
+            // Count metrics by assessment level
+            const criticalCount = metrics.filter(m => m.assessment === 'critical').length;
+            const concerningCount = metrics.filter(m => m.assessment === 'concerning').length;
+            const normalCount = metrics.filter(m => m.assessment === 'normal').length;
+            
+            let score = 100;
+            let status = 'excellent';
+            let description = 'All behavioral patterns look healthy and consistent';
+            
+            // Deduct points for concerning patterns
+            score -= criticalCount * 30;
+            score -= concerningCount * 15;
+            
+            if (criticalCount > 0) {
+                status = 'critical';
+                description = 'Multiple concerning behavioral changes detected - veterinary consultation recommended';
+            } else if (concerningCount >= 2) {
+                status = 'concerning';
+                description = 'Some behavioral changes detected - monitor closely and consider vet consultation';
+            } else if (concerningCount === 1) {
+                status = 'good';
+                description = 'Minor behavioral change detected - continue monitoring';
+            }
+            
+            return {
+                score: Math.max(score, 0),
+                status: status,
+                description: description,
+                metrics: {
+                    critical: criticalCount,
+                    concerning: concerningCount,
+                    normal: normalCount
+                }
+            };
         }
         
         function displayHealthSummary(summary) {
