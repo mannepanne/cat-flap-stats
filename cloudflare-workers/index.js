@@ -4543,90 +4543,6 @@ ${getSharedCSS()}
             margin: 2rem auto;
             padding: 0 1rem;
         }
-        .seasonal-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        @media (max-width: 768px) {
-            .seasonal-grid { grid-template-columns: 1fr; }
-        }
-        .heatmap-container {
-            width: 100%;
-            height: 450px;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            position: relative;
-            background: #f8f9fa;
-            overflow: visible;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .heatmap-container svg {
-            max-width: 100%;
-            height: auto;
-        }
-        @media (max-width: 768px) {
-            .heatmap-container {
-                height: 400px;
-            }
-        }
-        .season-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 0.5rem;
-        }
-        .season-tab {
-            padding: 0.5rem 1rem;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px 4px 0 0;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .season-tab.active {
-            background: #2196f3;
-            color: white;
-            border-color: #2196f3;
-        }
-        .season-tab:hover:not(.active) {
-            background: #e3f2fd;
-        }
-        .comparison-controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .comparison-mode {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-        .comparison-mode input[type="radio"] {
-            margin-right: 0.25rem;
-        }
-        .comparison-mode label {
-            font-size: 14px;
-            cursor: pointer;
-        }
-        .overlay-actogram-container {
-            width: 100%;
-            height: 500px;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            overflow: auto;
-            background: #f8f9fa;
-        }
         .season-legend {
             display: flex;
             justify-content: center;
@@ -4827,28 +4743,6 @@ ${getSharedCSS()}
                 </div>
             </div>
             
-            <!-- Main Visualizations -->
-            <div class="seasonal-grid">
-                <div class="stat-card">
-                    <h3>📊 Seasonal Activity Heatmap</h3>
-                    <div class="heatmap-container" id="seasonal-heatmap">
-                        <!-- D3.js heatmap will be rendered here -->
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <h3>📈 Seasonal Activity Comparison</h3>
-                    <div class="season-tabs" id="season-tabs">
-                        <!-- Season selection tabs will be rendered here -->
-                    </div>
-                    <div class="comparison-controls" id="comparison-controls">
-                        <!-- Comparison mode controls will be rendered here -->
-                    </div>
-                    <div class="overlay-actogram-container" id="overlay-actogram">
-                        <!-- D3.js seasonal actogram will be rendered here -->
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -4881,8 +4775,6 @@ ${getSharedCSS()}
                 renderSeasonalStats(seasonalStats);
                 renderSeasonalInsights(seasonalStats);
                 renderEnvironmentalContext(seasonalStats);
-                renderSeasonalHeatmap(seasonalStats);
-                renderOverlayActogram(data.precomputed.dailySummaries);
                 
                 // Hide loading, show content
                 document.getElementById('loading').style.display = 'none';
