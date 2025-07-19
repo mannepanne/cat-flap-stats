@@ -4543,23 +4543,6 @@ ${getSharedCSS()}
             margin: 2rem auto;
             padding: 0 1rem;
         }
-        .season-legend {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 1rem 0;
-            flex-wrap: wrap;
-        }
-        .season-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .season-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -4723,25 +4706,6 @@ ${getSharedCSS()}
                 </div>
             </div>
             
-            <!-- Season Legend -->
-            <div class="season-legend">
-                <div class="season-item">
-                    <div class="season-color" style="background: #81c784;"></div>
-                    <span>Spring (Mar-May)</span>
-                </div>
-                <div class="season-item">
-                    <div class="season-color" style="background: #ffb74d;"></div>
-                    <span>Summer (Jun-Aug)</span>
-                </div>
-                <div class="season-item">
-                    <div class="season-color" style="background: #ff8a65;"></div>
-                    <span>Autumn (Sep-Nov)</span>
-                </div>
-                <div class="season-item">
-                    <div class="season-color" style="background: #64b5f6;"></div>
-                    <span>Winter (Dec-Feb)</span>
-                </div>
-            </div>
             
         </div>
     </div>
