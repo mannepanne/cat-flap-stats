@@ -5139,7 +5139,7 @@ ${getSharedCSS()}
                     }
                 });
             } else {
-                html += '<p style="color: #666; font-style: italic;">Personalized care recommendations will be generated based on your cat\'s seasonal patterns.</p>';
+                html += '<p style="color: #666; font-style: italic;">Personalized care recommendations will be generated based on your cat&#39;s seasonal patterns.</p>';
             }
             
             html += '</div>';
