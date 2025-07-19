@@ -10,7 +10,7 @@ import pandas as pd
 import pdfplumber
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 # Import centralized configuration
 from config import settings
@@ -399,6 +399,8 @@ class ProductionCatFlapExtractor:
                 }
             
             # Process the reconstructed table in time/duration pairs
+            if header_idx is None:
+                return {}
             i = header_idx + 1  # Start after header
             while i < len(complete_table):
                 current_row = complete_table[i]
@@ -712,7 +714,7 @@ class ProductionCatFlapExtractor:
         
         return cross_midnight_pairs
     
-    def build_sessions_with_enhanced_validation(self, daily_data: Dict, pdf_filename: str, report_year: int = None) -> List[Dict]:
+    def build_sessions_with_enhanced_validation(self, daily_data: Dict, pdf_filename: str, report_year: Optional[int] = None) -> List[Dict]:
         """Build sessions using Magnus's new exit/entry time rules with structured data"""
         sessions = []
         
@@ -842,8 +844,9 @@ class ProductionCatFlapExtractor:
         
         return sessions
     
-    def process_pdf(self, pdf_path: str) -> Optional[Dict]:
+    def process_pdf(self, pdf_path: Union[str, Path]) -> Optional[Dict]:
         """Process a single PDF file with comprehensive error handling"""
+        pdf_path = str(pdf_path)  # Convert Path to str for consistency
         print(f"Processing: {os.path.basename(pdf_path)}")
         
         # Extract report info
@@ -901,9 +904,9 @@ class ProductionCatFlapExtractor:
         print(f"  Found {len(session_data)} individual sessions")
         return result
     
-    def process_directory(self, directory: str) -> List[Dict]:
+    def process_directory(self, directory: Union[str, Path]) -> List[Dict]:
         """Process all PDF files in a directory with enhanced gap detection"""
-        pdf_dir = Path(directory)
+        pdf_dir = Path(str(directory))  # Ensure Path object
         
         if not pdf_dir.exists():
             raise FileNotFoundError(f"Directory not found: {directory}")
