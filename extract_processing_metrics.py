@@ -5,7 +5,7 @@
 import json
 import re
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Dict, List, Optional
 import pandas as pd
 
@@ -36,11 +36,14 @@ class ProcessingMetricsExtractor:
             return None
         
         # Parse timestamp 
-        timestamp_str = date_match.group(1).strip()
-        try:
-            timestamp = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S UTC %Y")
-            iso_timestamp = timestamp.isoformat() + 'Z'
-        except ValueError:
+        if date_match:
+            timestamp_str = date_match.group(1).strip()
+            try:
+                timestamp = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S UTC %Y")
+                iso_timestamp = timestamp.isoformat() + 'Z'
+            except ValueError:
+                iso_timestamp = datetime.now().isoformat() + 'Z'
+        else:
             iso_timestamp = datetime.now().isoformat() + 'Z'
         
         # Extract processing status
@@ -76,8 +79,8 @@ class ProcessingMetricsExtractor:
         
         return {
             "timestamp": iso_timestamp,
-            "filename": file_match.group(1).strip(),
-            "uploader": uploader_match.group(1).strip(),
+            "filename": file_match.group(1).strip() if file_match else "unknown",
+            "uploader": uploader_match.group(1).strip() if uploader_match else "unknown",
             "processing_status": processing_status,
             "new_sessions_processed": new_sessions,
             "duplicate_sessions_found": duplicate_sessions,
@@ -158,7 +161,7 @@ class ProcessingMetricsExtractor:
             print(f"Error detecting missing weeks: {e}")
             return []
     
-    def _extract_first_date_from_new_pdf(self, processing_report_content: str) -> Optional[datetime.date]:
+    def _extract_first_date_from_new_pdf(self, processing_report_content: str) -> Optional[date]:
         """Extract the date range from the processing report to get first date of new PDF"""
         try:
             # The processing report contains the filename which has the date

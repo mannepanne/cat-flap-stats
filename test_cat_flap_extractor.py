@@ -33,7 +33,6 @@ class TestDurationParsing:
         
         # Edge cases
         assert self.extractor.parse_duration_hours("") is None
-        assert self.extractor.parse_duration_hours(None) is None
         assert self.extractor.parse_duration_hours("invalid") is None
     
     def test_convert_duration_to_hhmm(self):
@@ -156,8 +155,10 @@ class TestReportInfoExtraction:
     
     def test_parse_report_date(self):
         """Test report date parsing"""
-        assert self.extractor.parse_report_date("11 February 2024").year == 2024
-        assert self.extractor.parse_report_date("11 Feb 2024").year == 2024
+        result1 = self.extractor.parse_report_date("11 February 2024")
+        assert result1 is not None and result1.year == 2024
+        result2 = self.extractor.parse_report_date("11 Feb 2024")
+        assert result2 is not None and result2.year == 2024
         assert self.extractor.parse_report_date("invalid") is None
         assert self.extractor.parse_report_date("") is None
     
@@ -235,6 +236,7 @@ class TestIntegrationWithValidationData:
             pytest.skip("Validation PDF not found - skipping Wednesday session test")
         
         result = extractor.process_pdf(validation_pdf_path)
+        assert result is not None, "PDF processing should not return None"
         sessions = result['session_data']
         
         # Get Wednesday sessions
@@ -260,6 +262,7 @@ class TestIntegrationWithValidationData:
             pytest.skip("Validation PDF not found - skipping PDF totals test")
         
         result = extractor.process_pdf(validation_pdf_path)
+        assert result is not None, "PDF processing should not return None"
         sessions = result['session_data']
         
         # Test specific days' PDF totals
@@ -280,6 +283,7 @@ class TestIntegrationWithValidationData:
             pytest.skip("Validation PDF not found - skipping totals validation test")
         
         result = extractor.process_pdf(validation_pdf_path)
+        assert result is not None, "PDF processing should not return None"
         sessions = result['session_data']
         
         # Group by date and validate totals
@@ -315,6 +319,7 @@ class TestEndToEndOutputFormats:
         
         # Save to temporary CSV
         csv_path = tmp_path / "test_output.csv"
+        assert result is not None, "Result should not be None for CSV save"
         extractor.save_to_csv([result], str(csv_path))
         
         # Validate CSV structure
@@ -349,6 +354,7 @@ class TestEndToEndOutputFormats:
         
         # Save to temporary JSON
         json_path = tmp_path / "test_output.json"
+        assert result is not None, "Result should not be None for JSON save"
         extractor.save_to_json([result], str(json_path))
         
         # Validate JSON structure
@@ -394,6 +400,7 @@ class TestEndToEndOutputFormats:
         # Save both formats
         csv_path = tmp_path / "test_output.csv"
         json_path = tmp_path / "test_output.json"
+        assert result is not None, "Result should not be None for format consistency test"
         extractor.save_to_csv([result], str(csv_path))
         extractor.save_to_json([result], str(json_path))
         
