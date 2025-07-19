@@ -4650,25 +4650,89 @@ ${getSharedCSS()}
             gap: 1rem;
             margin-bottom: 2rem;
         }
-        .hypothesis-card {
-            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-            border-left: 4px solid #2196f3;
+        .insights-summary {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+            border-left: 4px solid #4caf50;
         }
-        .significance-badge {
+        .environmental-context {
+            background: linear-gradient(135deg, #fff3e0 0%, #e1f5fe 100%);
+            border-left: 4px solid #ff9800;
+        }
+        .environmental-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        @media (max-width: 768px) {
+            .environmental-grid { grid-template-columns: 1fr; }
+        }
+        .environmental-section {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .environmental-section h4 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .care-tip {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 6px;
+            border-left: 3px solid #2196f3;
+        }
+        .care-tip h5 {
+            margin: 0 0 0.5rem 0;
+            color: #1976d2;
+            font-size: 0.95rem;
+        }
+        .care-tip p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .insight-icon {
+            font-size: 2rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .insight-content {
+            flex: 1;
+        }
+        .insight-content h4 {
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        .insight-content p {
+            margin: 0 0 0.75rem 0;
+            color: #666;
+            line-height: 1.4;
+        }
+        .insight-badge {
             display: inline-block;
-            padding: 0.25rem 0.5rem;
+            padding: 0.25rem 0.75rem;
             border-radius: 12px;
             font-size: 0.8rem;
             font-weight: 500;
-            margin-left: 0.5rem;
-        }
-        .significant {
-            background: #c8e6c9;
-            color: #2e7d32;
-        }
-        .not-significant {
-            background: #ffcdd2;
-            color: #c62828;
+            color: white;
         }
         .confidence-high { border-left-color: #4caf50; }
         .confidence-medium { border-left-color: #ff9800; }
@@ -4727,10 +4791,18 @@ ${getSharedCSS()}
                 <!-- Populated by JavaScript -->
             </div>
             
-            <!-- Primary Hypothesis Testing -->
-            <div class="stat-card hypothesis-card">
-                <h3>🧪 Hypothesis Testing</h3>
-                <div id="hypothesis-results">
+            <!-- Seasonal Insights Summary -->
+            <div class="stat-card insights-summary">
+                <h3>🔍 Key Seasonal Insights</h3>
+                <div id="seasonal-insights">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Environmental Context & Care Tips -->
+            <div class="stat-card environmental-context">
+                <h3>🌍 Environmental Context & Care Recommendations</h3>
+                <div id="environmental-context">
                     <!-- Populated by JavaScript -->
                 </div>
             </div>
@@ -4807,7 +4879,8 @@ ${getSharedCSS()}
                 
                 // Render all components
                 renderSeasonalStats(seasonalStats);
-                renderHypothesisResults(seasonalStats);
+                renderSeasonalInsights(seasonalStats);
+                renderEnvironmentalContext(seasonalStats);
                 renderSeasonalHeatmap(seasonalStats);
                 renderOverlayActogram(data.precomputed.dailySummaries);
                 
@@ -4864,57 +4937,215 @@ ${getSharedCSS()}
             }).join('');
         }
 
-        function renderHypothesisResults(seasonalStats) {
-            const container = document.getElementById('hypothesis-results');
+        function renderSeasonalInsights(seasonalStats) {
+            const container = document.getElementById('seasonal-insights');
             const comparisons = seasonalStats.comparisons;
             
-            if (!comparisons || comparisons.note) {
-                container.innerHTML = '<p>Statistical comparisons require scipy package for full analysis.</p>';
-                return;
-            }
+            let insights = [];
             
-            let html = '';
+            // Find the most active and least active seasons
+            const seasons = ['spring', 'summer', 'autumn', 'winter'];
+            const seasonData = seasons.map(season => ({
+                name: season,
+                data: seasonalStats[season],
+                duration: seasonalStats[season]?.duration_metrics?.avg_daily_duration_minutes || 0,
+                sessions: seasonalStats[season]?.frequency_metrics?.avg_daily_sessions || 0
+            })).filter(s => s.data);
             
-            // Summer vs Winter duration comparison
-            if (comparisons.summer_winter_duration) {
-                const result = comparisons.summer_winter_duration;
-                const significanceBadge = result.significant ? 
-                    '<span class="significance-badge significant">Significant</span>' :
-                    '<span class="significance-badge not-significant">Not Significant</span>';
-                    
-                const summerAvg = seasonalStats.summer?.duration_metrics?.avg_daily_duration_minutes || 0;
-                const winterAvg = seasonalStats.winter?.duration_metrics?.avg_daily_duration_minutes || 0;
-                const difference = summerAvg - winterAvg;
+            if (seasonData.length > 0) {
+                // Find most and least active seasons by duration
+                const mostActive = seasonData.reduce((max, season) => 
+                    season.duration > max.duration ? season : max);
+                const leastActive = seasonData.reduce((min, season) => 
+                    season.duration < min.duration ? season : min);
                 
-                html += \`
-                    <div class="hypothesis-test">
-                        <h4>\${result.hypothesis}</h4>
-                        <p><strong>Result:</strong> Summer \${difference > 0 ? 'longer' : 'shorter'} by \${Math.abs(difference).toFixed(1)} minutes/day \${significanceBadge}</p>
-                        <p><strong>p-value:</strong> \${result.p_value.toFixed(6)}</p>
-                        <p><strong>Effect size:</strong> \${result.effect_size.toFixed(3)}</p>
-                    </div>
-                \`;
-            }
-            
-            // Overall duration analysis
-            if (comparisons.duration_analysis && !comparisons.duration_analysis.error) {
-                const analysis = comparisons.duration_analysis;
-                const significanceBadge = analysis.significant ? 
-                    '<span class="significance-badge significant">Significant</span>' :
-                    '<span class="significance-badge not-significant">Not Significant</span>';
+                const seasonNames = {
+                    spring: 'Spring', summer: 'Summer', 
+                    autumn: 'Autumn', winter: 'Winter'
+                };
+                
+                if (mostActive.name !== leastActive.name) {
+                    const durationDiff = mostActive.duration - leastActive.duration;
+                    const significant = comparisons?.summer_winter_duration?.significant || 
+                                     comparisons?.duration_analysis?.significant || false;
                     
-                html += \`
-                    <div class="hypothesis-test">
-                        <h4>Overall Seasonal Duration Differences</h4>
-                        <p><strong>ANOVA Result:</strong> \${analysis.interpretation} \${significanceBadge}</p>
-                        <p><strong>F-statistic:</strong> \${analysis.f_statistic}</p>
-                        <p><strong>p-value:</strong> \${analysis.p_value}</p>
-                        <p><strong>Seasons compared:</strong> \${analysis.seasons_compared.join(', ')}</p>
-                    </div>
-                \`;
+                    insights.push({
+                        type: 'activity',
+                        icon: '🏃‍♂️',
+                        title: 'Most Active Season',
+                        description: 'Sven spends ' + Math.round(durationDiff) + ' minutes more outside per day in ' + seasonNames[mostActive.name] + ' compared to ' + seasonNames[leastActive.name],
+                        badge: significant ? 'Significant Change' : 'Seasonal Variation',
+                        color: significant ? '#4caf50' : '#2196f3'
+                    });
+                }
+                
+                // Find season with most sessions
+                const mostSessions = seasonData.reduce((max, season) => 
+                    season.sessions > max.sessions ? season : max);
+                
+                if (mostSessions.sessions > 0) {
+                    insights.push({
+                        type: 'frequency',
+                        icon: '🚪',
+                        title: 'Most Active Cat Flap Usage',
+                        description: seasonNames[mostSessions.name] + ' shows the highest activity with ' + mostSessions.sessions.toFixed(1) + ' sessions per day on average',
+                        badge: 'Behavioral Pattern',
+                        color: '#ff9800'
+                    });
+                }
+                
+                // Add seasonal care recommendations
+                if (mostActive.name === 'summer') {
+                    insights.push({
+                        type: 'care',
+                        icon: '☀️',
+                        title: 'Summer Care Tip',
+                        description: 'Extra outdoor time in summer means more exposure to heat. Ensure fresh water is always available',
+                        badge: 'Care Recommendation',
+                        color: '#f44336'
+                    });
+                } else if (mostActive.name === 'winter') {
+                    insights.push({
+                        type: 'care',
+                        icon: '❄️',
+                        title: 'Winter Care Tip',
+                        description: 'Increased winter activity may indicate hunting behavior. Monitor for prey bringing',
+                        badge: 'Care Recommendation',
+                        color: '#64b5f6'
+                    });
+                }
             }
             
-            container.innerHTML = html || '<p>No statistical comparisons available.</p>';
+            // Default insight if no data
+            if (insights.length === 0) {
+                insights.push({
+                    type: 'info',
+                    icon: '📊',
+                    title: 'Seasonal Analysis',
+                    description: 'Collecting data across all seasons to identify behavioral patterns',
+                    badge: 'In Progress',
+                    color: '#9e9e9e'
+                });
+            }
+            
+            const html = insights.map(insight => 
+                '<div class="insight-item">' +
+                    '<div class="insight-icon">' + insight.icon + '</div>' +
+                    '<div class="insight-content">' +
+                        '<h4>' + insight.title + '</h4>' +
+                        '<p>' + insight.description + '</p>' +
+                        '<span class="insight-badge" style="background-color: ' + insight.color + '">' +
+                            insight.badge +
+                        '</span>' +
+                    '</div>' +
+                '</div>'
+            ).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function renderEnvironmentalContext(seasonalStats) {
+            const container = document.getElementById('environmental-context');
+            
+            // Environmental factors by season
+            const environmentalData = {
+                spring: {
+                    daylight: '12-15 hours',
+                    temperature: '10-18°C',
+                    description: 'Longer days encourage exploration. Mating season increases territorial behavior.',
+                    tips: [
+                        { title: 'Increased Activity Expected', tip: 'Longer daylight hours naturally increase outdoor time. This is normal seasonal behavior.' },
+                        { title: 'Allergy Season', tip: 'Spring pollen may affect cats. Watch for excessive scratching or sneezing after outdoor time.' },
+                        { title: 'Territory Marking', tip: 'Spring mating season may increase scent marking. Clean the cat flap regularly.' }
+                    ]
+                },
+                summer: {
+                    daylight: '15-17 hours',
+                    temperature: '15-25°C',
+                    description: 'Peak daylight and warmth drive maximum outdoor activity. Heat management becomes important.',
+                    tips: [
+                        { title: 'Heat Safety', tip: 'Ensure fresh water is always available. Cats may seek cooler outdoor spots during hot days.' },
+                        { title: 'Peak Activity Period', tip: 'Summer shows maximum outdoor time. This is ideal for exercise and natural behavior.' },
+                        { title: 'Parasite Prevention', tip: 'Warm weather increases flea and tick activity. Maintain regular parasite prevention.' }
+                    ]
+                },
+                autumn: {
+                    daylight: '9-12 hours',
+                    temperature: '5-15°C',
+                    description: 'Decreasing daylight triggers preparation for winter. Hunting instincts peak as prey is abundant.',
+                    tips: [
+                        { title: 'Hunting Season', tip: 'Abundant prey in autumn may increase hunting behavior. Monitor for gifts brought inside.' },
+                        { title: 'Weather Transition', tip: 'Variable autumn weather means cats may stay out longer on warm days.' },
+                        { title: 'Weight Management', tip: 'Cats naturally gain weight for winter. Monitor food intake if activity decreases.' }
+                    ]
+                },
+                winter: {
+                    daylight: '7-9 hours',
+                    temperature: '-5-10°C',
+                    description: 'Minimal daylight and cold temperatures reduce outdoor time. Indoor heating creates comfort zones.',
+                    tips: [
+                        { title: 'Reduced Activity Normal', tip: 'Less outdoor time in winter is natural. Ensure adequate indoor exercise and stimulation.' },
+                        { title: 'Comfort Seeking', tip: 'Cats may venture out briefly then return quickly. Multiple short sessions are normal.' },
+                        { title: 'Vitamin D', tip: 'Limited sunlight exposure may affect health. Consider UV lamps or vitamin supplements.' }
+                    ]
+                }
+            };
+            
+            // Find the seasons with data
+            const seasonsWithData = Object.keys(seasonalStats).filter(season => 
+                season !== 'comparisons' && seasonalStats[season] && seasonalStats[season].data_quality
+            );
+            
+            let html = '<div class="environmental-grid">';
+            
+            // Environmental factors section
+            html += '<div class="environmental-section">';
+            html += '<h4>🌤️ Seasonal Environmental Factors</h4>';
+            
+            if (seasonsWithData.length > 0) {
+                seasonsWithData.forEach(season => {
+                    const envData = environmentalData[season];
+                    if (envData) {
+                        const seasonName = season.charAt(0).toUpperCase() + season.slice(1);
+                        html += '<div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.5); border-radius: 6px;">';
+                        html += '<h5 style="margin: 0 0 0.5rem 0; color: #333;">' + seasonName + '</h5>';
+                        html += '<p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #666;">📅 Daylight: ' + envData.daylight + ' | 🌡️ Temperature: ' + envData.temperature + '</p>';
+                        html += '<p style="margin: 0; font-size: 0.9rem; color: #555;">' + envData.description + '</p>';
+                        html += '</div>';
+                    }
+                });
+            } else {
+                html += '<p style="color: #666; font-style: italic;">Environmental analysis will be available once seasonal data is collected.</p>';
+            }
+            
+            html += '</div>';
+            
+            // Care recommendations section
+            html += '<div class="environmental-section">';
+            html += '<h4>💡 Seasonal Care Recommendations</h4>';
+            
+            if (seasonsWithData.length > 0) {
+                seasonsWithData.forEach(season => {
+                    const envData = environmentalData[season];
+                    if (envData && envData.tips) {
+                        const seasonName = season.charAt(0).toUpperCase() + season.slice(1);
+                        html += '<h5 style="margin: 0 0 1rem 0; color: #333; font-size: 1rem;">' + seasonName + ' Care Tips:</h5>';
+                        envData.tips.forEach(tip => {
+                            html += '<div class="care-tip">';
+                            html += '<h5>' + tip.title + '</h5>';
+                            html += '<p>' + tip.tip + '</p>';
+                            html += '</div>';
+                        });
+                    }
+                });
+            } else {
+                html += '<p style="color: #666; font-style: italic;">Personalized care recommendations will be generated based on your cat\'s seasonal patterns.</p>';
+            }
+            
+            html += '</div>';
+            html += '</div>';
+            
+            container.innerHTML = html;
         }
 
         function renderSeasonalHeatmap(seasonalStats) {
