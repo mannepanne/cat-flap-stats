@@ -176,6 +176,10 @@ export default {
           return await handleProcessingMetricsApi(request, env);
         case '/api/csp-report':
           return await handleCspReport(request, env);
+        case '/test-weather':
+          return await handleWeatherTest(request, env);
+        case '/test-correlation':
+          return await handleCorrelationTest(request, env);
         case '/favicon.ico':
           return await handleFavicon(request, env);
         case '/favicons/android-chrome-192x192.png':
@@ -839,6 +843,313 @@ async function handleLogout(request, env) {
   });
 }
 
+// Weather test endpoint for debugging
+async function handleWeatherTest(request, env) {
+  try {
+    const endDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days ago
+    const startDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 5 days ago
+    
+    const weatherData = await fetchWeatherData(startDate, endDate, env);
+    
+    return new Response(JSON.stringify({
+      testInfo: {
+        startDate,
+        endDate,
+        timestamp: new Date().toISOString()
+      },
+      weatherData: weatherData,
+      processed: weatherData ? {
+        hasDaily: !!weatherData.daily,
+        dailyKeys: weatherData.daily ? Object.keys(weatherData.daily) : null,
+        timeLength: weatherData.daily?.time?.length || 0,
+        tempLength: weatherData.daily?.temperature_2m_max?.length || 0,
+        temps: weatherData.daily?.temperature_2m_max || [],
+        codes: weatherData.daily?.weather_code || [],
+        lastTemp: weatherData.daily?.temperature_2m_max?.slice(-1)[0],
+        lastCode: weatherData.daily?.weather_code?.slice(-1)[0]
+      } : null
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error.message,
+      stack: error.stack
+    }, null, 2), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+// Correlation test endpoint for debugging weather-activity correlation
+async function handleCorrelationTest(request, env) {
+  try {
+    // Fetch analytics data (same as dashboard)
+    const jsonUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
+    const response = await fetch(jsonUrl);
+    
+    if (!response.ok) {
+      return new Response(`Failed to fetch analytics data: ${response.status}`, { status: 500 });
+    }
+    
+    const analyticsData = await response.json();
+    
+    // Use fixed recent date range (last 21 days) to match dashboard
+    const endDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days ago
+    const startDate = new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 23 days ago
+    const weatherData = await fetchWeatherData(startDate, endDate, env);
+    
+    // Flatten session data from nested structure
+    const allSessionData = [];
+    if (analyticsData && analyticsData.sessions) {
+      analyticsData.sessions.forEach(report => {
+        if (report.session_data && Array.isArray(report.session_data)) {
+          allSessionData.push(...report.session_data);
+        }
+      });
+    }
+    
+    // Filter to recent sessions (last 21 days) and test correlation
+    let recentSessions = [];
+    let correlation = null;
+    
+    if (allSessionData.length > 0 && weatherData) {
+      const cutoffDate = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      // Filter to recent sessions
+      recentSessions = allSessionData.filter(session => {
+        return session.date_full && session.date_full >= cutoffDate;
+      });
+      
+      correlation = analyzeWeatherActivityCorrelation(recentSessions, weatherData);
+    }
+    
+    return new Response(JSON.stringify({
+      analyticsInfo: {
+        hasData: !!analyticsData,
+        hasSessions: !!(analyticsData && analyticsData.sessions),
+        totalSessionCount: analyticsData?.sessions?.length || 0,
+        recentSessionCount: recentSessions.length,
+        cutoffDate: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        allSessionsCount: analyticsData?.sessions?.length || 0,
+        rawSessionSample: analyticsData?.sessions?.slice(0, 1) || [],
+        sessionKeys: analyticsData?.sessions?.length > 0 ? Object.keys(analyticsData.sessions[0]) : [],
+        flattenedSessionSample: allSessionData?.slice(0, 3) || [],
+        flattenedSessionCount: allSessionData?.length || 0,
+        latestSessionDates: allSessionData?.map(s => s.date_full).filter(d => d).sort().slice(-10) || [],
+        earliestSessionDates: allSessionData?.map(s => s.date_full).filter(d => d).sort().slice(0, 5) || [],
+        recentSessionDates: recentSessions.map(s => s.date_full).slice(0, 10),
+        sampleRecentSessions: recentSessions.slice(0, 3),
+        sessionDateFormats: recentSessions.slice(0, 5).map(s => ({
+          date_full: s.date_full,
+          date_str: s.date_str
+        }))
+      },
+      weatherInfo: {
+        hasData: !!weatherData,
+        dateRange: weatherData ? `${startDate} to ${endDate}` : 'No data',
+        weatherDates: weatherData?.daily?.time || [],
+        weatherDatesCount: weatherData?.daily?.time?.length || 0
+      },
+      correlation: correlation
+    }, null, 2), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error.message,
+      stack: error.stack
+    }, null, 2), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+}
+
+// Weather data integration for Peckham, South East London
+async function fetchWeatherData(startDate, endDate, env) {
+  const lat = "51.4742";  // Peckham latitude
+  const lon = "-0.0695";  // Peckham longitude
+  
+  try {
+    // Check CloudFlare KV cache first
+    const cacheKey = `weather_peckham_${startDate}_${endDate}`;
+    const cached = await env.CAT_FLAP_KV.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    
+    // Fetch from Open-Meteo API
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max`;
+    
+    console.log('Fetching weather from URL:', url);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn('Weather API request failed:', response.status, response.statusText);
+      return null;
+    }
+    
+    const weatherData = await response.json();
+    console.log('Weather API response:', {
+      hasDaily: !!weatherData.daily,
+      dailyKeys: weatherData.daily ? Object.keys(weatherData.daily) : 'no daily',
+      timeLength: weatherData.daily?.time?.length || 0,
+      tempLength: weatherData.daily?.temperature_2m_max?.length || 0,
+      firstTemp: weatherData.daily?.temperature_2m_max?.[0],
+      lastTemp: weatherData.daily?.temperature_2m_max?.slice(-1)[0]
+    });
+    
+    // Cache for 24 hours (historical weather data doesn't change)
+    await env.CAT_FLAP_KV.put(cacheKey, JSON.stringify(weatherData), { 
+      expirationTtl: 86400 
+    });
+    
+    return weatherData;
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+    return null;
+  }
+}
+
+// Weather code descriptions for user-friendly display
+function getWeatherDescription(code) {
+  const weatherDescriptions = {
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 48: "Depositing rime fog",
+    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+    80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
+    95: "Thunderstorm", 96: "Thunderstorm with hail"
+  };
+  return weatherDescriptions[code] || "Unknown weather";
+}
+
+// Analyze correlation between weather and cat activity
+function analyzeWeatherActivityCorrelation(sessionData, weatherData) {
+  if (!weatherData || !sessionData || sessionData.length === 0) {
+    return {
+      correlation: null,
+      insights: "Insufficient data for weather correlation analysis"
+    };
+  }
+  
+  console.log('Correlation Analysis Debug:', {
+    sessionDataLength: sessionData.length,
+    weatherDataDays: weatherData.daily?.time?.length || 0,
+    sampleSessionDates: sessionData.slice(0, 3).map(s => s.date_full),
+    sampleWeatherDates: weatherData.daily?.time?.slice(0, 3) || []
+  });
+  
+  // Group sessions by date
+  const dailyMetrics = {};
+  sessionData.forEach(session => {
+    const date = session.date_full;
+    if (!dailyMetrics[date]) {
+      dailyMetrics[date] = { totalTimeMinutes: 0, sessionCount: 0 };
+    }
+    
+    // Convert duration to minutes
+    const duration = session.duration || "0";
+    let minutes = 0;
+    if (duration.includes('h')) {
+      const parts = duration.split(' ');
+      const hours = parseFloat(parts[0]) || 0;
+      const mins = parts[1] ? parseFloat(parts[1]) || 0 : 0;
+      minutes = (hours * 60) + mins;
+    } else if (duration.includes('mins')) {
+      minutes = parseFloat(duration) || 0;
+    }
+    
+    dailyMetrics[date].totalTimeMinutes += minutes;
+    dailyMetrics[date].sessionCount++;
+  });
+  
+  // Correlate with weather data
+  const correlations = [];
+  if (weatherData.daily && weatherData.daily.time) {
+    weatherData.daily.time.forEach((date, index) => {
+      const dayMetrics = dailyMetrics[date];
+      if (dayMetrics) {
+        correlations.push({
+          date,
+          temperature: weatherData.daily.temperature_2m_max[index],
+          precipitation: weatherData.daily.precipitation_sum[index] || 0,
+          timeOutsideMinutes: dayMetrics.totalTimeMinutes,
+          sessions: dayMetrics.sessionCount,
+          weatherCode: weatherData.daily.weather_code[index]
+        });
+      }
+    });
+  }
+  
+  console.log('Correlation Matching Debug:', {
+    dailyMetricsCount: Object.keys(dailyMetrics).length,
+    dailyMetricsDates: Object.keys(dailyMetrics).slice(0, 5),
+    correlationsFound: correlations.length,
+    sampleCorrelations: correlations.slice(0, 2)
+  });
+  
+  if (correlations.length === 0) {
+    return {
+      correlation: null,
+      insights: `No overlapping dates found. Session dates: ${Object.keys(dailyMetrics).length}, Weather dates: ${weatherData.daily?.time?.length || 0}`
+    };
+  }
+  
+  // Calculate basic correlations
+  const sunnyDays = correlations.filter(d => d.precipitation === 0 && d.temperature > 15);
+  const rainyDays = correlations.filter(d => d.precipitation > 2);
+  const coldDays = correlations.filter(d => d.temperature < 8);
+  
+  const avgSunnyTime = sunnyDays.length > 0 ? 
+    sunnyDays.reduce((sum, d) => sum + d.timeOutsideMinutes, 0) / sunnyDays.length : 0;
+  const avgRainyTime = rainyDays.length > 0 ?
+    rainyDays.reduce((sum, d) => sum + d.timeOutsideMinutes, 0) / rainyDays.length : 0;
+  const avgColdTime = coldDays.length > 0 ?
+    coldDays.reduce((sum, d) => sum + d.timeOutsideMinutes, 0) / coldDays.length : 0;
+  
+  // Generate insights
+  let insights = [];
+  if (sunnyDays.length > 0 && rainyDays.length > 0) {
+    const difference = ((avgSunnyTime - avgRainyTime) / avgRainyTime * 100).toFixed(0);
+    if (difference > 10) {
+      insights.push(`${difference}% more outdoor time on sunny vs rainy days`);
+    }
+  }
+  
+  if (coldDays.length > 0 && avgColdTime < avgSunnyTime) {
+    const coldReduction = ((avgSunnyTime - avgColdTime) / avgSunnyTime * 100).toFixed(0);
+    insights.push(`${coldReduction}% less outdoor time when temperature drops below 8°C`);
+  }
+  
+  return {
+    correlation: {
+      sunnyDayAvg: Math.round(avgSunnyTime),
+      rainyDayAvg: Math.round(avgRainyTime),
+      coldDayAvg: Math.round(avgColdTime),
+      totalDays: correlations.length,
+      sunnyDays: sunnyDays.length,
+      rainyDays: rainyDays.length
+    },
+    insights: insights.length > 0 ? insights.join('; ') : "Weather patterns show minimal impact on outdoor behavior"
+  };
+}
+
 async function handleDashboard(request, env) {
   const authToken = getCookie(request, 'auth_token');
   const email = await validateAuthToken(authToken, env);
@@ -847,14 +1158,15 @@ async function handleDashboard(request, env) {
     return Response.redirect(new URL('/', request.url).toString(), 302);
   }
   
-  // Fetch dashboard metrics from analytics data
+  // Fetch full analytics data (same as other pages) for consistent peak hour calculation
   let dashboardMetrics = null;
+  let analyticsData = null;
   try {
     const jsonUrl = `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/main/master_dataset.json`;
     const response = await fetch(jsonUrl);
     
     if (response.ok) {
-      const analyticsData = await response.json();
+      analyticsData = await response.json();
       dashboardMetrics = analyticsData.precomputed?.dashboardMetrics || null;
     } else {
       console.warn('Failed to fetch dashboard metrics:', response.status);
@@ -863,7 +1175,52 @@ async function handleDashboard(request, env) {
     console.error('Error fetching dashboard metrics:', error);
   }
   
-  return createSecureHtmlResponse(getDashboardPage(email, dashboardMetrics));
+  // Fetch weather data for the last 21 days (matching dashboard metrics timeframe)
+  let weatherData = null;
+  let weatherCorrelation = null;
+  try {
+    // Use fixed recent date range (last 21 days) to match dashboard timeline
+    const endDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days ago (avoid null weather data)
+    const startDate = new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 23 days ago
+    
+    console.log('Weather date range (matched to sessions):', { startDate, endDate });
+    
+    weatherData = await fetchWeatherData(startDate, endDate, env);
+    
+    // Calculate weather-activity correlation using recent sessions only (last 21 days)
+    if (weatherData && analyticsData && analyticsData.sessions) {
+      // Flatten session data from nested structure
+      const allSessionData = [];
+      analyticsData.sessions.forEach(report => {
+        if (report.session_data && Array.isArray(report.session_data)) {
+          allSessionData.push(...report.session_data);
+        }
+      });
+      
+      // Filter sessions to last 21 days to match dashboard timeline
+      const cutoffDate = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const recentSessions = allSessionData.filter(session => {
+        return session.date_full && session.date_full >= cutoffDate;
+      });
+      
+      console.log('Recent sessions filter:', {
+        totalReports: analyticsData.sessions.length,
+        totalSessions: allSessionData.length,
+        recentSessions: recentSessions.length,
+        cutoffDate,
+        recentDateRange: recentSessions.length > 0 ? {
+          earliest: Math.min(...recentSessions.map(s => s.date_full)),
+          latest: Math.max(...recentSessions.map(s => s.date_full))
+        } : 'no recent sessions'
+      });
+      
+      weatherCorrelation = analyzeWeatherActivityCorrelation(recentSessions, weatherData);
+    }
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+  }
+  
+  return createSecureHtmlResponse(getDashboardPage(email, dashboardMetrics, analyticsData, weatherData, weatherCorrelation));
 }
 
 async function handleDownload(request, env) {
@@ -1421,7 +1778,7 @@ async function generateCircadianAnalysis(data) {
   // Calculate circadian metrics
   const polarClockData = calculatePolarClock(sessions);
   const circadianStrength = calculateCircadianStrength(sessions);
-  const seasonalPhases = calculateSeasonalPhases(sessions);
+  const seasonalPhases = calculateSeasonalPhases(sessions, data.precomputed);
   const activityEntropy = calculateActivityEntropy(sessions);
   const zeitgeberAnalysis = calculateZeitgeberInfluence(sessions);
   
@@ -1432,6 +1789,7 @@ async function generateCircadianAnalysis(data) {
       dateRange: data.metadata?.dateRange || 'Unknown',
       generated: new Date().toISOString()
     },
+    precomputed: data.precomputed, // Include precomputed data for consistent peak hour calculation
     polarClock: polarClockData,
     circadianMetrics: {
       strength: circadianStrength,
@@ -1439,7 +1797,7 @@ async function generateCircadianAnalysis(data) {
       zeitgeberInfluence: zeitgeberAnalysis
     },
     seasonalAnalysis: seasonalPhases,
-    insights: generateCircadianInsights(circadianStrength, activityEntropy, seasonalPhases)
+    insights: generateCircadianInsights(circadianStrength, activityEntropy, seasonalPhases, data.precomputed)
   };
 }
 
@@ -1500,26 +1858,62 @@ function calculateCircadianStrength(sessions) {
   };
 }
 
-function calculateSeasonalPhases(sessions) {
+function calculateSeasonalPhases(sessions, precomputed) {
   const seasons = { spring: [], summer: [], autumn: [], winter: [] };
   
+  // Group sessions by season
   sessions.forEach(session => {
     const date = new Date(session.date);
     const season = getSeason(date);
-    const exitHour = parseInt(session.exitTime.split(':')[0]);
-    seasons[season].push(exitHour);
+    seasons[season].push(session);
   });
   
   const seasonalPhases = {};
-  Object.entries(seasons).forEach(([season, hours]) => {
-    if (hours.length > 0) {
-      const avgHour = hours.reduce((a, b) => a + b, 0) / hours.length;
-      const variance = hours.reduce((sum, hour) => sum + Math.pow(hour - avgHour, 2), 0) / hours.length;
+  Object.entries(seasons).forEach(([season, seasonSessions]) => {
+    if (seasonSessions.length > 0) {
+      // Use consistent peak hour calculation (same as main circadian analysis)
+      let peakHour = 0;
+      
+      if (precomputed && precomputed.peakHours) {
+        // Filter precomputed peak hours by season
+        const seasonalHourlyData = Array.from({ length: 24 }, (_, hour) => ({ hour, frequency: 0 }));
+        
+        seasonSessions.forEach(session => {
+          const exitHour = parseInt(session.exitTime.split(':')[0]);
+          const entryHour = session.entryTime ? parseInt(session.entryTime.split(':')[0]) : null;
+          seasonalHourlyData[exitHour].frequency++;
+          if (entryHour !== null) seasonalHourlyData[entryHour].frequency++;
+        });
+        
+        const maxFrequency = Math.max(...seasonalHourlyData.map(h => h.frequency));
+        const peakHourData = seasonalHourlyData.find(h => h.frequency === maxFrequency);
+        peakHour = peakHourData ? peakHourData.hour : 0;
+      } else {
+        // Fallback: calculate peak hour from session data
+        const hourlyCount = new Array(24).fill(0);
+        seasonSessions.forEach(session => {
+          const exitHour = parseInt(session.exitTime.split(':')[0]);
+          const entryHour = session.entryTime ? parseInt(session.entryTime.split(':')[0]) : null;
+          hourlyCount[exitHour]++;
+          if (entryHour !== null) hourlyCount[entryHour]++;
+        });
+        peakHour = hourlyCount.indexOf(Math.max(...hourlyCount));
+      }
+      
+      // Calculate consistency (variance of peak hour activity)
+      const peakHourSessions = seasonSessions.filter(session => {
+        const exitHour = parseInt(session.exitTime.split(':')[0]);
+        const entryHour = session.entryTime ? parseInt(session.entryTime.split(':')[0]) : null;
+        return exitHour === peakHour || entryHour === peakHour;
+      });
+      
+      const consistency = seasonSessions.length > 0 ? 
+        Math.round((peakHourSessions.length / seasonSessions.length) * 100) / 100 : 0;
       
       seasonalPhases[season] = {
-        averagePhase: Math.round(avgHour * 100) / 100,
-        consistency: Math.round((1 / (1 + Math.sqrt(variance))) * 100) / 100,
-        sessionCount: hours.length
+        averagePhase: peakHour, // Now represents actual peak hour, not average
+        consistency: consistency,
+        sessionCount: seasonSessions.length
       };
     }
   });
@@ -1592,11 +1986,21 @@ function getSeason(date) {
   return 'winter';
 }
 
-function generateCircadianInsights(strength, entropy, seasonal) {
+function generateCircadianInsights(strength, entropy, seasonal, precomputed) {
   const insights = [];
   
   if (strength.strength > 0.8) {
-    insights.push(`Sven shows ${strength.classification.toLowerCase()} circadian rhythms with peak activity at ${strength.peakHour}:00.`);
+    // Use consistent peak hour calculation from precomputed data (same as patterns page)
+    let peakHour = strength.peakHour; // fallback to original calculation
+    if (precomputed && precomputed.peakHours) {
+      const peakHours = precomputed.peakHours;
+      const maxActivity = Math.max(...peakHours.map(h => h.exitFrequency + h.entryFrequency));
+      const peakHourData = peakHours.find(h => (h.exitFrequency + h.entryFrequency) === maxActivity);
+      peakHour = peakHourData ? peakHourData.hour : strength.peakHour;
+    }
+    
+    const peakHourFormatted = peakHour.toString().padStart(2, '0') + ':00';
+    insights.push(`Sven shows ${strength.classification.toLowerCase()} circadian rhythms with peak activity at ${peakHourFormatted}.`);
   }
   
   if (entropy.predictability > 0.7) {
@@ -1863,7 +2267,7 @@ function getDownloadPage(email) {
 </html>`;
 }
 
-function getDashboardPage(email, dashboardMetrics) {
+function getDashboardPage(email, dashboardMetrics, analyticsData, weatherData, weatherCorrelation) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1890,7 +2294,7 @@ function getDashboardPage(email, dashboardMetrics) {
             </div>
             
             <div class="content-body">
-                ${getDashboardContent(dashboardMetrics)}
+                ${getDashboardContent(dashboardMetrics, analyticsData?.precomputed, weatherData, weatherCorrelation)}
                 ${getSidebarScript()}
             </div>
         </div>
@@ -3272,20 +3676,50 @@ function getCircadianPage(email) {
             backdrop-filter: blur(10px);
         }
         .seasonal-analysis {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1rem;
         }
         .season-card {
             background: white;
             padding: 1rem;
             border-radius: 8px;
-            text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
         }
         .season-icon {
             font-size: 2rem;
-            margin-bottom: 0.5rem;
+            flex-shrink: 0;
+        }
+        .season-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+        .season-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+            min-width: 80px;
+        }
+        .season-stats {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .season-time {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #333;
+        }
+        .season-consistency {
+            font-size: 0.9rem;
+            color: #666;
         }
         .loading {
             text-align: center;
@@ -3436,6 +3870,14 @@ function getCircadianPage(email) {
                 </div>
             </div>
             
+            <!-- Insights -->
+            <div class="insights-card" id="insights-section">
+                <h3>🧠 Circadian Insights</h3>
+                <div id="insights-content">
+                    <div class="insight-item">Analyzing behavioral patterns...</div>
+                </div>
+            </div>
+            
             <!-- Main Visualization -->
             <div class="circadian-grid">
                 <div class="card">
@@ -3458,37 +3900,66 @@ function getCircadianPage(email) {
                     <div class="seasonal-analysis" id="seasonal-grid">
                         <div class="season-card">
                             <div class="season-icon">🌸</div>
-                            <h4>Spring</h4>
-                            <div class="stat-number" style="font-size: 1.5rem;" id="spring-phase">--:--</div>
-                            <div class="metric-sublabel" id="spring-consistency">--% consistent</div>
+                            <div class="season-info">
+                                <div class="season-name">Spring</div>
+                                <div class="season-stats">
+                                    <div class="season-time" id="spring-phase">--:--</div>
+                                    <div class="season-consistency" id="spring-consistency">--% consistent</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">☀️</div>
-                            <h4>Summer</h4>
-                            <div class="stat-number" style="font-size: 1.5rem;" id="summer-phase">--:--</div>
-                            <div class="metric-sublabel" id="summer-consistency">--% consistent</div>
+                            <div class="season-info">
+                                <div class="season-name">Summer</div>
+                                <div class="season-stats">
+                                    <div class="season-time" id="summer-phase">--:--</div>
+                                    <div class="season-consistency" id="summer-consistency">--% consistent</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">🍂</div>
-                            <h4>Autumn</h4>
-                            <div class="stat-number" style="font-size: 1.5rem;" id="autumn-phase">--:--</div>
-                            <div class="metric-sublabel" id="autumn-consistency">--% consistent</div>
+                            <div class="season-info">
+                                <div class="season-name">Autumn</div>
+                                <div class="season-stats">
+                                    <div class="season-time" id="autumn-phase">--:--</div>
+                                    <div class="season-consistency" id="autumn-consistency">--% consistent</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="season-card">
                             <div class="season-icon">❄️</div>
-                            <h4>Winter</h4>
-                            <div class="stat-number" style="font-size: 1.5rem;" id="winter-phase">--:--</div>
-                            <div class="metric-sublabel" id="winter-consistency">--% consistent</div>
+                            <div class="season-info">
+                                <div class="season-name">Winter</div>
+                                <div class="season-stats">
+                                    <div class="season-time" id="winter-phase">--:--</div>
+                                    <div class="season-consistency" id="winter-consistency">--% consistent</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Insights -->
-            <div class="insights-card" id="insights-section">
-                <h3>🧠 Circadian Insights</h3>
-                <div id="insights-content">
-                    <div class="insight-item">Analyzing behavioral patterns...</div>
+            <!-- Care Recommendations -->
+            <div class="insights-card" id="care-recommendations-section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>🐱 Circadian Care Recommendations</h3>
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="care-recommendations-tooltip">
+                            <strong>Circadian Care Recommendations</strong><br><br>
+                            Practical guidance based on your cat's natural daily rhythms:<br><br>
+                            <strong>Feeding Times:</strong> Aligned with peak activity periods for optimal digestion<br>
+                            <strong>Play Sessions:</strong> Scheduled during natural hunting hours<br>
+                            <strong>Environment:</strong> Light and temperature adjustments to support healthy rhythms<br><br>
+                            Working with your cat's circadian patterns improves wellbeing, reduces stress, and enhances the human-cat bond.
+                        </div>
+                    </div>
+                </div>
+                <div id="care-recommendations-content">
+                    <div class="insight-item">Generating personalized care recommendations...</div>
                 </div>
             </div>
         </div>
@@ -3523,6 +3994,9 @@ function getCircadianPage(email) {
                 // Update seasonal analysis
                 updateSeasonalAnalysis(data.seasonalAnalysis);
                 
+                // Generate care recommendations
+                generateCareRecommendations(data);
+                
                 // Display insights
                 displayInsights(data.insights);
                 
@@ -3541,7 +4015,19 @@ function getCircadianPage(email) {
             document.getElementById('circadian-strength').textContent = strength.strength;
             document.getElementById('strength-classification').textContent = strength.classification;
             
-            const peakHourFormatted = strength.peakHour.toString().padStart(2, '0') + ':00';
+            // Use consistent peak hour calculation from precomputed data (same as patterns page)
+            let peakHour = 0;
+            if (data.precomputed && data.precomputed.peakHours) {
+                const peakHours = data.precomputed.peakHours;
+                const maxActivity = Math.max(...peakHours.map(h => h.exitFrequency + h.entryFrequency));
+                const peakHourData = peakHours.find(h => (h.exitFrequency + h.entryFrequency) === maxActivity);
+                peakHour = peakHourData ? peakHourData.hour : strength.peakHour;
+            } else {
+                // Fallback to original calculation if precomputed data not available
+                peakHour = strength.peakHour;
+            }
+            
+            const peakHourFormatted = peakHour.toString().padStart(2, '0') + ':00';
             document.getElementById('peak-activity-hour').textContent = peakHourFormatted;
             
             document.getElementById('predictability').textContent = entropy.predictability + '%';
@@ -3567,9 +4053,9 @@ function getCircadianPage(email) {
             
             const peakTooltip = document.getElementById('peak-activity-tooltip');
             if (peakTooltip) {
-                const wildComparison = strength.peakHour >= 5 && strength.peakHour <= 10 ? 
+                const wildComparison = peakHour >= 5 && peakHour <= 10 ? 
                     'This aligns with natural dawn activity!' :
-                    strength.peakHour >= 17 && strength.peakHour <= 22 ?
+                    peakHour >= 17 && peakHour <= 22 ?
                     'This aligns with natural dusk activity!' :
                     'This shows adaptation to human schedules rather than wild patterns.';
                     
@@ -3578,7 +4064,8 @@ function getCircadianPage(email) {
                     'The hour when Sven is most active throughout the day.<br><br>' +
                     '<strong>Calculation:</strong> Hour with highest combined exit + entry frequency<br>' +
                     '• Counts all exits and entries across entire dataset<br>' +
-                    '• Averaged per day to find consistent peak<br><br>' +
+                    '• Averaged per day to find consistent peak<br>' +
+                    '• Uses same calculation as Patterns page for consistency<br><br>' +
                     '<strong>Comparison:</strong> ' + wildComparison + '<br>' +
                     '<strong>Wild cats:</strong> Most active at dawn (06:00) and dusk (18:00)';
             }
@@ -3714,6 +4201,134 @@ function getCircadianPage(email) {
                         consistencyElement.textContent = Math.round(data.consistency * 100) + '% consistent';
                     }
                 }
+            });
+        }
+        
+        function generateCareRecommendations(data) {
+            const container = document.getElementById('care-recommendations-content');
+            const metrics = data.circadianMetrics;
+            const strength = metrics.strength;
+            const zeitgeber = metrics.zeitgeberInfluence;
+            
+            let recommendations = [];
+            
+            // Feeding recommendations based on peak activity
+            const peakHour = strength.peakHour;
+            const feedingTimes = [];
+            
+            if (peakHour >= 5 && peakHour <= 10) {
+                // Dawn peak activity
+                feedingTimes.push('Feed 30-60 minutes before dawn peak (' + (peakHour - 1).toString().padStart(2, '0') + ':00)');
+                feedingTimes.push('Light evening meal around ' + (Math.min(peakHour + 10, 22)).toString().padStart(2, '0') + ':00');
+            } else if (peakHour >= 17 && peakHour <= 22) {
+                // Dusk peak activity
+                feedingTimes.push('Main meal 1-2 hours before evening peak (' + (peakHour - 2).toString().padStart(2, '0') + ':00)');
+                feedingTimes.push('Light morning meal around ' + (Math.max(peakHour - 10, 7)).toString().padStart(2, '0') + ':00');
+            } else {
+                // Non-crepuscular peak
+                feedingTimes.push('Main meal 1-2 hours before peak activity (' + (peakHour - 2 < 0 ? peakHour + 22 : peakHour - 2).toString().padStart(2, '0') + ':00)');
+                if (zeitgeber.crepuscularIndex > 0.3) {
+                    feedingTimes.push('Consider dawn (07:00) or dusk (18:00) feeding to encourage natural patterns');
+                }
+            }
+            
+            recommendations.push({
+                icon: '🍽️',
+                title: 'Optimal Feeding Times',
+                details: feedingTimes
+            });
+            
+            // Play session recommendations
+            const playTimes = [];
+            const highActivityHours = data.polarClock
+                .filter(d => d.totalActivity > Math.max(...data.polarClock.map(h => h.totalActivity)) * 0.6)
+                .map(d => d.hour);
+            
+            if (highActivityHours.length > 0) {
+                const playHours = highActivityHours.slice(0, 2); // Top 2 active hours
+                playHours.forEach(hour => {
+                    playTimes.push('High-energy play at ' + hour.toString().padStart(2, '0') + ':00 (natural hunting time)');
+                });
+            }
+            
+            if (zeitgeber.crepuscularIndex > 0.4) {
+                playTimes.push('Engage crepuscular instincts with dawn/dusk play sessions');
+            } else {
+                playTimes.push('Gentle play during low-activity periods to maintain fitness');
+            }
+            
+            recommendations.push({
+                icon: '🎾',
+                title: 'Play & Exercise Schedule',
+                details: playTimes
+            });
+            
+            // Environment recommendations
+            const envRecommendations = [];
+            
+            if (strength.classification === 'Very Strong' || strength.classification === 'Strong') {
+                envRecommendations.push('Maintain consistent lighting schedules - Sven has excellent circadian rhythms');
+                envRecommendations.push('Gradually adjust environment changes to respect established patterns');
+            } else if (strength.classification === 'Weak' || strength.classification === 'Very Weak') {
+                envRecommendations.push('Use bright morning light (08:00-10:00) to strengthen circadian rhythms');
+                envRecommendations.push('Dim lights 2-3 hours before intended sleep time');
+                envRecommendations.push('Consider automated feeders to establish routine');
+            }
+            
+            if (zeitgeber.crepuscularIndex < 0.3) {
+                envRecommendations.push('Simulate natural light cycles with dawn/dusk lighting to encourage natural patterns');
+            }
+            
+            envRecommendations.push('Maintain comfortable temperature (18-21°C) during active periods');
+            
+            recommendations.push({
+                icon: '🏠',
+                title: 'Environmental Adjustments',
+                details: envRecommendations
+            });
+            
+            // Health monitoring recommendations
+            const healthRecommendations = [];
+            
+            if (metrics.entropy.predictability > 80) {
+                healthRecommendations.push('Excellent routine! Monitor for sudden pattern changes that may indicate health issues');
+            } else if (metrics.entropy.predictability < 40) {
+                healthRecommendations.push('Irregular patterns detected - monitor stress levels and consult vet if concerning');
+            }
+            
+            healthRecommendations.push('Track significant timing shifts (>2 hours) as potential health indicators');
+            healthRecommendations.push('Compare seasonal changes to identify weather-sensitive behaviors');
+            
+            recommendations.push({
+                icon: '💊',
+                title: 'Health Monitoring',
+                details: healthRecommendations
+            });
+            
+            // Render recommendations
+            container.innerHTML = '';
+            recommendations.forEach(rec => {
+                const recDiv = document.createElement('div');
+                recDiv.className = 'insight-item';
+                recDiv.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-left: 4px solid #4a90e2; border-radius: 4px; border: 1px solid #e9ecef;';
+                
+                const titleDiv = document.createElement('div');
+                titleDiv.style.cssText = 'font-weight: 600; color: #2c3e50; margin-bottom: 0.5rem; font-size: 14px;';
+                titleDiv.innerHTML = rec.icon + ' ' + rec.title;
+                
+                const detailsList = document.createElement('ul');
+                detailsList.style.cssText = 'margin: 0; padding-left: 1.2rem; font-size: 13px; line-height: 1.4;';
+                
+                rec.details.forEach(detail => {
+                    const listItem = document.createElement('li');
+                    listItem.style.cssText = 'margin-bottom: 0.3rem; color: #5a6c7d;';
+                    listItem.textContent = detail;
+                    detailsList.appendChild(listItem);
+                });
+                
+                recDiv.appendChild(titleDiv);
+                recDiv.appendChild(detailsList);
+                container.appendChild(recDiv);
             });
         }
         
@@ -5951,19 +6566,20 @@ ${getSharedCSS()}
             margin: 2rem auto;
             padding: 0 1rem;
         }
+        .health-recommendations {
+            margin-bottom: 1.5rem;
+        }
+        .health-recommendations h3 {
+            margin-bottom: 1rem;
+        }
         .health-insights-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
         @media (max-width: 768px) {
             .health-insights-grid { grid-template-columns: 1fr; }
-        }
-        .health-status {
-            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
-            border-left: 4px solid #4caf50;
-            margin-bottom: 2rem;
         }
         .health-score {
             display: flex;
@@ -6185,10 +6801,32 @@ ${getSharedCSS()}
         <div id="error" class="error" style="display: none;"></div>
         
         <div id="content" style="display: none;">
-            <!-- Overall Health Status -->
-            <div class="stat-card health-status">
-                <h3>📊 Overall Behavioral Health Status</h3>
-                <div id="health-status">
+            <!-- Health Recommendations -->
+            <div class="stat-card health-recommendations">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>💡 Health Recommendations</h3>
+                    <div class="info-icon">
+                        i
+                        <div class="tooltip" id="health-analysis-tooltip">
+                            <strong>Behavioral Health Analysis</strong><br><br>
+                            This analysis compares recent behavior to baseline patterns to detect meaningful changes:<br><br>
+                            <strong>Time Periods:</strong><br>
+                            • Recent: Last 7 days of data<br>
+                            • Baseline: Previous 30 days (or 30-day average)<br><br>
+                            <strong>Assessment Levels:</strong><br>
+                            • <span style="color: #10b981;">Normal:</span> Changes within ±25%<br>
+                            • <span style="color: #f59e0b;">Concerning:</span> Changes of 25-75%<br>
+                            • <span style="color: #ef4444;">Critical:</span> Changes >75% or <-50%<br><br>
+                            <strong>Metrics Tracked:</strong><br>
+                            • Activity levels (outdoor time per day)<br>
+                            • Routine timing (first exit, last entry)<br>
+                            • Session patterns (duration changes)<br>
+                            • Usage frequency (sessions per day)<br><br>
+                            The Overall Health Score combines all metrics to provide an actionable summary.
+                        </div>
+                    </div>
+                </div>
+                <div id="health-recommendations">
                     <!-- Populated by JavaScript -->
                 </div>
             </div>
@@ -6222,26 +6860,6 @@ ${getSharedCSS()}
                         <!-- Populated by JavaScript -->
                     </div>
                 </div>
-            </div>
-            
-            <!-- Health Recommendations -->
-            <div class="stat-card health-recommendations">
-                <h3>🩺 Health Recommendations</h3>
-                <div id="health-recommendations">
-                    <!-- Populated by JavaScript -->
-                </div>
-            </div>
-            
-            <!-- Timeline Integration Info -->
-            <div class="stat-card timeline-info">
-                <h3>📍 Timeline Integration</h3>
-                <p>Behavioral health patterns are integrated across all visualizations:</p>
-                <ul style="margin: 1rem 0; padding-left: 2rem;">
-                    <li><strong>Patterns page:</strong> Activity level trends and routine disruptions</li>
-                    <li><strong>Circadian page:</strong> Daily rhythm changes and timing shifts</li>
-                    <li><strong>Seasonal page:</strong> Seasonal adaptation and environmental factors</li>
-                </ul>
-                <p><small>Health insights are context-aware and factor in seasonal patterns, weather, and annotated events.</small></p>
             </div>
                 </div>
             </div>
@@ -6293,6 +6911,161 @@ ${getSharedCSS()}
             }
         }
 
+        // Utility functions for behavioral health analysis (must be defined before use)
+        function calculateAverageOutdoorTime(dailySummaries) {
+            if (!dailySummaries || dailySummaries.length === 0) return 0;
+            
+            // Use correct property name: totalOutdoorTime (not totalTimeOutside)
+            const validDays = dailySummaries.filter(day => day.totalOutdoorTime && day.totalOutdoorTime !== '00:00');
+            if (validDays.length === 0) return 0;
+            
+            const totalMinutes = validDays.reduce((sum, day) => {
+                // Convert time format "HH:MM" to minutes
+                const timeParts = day.totalOutdoorTime.split(':');
+                const hours = parseInt(timeParts[0]) || 0;
+                const minutes = parseInt(timeParts[1]) || 0;
+                return sum + (hours * 60) + minutes;
+            }, 0);
+            
+            return totalMinutes / validDays.length;
+        }
+
+        function calculateAverageRoutineTiming(dailySummaries) {
+            if (!dailySummaries || dailySummaries.length === 0) {
+                return { firstExit: null, lastEntry: null };
+            }
+            
+            const validDays = dailySummaries.filter(day => day.firstExit && day.lastEntry);
+            if (validDays.length === 0) {
+                return { firstExit: null, lastEntry: null };
+            }
+            
+            // Calculate average first exit time
+            const firstExitTimes = validDays.map(day => parseTimeToHours(day.firstExit));
+            const avgFirstExit = firstExitTimes.reduce((sum, time) => sum + time, 0) / firstExitTimes.length;
+            
+            // Calculate average last entry time
+            const lastEntryTimes = validDays.map(day => parseTimeToHours(day.lastEntry));
+            const avgLastEntry = lastEntryTimes.reduce((sum, time) => sum + time, 0) / lastEntryTimes.length;
+            
+            return {
+                firstExit: formatHoursToTime(avgFirstExit),
+                lastEntry: formatHoursToTime(avgLastEntry)
+            };
+        }
+
+        function calculateAverageSessionDuration(dailySummaries) {
+            if (!dailySummaries || dailySummaries.length === 0) return 0;
+            
+            // Calculate average session duration from totalOutdoorTime and sessions
+            const validDays = dailySummaries.filter(day => 
+                day.totalOutdoorTime && 
+                day.sessions && 
+                day.sessions > 0 && 
+                day.totalOutdoorTime !== '00:00'
+            );
+            
+            if (validDays.length === 0) return 0;
+            
+            const avgDurations = validDays.map(day => {
+                // Convert totalOutdoorTime to minutes
+                const timeParts = day.totalOutdoorTime.split(':');
+                const totalMinutes = (parseInt(timeParts[0]) || 0) * 60 + (parseInt(timeParts[1]) || 0);
+                
+                // Calculate average duration per session for this day
+                return totalMinutes / day.sessions;
+            });
+            
+            // Return overall average session duration
+            return avgDurations.reduce((sum, duration) => sum + duration, 0) / avgDurations.length;
+        }
+
+        function calculateAverageSessionsPerDay(dailySummaries) {
+            if (!dailySummaries || dailySummaries.length === 0) return 0;
+            
+            // Filter for days with session data (sessions property exists and is >= 0)
+            const validDays = dailySummaries.filter(day => typeof day.sessions === 'number' && day.sessions >= 0);
+            if (validDays.length === 0) return 0;
+            
+            const totalSessions = validDays.reduce((sum, day) => sum + day.sessions, 0);
+            return totalSessions / validDays.length;
+        }
+
+        function parseTimeToHours(timeString) {
+            if (!timeString) return 0;
+            const parts = timeString.split(':');
+            const hours = parseInt(parts[0]) || 0;
+            const minutes = parseInt(parts[1]) || 0;
+            return hours + (minutes / 60);
+        }
+
+        function formatHoursToTime(hours) {
+            const h = Math.floor(hours);
+            const m = Math.round((hours - h) * 60);
+            return \`\${h.toString().padStart(2, '0')}:\${m.toString().padStart(2, '0')}\`;
+        }
+
+        function formatMinutesForDisplay(minutes) {
+            if (minutes >= 120) {
+                const hours = (minutes / 60).toFixed(1);
+                return \`\${hours}h/day\`;
+            } else {
+                return \`\${Math.round(minutes)}min/day\`;
+            }
+        }
+
+        function generateActivityTrendDescription(changePercent, assessment) {
+            if (assessment === 'critical') {
+                return \`Significant \${changePercent < 0 ? 'decrease' : 'increase'} in outdoor activity (\${Math.abs(changePercent).toFixed(1)}%)\`;
+            } else if (assessment === 'concerning') {
+                return \`Notable \${changePercent < 0 ? 'decrease' : 'increase'} in outdoor activity (\${Math.abs(changePercent).toFixed(1)}%)\`;
+            } else {
+                // Normal range: -25% to +25% change
+                if (Math.abs(changePercent) < 5) {
+                    return \`Outdoor activity levels are very stable (\${changePercent > 0 ? '+' : ''}\${changePercent.toFixed(1)}% change)\`;
+                } else {
+                    return \`Outdoor activity levels are stable with minor variation (\${changePercent > 0 ? '+' : ''}\${changePercent.toFixed(1)}% change)\`;
+                }
+            }
+        }
+
+        function generateRoutineStabilityDescription(maxShift, assessment) {
+            if (assessment === 'critical') {
+                return \`Major routine disruption detected (\${maxShift.toFixed(1)} hour timing shift)\`;
+            } else if (assessment === 'concerning') {
+                return \`Mild routine disruption detected (\${maxShift.toFixed(1)} hour timing shift)\`;
+            } else {
+                return \`Daily routine is stable (\${maxShift.toFixed(1)} hour average shift)\`;
+            }
+        }
+
+        function generateSessionPatternsDescription(changePercent, shortSessions, longSessions, assessment) {
+            let description = '';
+            if (assessment === 'critical') {
+                description = \`Concerning session pattern changes detected\`;
+            } else if (assessment === 'concerning') {
+                description = \`Some session pattern changes noted\`;
+            } else {
+                description = \`Session patterns are normal\`;
+            }
+            
+            if (shortSessions > 0 || longSessions > 0) {
+                description += \` (\${shortSessions} very short sessions, \${longSessions} unusually long sessions)\`;
+            }
+            
+            return description;
+        }
+
+        function generateUsageFrequencyDescription(changePercent, recentAvgSessions, assessment) {
+            if (assessment === 'critical') {
+                return \`Very \${recentAvgSessions < 1 ? 'low' : 'high'} usage frequency (\${recentAvgSessions.toFixed(1)} sessions/day)\`;
+            } else if (assessment === 'concerning') {
+                return \`\${changePercent < 0 ? 'Decreased' : 'Increased'} usage frequency (\${recentAvgSessions.toFixed(1)} sessions/day)\`;
+            } else {
+                return \`Usage frequency is normal (\${recentAvgSessions.toFixed(1)} sessions/day)\`;
+            }
+        }
+
         function analyzeBehavioralHealth(dailySummaries) {
             console.log('Analyzing behavioral health patterns...');
             
@@ -6330,9 +7103,6 @@ ${getSharedCSS()}
         function displayBehavioralHealth(healthAnalysis) {
             console.log('Displaying behavioral health analysis:', healthAnalysis);
             
-            // Display overall health status
-            displayHealthStatus(healthAnalysis.healthScore, healthAnalysis.dataQuality);
-            
             // Display individual health metrics
             displayActivityTrend(healthAnalysis.activityTrend);
             displayRoutineStability(healthAnalysis.routineStability);
@@ -6355,12 +7125,15 @@ ${getSharedCSS()}
             const changePercent = ((recentAvg - baselineAvg) / baselineAvg) * 100;
             let assessment = 'normal';
             
-            if (changePercent < -40) {
-                assessment = 'critical'; // Significant decrease
-            } else if (changePercent < -20) {
-                assessment = 'concerning'; // Notable decrease
-            } else if (changePercent > 50) {
-                assessment = 'concerning'; // Unusual increase
+            // More appropriate thresholds for activity changes
+            if (changePercent < -50) {
+                assessment = 'critical'; // Major decrease
+            } else if (changePercent < -25) {
+                assessment = 'concerning'; // Significant decrease
+            } else if (changePercent > 75) {
+                assessment = 'critical'; // Major increase
+            } else if (changePercent > 25) {
+                assessment = 'concerning'; // Significant increase
             }
             
             return {
@@ -6416,9 +7189,22 @@ ${getSharedCSS()}
             
             const changePercent = ((recentAvgDuration - baselineAvgDuration) / baselineAvgDuration) * 100;
             
-            // Check for concerning patterns
-            const shortSessions = recent7Days.filter(day => day.averageSessionDuration && day.averageSessionDuration < 15).length;
-            const longSessions = recent7Days.filter(day => day.averageSessionDuration && day.averageSessionDuration > 480).length; // 8+ hours
+            // Check for concerning patterns based on calculated daily average session duration
+            const shortSessions = recent7Days.filter(day => {
+                if (!day.totalOutdoorTime || !day.sessions || day.sessions === 0) return false;
+                const timeParts = day.totalOutdoorTime.split(':');
+                const totalMinutes = (parseInt(timeParts[0]) || 0) * 60 + (parseInt(timeParts[1]) || 0);
+                const avgDuration = totalMinutes / day.sessions;
+                return avgDuration < 15; // Very short average sessions
+            }).length;
+            
+            const longSessions = recent7Days.filter(day => {
+                if (!day.totalOutdoorTime || !day.sessions || day.sessions === 0) return false;
+                const timeParts = day.totalOutdoorTime.split(':');
+                const totalMinutes = (parseInt(timeParts[0]) || 0) * 60 + (parseInt(timeParts[1]) || 0);
+                const avgDuration = totalMinutes / day.sessions;
+                return avgDuration > 480; // Very long average sessions (8+ hours)
+            }).length;
             
             let assessment = 'normal';
             
@@ -6699,6 +7485,272 @@ ${getSharedCSS()}
             } else {
                 return \`\${Math.round(minutes)}m\`;
             }
+        }
+
+
+        // Display functions for health metrics
+        function displayActivityTrend(activityTrend) {
+            const container = document.querySelector('.health-insights-grid .stat-card.activity-trend');
+            if (!container) return;
+            
+            const color = activityTrend.assessment === 'critical' ? '#ef4444' : 
+                         activityTrend.assessment === 'concerning' ? '#f59e0b' : '#10b981';
+            
+            if (activityTrend.status === 'insufficient_data') {
+                container.innerHTML = \`
+                    <h3 style="color: #6b7280;">📊 Activity Trend</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #6b7280; margin: 1rem 0;">
+                        Insufficient Data
+                    </div>
+                    <p style="color: #666;">
+                        Need more baseline data<br>
+                        to analyze activity trends
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        Activity analysis requires at least 30 days of data
+                    </p>
+                \`;
+            } else {
+                container.innerHTML = \`
+                    <h3 style="color: \${color};">📊 Activity Trend</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: \${color}; margin: 1rem 0;">
+                        \${activityTrend.change > 0 ? '+' : ''}\${activityTrend.change.toFixed(1)}%
+                    </div>
+                    <p style="color: #666;">
+                        Recent: \${formatMinutesForDisplay(activityTrend.recentAvg)}<br>
+                        Baseline: \${formatMinutesForDisplay(activityTrend.baselineAvg)}
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        \${activityTrend.description}
+                    </p>
+                \`;
+            }
+        }
+
+        function displayRoutineStability(routineStability) {
+            const container = document.querySelector('.health-insights-grid .stat-card.routine-stability');
+            if (!container) return;
+            
+            const color = routineStability.assessment === 'critical' ? '#ef4444' : 
+                         routineStability.assessment === 'concerning' ? '#f59e0b' : '#10b981';
+            
+            if (routineStability.status === 'insufficient_data') {
+                container.innerHTML = \`
+                    <h3 style="color: #6b7280;">⏰ Routine Stability</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #6b7280; margin: 1rem 0;">
+                        Insufficient Data
+                    </div>
+                    <p style="color: #666;">
+                        Need more data to analyze<br>
+                        daily routine patterns
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        Routine analysis requires consistent daily activity data
+                    </p>
+                \`;
+            } else {
+                container.innerHTML = \`
+                    <h3 style="color: \${color};">⏰ Routine Stability</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: \${color}; margin: 1rem 0;">
+                        ±\${routineStability.maxShift.toFixed(1)}h
+                    </div>
+                    <p style="color: #666;">
+                        First exit: \${routineStability.recentFirstExit}<br>
+                        Last entry: \${routineStability.recentLastEntry}
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        \${routineStability.description}
+                    </p>
+                \`;
+            }
+        }
+
+        function displaySessionPatterns(sessionPatterns) {
+            const container = document.querySelector('.health-insights-grid .stat-card.session-patterns');
+            if (!container) return;
+            
+            const color = sessionPatterns.assessment === 'critical' ? '#ef4444' : 
+                         sessionPatterns.assessment === 'concerning' ? '#f59e0b' : '#10b981';
+            
+            if (sessionPatterns.status === 'insufficient_data') {
+                container.innerHTML = \`
+                    <h3 style="color: #6b7280;">🔄 Session Patterns</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #6b7280; margin: 1rem 0;">
+                        Insufficient Data
+                    </div>
+                    <p style="color: #666;">
+                        Need more data to analyze<br>
+                        session duration patterns
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        Session pattern analysis requires baseline duration data
+                    </p>
+                \`;
+            } else {
+                container.innerHTML = \`
+                    <h3 style="color: \${color};">🔄 Session Patterns</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: \${color}; margin: 1rem 0;">
+                        \${Math.round(sessionPatterns.recentAvgDuration)}min
+                    </div>
+                    <p style="color: #666;">
+                        Change: \${sessionPatterns.change > 0 ? '+' : ''}\${sessionPatterns.change.toFixed(1)}%<br>
+                        Unusual: \${sessionPatterns.shortSessions + sessionPatterns.longSessions} sessions
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        \${sessionPatterns.description}
+                    </p>
+                \`;
+            }
+        }
+
+        function displayUsageFrequency(usageFrequency) {
+            const container = document.querySelector('.health-insights-grid .stat-card.usage-frequency');
+            if (!container) return;
+            
+            const color = usageFrequency.assessment === 'critical' ? '#ef4444' : 
+                         usageFrequency.assessment === 'concerning' ? '#f59e0b' : '#10b981';
+            
+            if (usageFrequency.status === 'insufficient_data') {
+                container.innerHTML = \`
+                    <h3 style="color: #6b7280;">📈 Usage Frequency</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #6b7280; margin: 1rem 0;">
+                        Insufficient Data
+                    </div>
+                    <p style="color: #666;">
+                        Need more data to analyze<br>
+                        usage frequency patterns
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        Frequency analysis requires consistent daily session data
+                    </p>
+                \`;
+            } else {
+                container.innerHTML = \`
+                    <h3 style="color: \${color};">📈 Usage Frequency</h3>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: \${color}; margin: 1rem 0;">
+                        \${usageFrequency.recentAvgSessions.toFixed(1)}/day
+                    </div>
+                    <p style="color: #666;">
+                        Change: \${usageFrequency.change > 0 ? '+' : ''}\${usageFrequency.change.toFixed(1)}%<br>
+                        Baseline: \${usageFrequency.baselineAvgSessions.toFixed(1)}/day
+                    </p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        \${usageFrequency.description}
+                    </p>
+                \`;
+            }
+        }
+
+        function displayHealthRecommendations(healthAnalysis) {
+            const container = document.getElementById('health-recommendations');
+            if (!container) return;
+            
+            const recommendations = generateHealthRecommendations(healthAnalysis);
+            const healthScore = healthAnalysis.healthScore;
+            
+            const statusColors = {
+                'excellent': '#10b981',
+                'good': '#3b82f6', 
+                'concerning': '#f59e0b',
+                'critical': '#ef4444'
+            };
+            
+            const color = statusColors[healthScore.status] || '#6b7280';
+            
+            container.innerHTML = \`
+                <!-- Overall Health Score at top of recommendations -->
+                <div class="recommendation-item health-score-summary" style="border-left: 4px solid \${color}; margin-bottom: 1.5rem;">
+                    <div class="rec-header">
+                        <span class="rec-icon">🏥</span>
+                        <span class="rec-title">Overall Health Score</span>
+                        <span class="rec-priority score" style="background: \${color}; color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-weight: bold;">
+                            \${healthScore.score}/100
+                        </span>
+                    </div>
+                    <p class="rec-description" style="margin-top: 0.5rem; color: \${color}; font-weight: 500; text-transform: capitalize;">
+                        \${healthScore.status} - \${healthScore.description}
+                    </p>
+                </div>
+                
+                <div class="recommendations-list">
+                    \${recommendations.map(rec => \`
+                        <div class="recommendation-item \${rec.priority}">
+                            <div class="rec-header">
+                                <span class="rec-icon">\${rec.icon}</span>
+                                <span class="rec-title">\${rec.title}</span>
+                                <span class="rec-priority \${rec.priority}">\${rec.priority}</span>
+                            </div>
+                            <p class="rec-description">\${rec.description}</p>
+                        </div>
+                    \`).join('')}
+                </div>
+            \`;
+        }
+
+        function generateHealthRecommendations(healthAnalysis) {
+            const recommendations = [];
+            
+            // Check for critical health concerns
+            if (healthAnalysis.healthScore.status === 'critical') {
+                recommendations.push({
+                    priority: 'high',
+                    icon: '🚨',
+                    title: 'Veterinary Consultation Recommended',
+                    description: 'Multiple concerning behavioral changes detected. Schedule a vet appointment to rule out health issues.'
+                });
+            }
+            
+            // Activity trend recommendations
+            if (healthAnalysis.activityTrend.assessment === 'critical' && healthAnalysis.activityTrend.change < -40) {
+                recommendations.push({
+                    priority: 'high',
+                    icon: '🏃',
+                    title: 'Significant Activity Decrease',
+                    description: 'Your cat&#39;s outdoor activity has dropped significantly. Monitor for signs of illness or injury.'
+                });
+            }
+            
+            // Routine stability recommendations
+            if (healthAnalysis.routineStability.assessment !== 'normal') {
+                recommendations.push({
+                    priority: 'medium',
+                    icon: '⏰',
+                    title: 'Routine Disruption Detected',
+                    description: 'Your cat&#39;s daily routine has shifted. Consider environmental changes or seasonal factors.'
+                });
+            }
+            
+            // Session pattern recommendations
+            if (healthAnalysis.sessionPatterns.longSessions > 1) {
+                recommendations.push({
+                    priority: 'medium',
+                    icon: '🔍',
+                    title: 'Unusually Long Sessions',
+                    description: 'Multiple very long outdoor sessions detected. Ensure your cat can access food, water, and shelter.'
+                });
+            }
+            
+            // Usage frequency recommendations  
+            if (healthAnalysis.usageFrequency.recentAvgSessions < 1) {
+                recommendations.push({
+                    priority: 'medium',
+                    icon: '🚪',
+                    title: 'Low Cat Flap Usage',
+                    description: 'Very low usage frequency detected. Check if the cat flap is functioning properly.'
+                });
+            }
+            
+            // Add positive recommendation if everything is normal
+            if (healthAnalysis.healthScore.status === 'excellent') {
+                recommendations.push({
+                    priority: 'low',
+                    icon: '✅',
+                    title: 'Excellent Behavioral Health',
+                    description: 'All behavioral patterns look healthy and consistent. Continue current care routine.'
+                });
+            }
+            
+            return recommendations;
         }
     </script>
     
@@ -8000,11 +9052,275 @@ function getDashboardCSS() {
         width: 250px;
         right: -50px;
       }
+      
+      .weather-widget-fullwidth {
+        grid-template-columns: 1fr;
+      }
+      
+      .weather-widget-content {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .weather-current {
+        justify-content: center;
+      }
+      
+      .weather-icon-large {
+        font-size: 2.5rem;
+      }
+    }
+    
+    /* Weather Widget Full-Width Styles */
+    .weather-widget-fullwidth {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      width: 100%;
+    }
+    
+    .weather-widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 1rem;
+    }
+    
+    .weather-widget-title {
+      margin: 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .weather-widget-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .weather-current {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 0 0 auto;
+    }
+    
+    .weather-icon-large {
+      font-size: 3rem;
+      line-height: 1;
+    }
+    
+    .weather-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    
+    .weather-main {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .weather-temp {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1976d2;
+    }
+    
+    .weather-location {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    .weather-recent {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .weather-recent-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    
+    .weather-recent-summary {
+      font-size: 0.85rem;
+      color: #777;
+      line-height: 1.4;
+    }
+    
+    .weather-correlation {
+      flex: 1;
+      min-width: 250px;
+    }
+    
+    .weather-correlation-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    
+    .weather-correlation-text {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.4;
+      font-style: italic;
     }
   `;
 }
 
-function getDashboardContent(dashboardMetrics) {
+// Generate weather widget for dashboard
+function generateWeatherWidget(weatherData, weatherCorrelation) {
+  if (!weatherData || !weatherData.daily || !weatherData.daily.time) {
+    return `
+      <div class="weather-widget-fullwidth">
+        <div class="weather-widget-header">
+          <h3 class="weather-widget-title">🌦️ Weather & Activity Correlation</h3>
+          <div class="info-icon">
+            i
+            <div class="tooltip">
+              <strong>Weather & Activity Correlation</strong><br><br>
+              Analyzes how Peckham weather patterns affect Sven's outdoor behavior.<br><br>
+              <strong>Data Source:</strong> Open-Meteo weather data for South East London<br>
+              • Temperature, precipitation, and weather conditions<br>
+              • Correlated with daily activity patterns<br><br>
+              <strong>Insights:</strong> Discover how rain, temperature, and sunny days influence outdoor time.
+            </div>
+          </div>
+        </div>
+        <div class="weather-widget-content">
+          <div class="weather-current">
+            <div class="weather-icon-large">🌤️</div>
+            <div class="weather-details">
+              <div class="weather-main">Weather data loading...</div>
+              <div class="weather-temp">--°C</div>
+              <div class="weather-location">Peckham, London</div>
+            </div>
+          </div>
+          <div class="weather-recent">
+            <div class="weather-recent-title">Status:</div>
+            <div class="weather-recent-summary">Fetching weather data from Open-Meteo API...</div>
+          </div>
+          <div class="weather-correlation">
+            <div class="weather-correlation-title">Activity Insights:</div>
+            <div class="weather-correlation-text">Weather correlation analysis will appear once data is available</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Filter out null values and get recent weather data  
+  const validIndices = [];
+  for (let i = 0; i < weatherData.daily.time.length; i++) {
+    if (weatherData.daily.temperature_2m_max[i] !== null && 
+        weatherData.daily.weather_code[i] !== null) {
+      validIndices.push(i);
+    }
+  }
+  
+  // Get last 3 valid days
+  const recentIndices = validIndices.slice(-3);
+  const recentDays = recentIndices.map(i => weatherData.daily.time[i]);
+  const recentTemps = recentIndices.map(i => weatherData.daily.temperature_2m_max[i]);
+  const recentPrecip = recentIndices.map(i => weatherData.daily.precipitation_sum[i] || 0);
+  const recentCodes = recentIndices.map(i => weatherData.daily.weather_code[i]);
+  
+  // Get most recent valid weather data
+  const todayTemp = recentTemps.length > 0 ? recentTemps[recentTemps.length - 1] : 15;
+  const todayPrecip = recentPrecip.length > 0 ? recentPrecip[recentPrecip.length - 1] : 0;
+  const todayWeatherCode = recentCodes.length > 0 ? recentCodes[recentCodes.length - 1] : 1;
+  const todayWeatherDesc = getWeatherDescription(todayWeatherCode);
+  
+  console.log('Weather Debug:', {
+    recentTemps,
+    todayTemp,
+    todayWeatherCode,
+    todayWeatherDesc,
+    weatherDataKeys: Object.keys(weatherData),
+    dailyKeys: weatherData.daily ? Object.keys(weatherData.daily) : 'no daily data'
+  });
+  
+  // Generate weather emoji based on weather code
+  const getWeatherEmoji = (code) => {
+    if (code === 0 || code === 1) return "☀️";
+    if (code === 2 || code === 3) return "⛅";
+    if (code >= 45 && code <= 48) return "🌫️";
+    if (code >= 51 && code <= 55) return "🌦️";
+    if (code >= 61 && code <= 65) return "🌧️";
+    if (code >= 71 && code <= 75) return "❄️";
+    if (code >= 80 && code <= 82) return "🌦️";
+    if (code >= 95) return "⛈️";
+    return "🌤️";
+  };
+  
+  const weatherEmoji = getWeatherEmoji(todayWeatherCode);
+  const todayWeather = `${todayWeatherDesc}`;
+  
+  // Format correlation insights
+  let correlationText = "Analyzing weather patterns...";
+  if (weatherCorrelation) {
+    correlationText = weatherCorrelation.insights;
+  }
+  
+  // Generate recent weather summary (last 3 valid days)
+  const recentWeatherSummary = recentDays.map((date, index) => {
+    const temp = Math.round(recentTemps[index]);
+    const emoji = getWeatherEmoji(recentCodes[index]);
+    const dayName = new Date(date).toLocaleDateString('en-GB', { weekday: 'short' });
+    return `${dayName}: ${emoji} ${temp}°C`;
+  }).join(' • ');
+  
+  return `
+    <div class="weather-widget-fullwidth">
+      <div class="weather-widget-header">
+        <h3 class="weather-widget-title">🌦️ Weather & Activity Correlation</h3>
+        <div class="info-icon">
+          i
+          <div class="tooltip">
+            <strong>Weather & Activity Correlation</strong><br><br>
+            Analyzes how Peckham weather patterns affect Sven's outdoor behavior.<br><br>
+            <strong>Data Source:</strong> Open-Meteo weather data for South East London<br>
+            • Temperature, precipitation, and weather conditions<br>
+            • Correlated with daily activity patterns over 21 days<br><br>
+            <strong>Insights:</strong> Discover how rain, temperature, and sunny days influence outdoor time.<br>
+            <strong>Location:</strong> Peckham, South East London (51.47°N, 0.07°W)
+          </div>
+        </div>
+      </div>
+      <div class="weather-widget-content">
+        <div class="weather-current">
+          <div class="weather-icon-large">${weatherEmoji}</div>
+          <div class="weather-details">
+            <div class="weather-main">${todayWeather}</div>
+            <div class="weather-temp">${Math.round(todayTemp)}°C</div>
+            <div class="weather-location">Peckham, London</div>
+          </div>
+        </div>
+        <div class="weather-recent">
+          <div class="weather-recent-title">Recent conditions:</div>
+          <div class="weather-recent-summary">${recentWeatherSummary}</div>
+        </div>
+        <div class="weather-correlation">
+          <div class="weather-correlation-title">Activity Insights:</div>
+          <div class="weather-correlation-text">${correlationText}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getDashboardContent(dashboardMetrics, precomputed, weatherData, weatherCorrelation) {
   if (!dashboardMetrics) {
     return `
       <div class="no-data-message">
@@ -8037,9 +9353,19 @@ function getDashboardContent(dashboardMetrics) {
   const timeOutsideTrend = getTrendDisplay(trends.time_outside_trend, trends.time_outside_change_percent, '%');
   const exitsTrend = getTrendDisplay(trends.exits_trend, trends.exits_change_percent, '%');
   
-  // Format peak hour
-  const currentPeakHour = summary.current_peak_hour !== null ? 
-    `${summary.current_peak_hour}:00` : 'No data';
+  // Use consistent peak hour calculation (same as patterns and circadian pages)
+  let currentPeakHour = 'No data';
+  if (precomputed && precomputed.peakHours) {
+    const peakHours = precomputed.peakHours;
+    const maxActivity = Math.max(...peakHours.map(h => h.exitFrequency + h.entryFrequency));
+    const peakHourData = peakHours.find(h => (h.exitFrequency + h.entryFrequency) === maxActivity);
+    if (peakHourData) {
+      currentPeakHour = peakHourData.hour.toString().padStart(2, '0') + ':00';
+    }
+  } else if (summary.current_peak_hour !== null) {
+    // Fallback to dashboard summary if precomputed data not available
+    currentPeakHour = `${summary.current_peak_hour}:00`;
+  }
   
   // Format time outside (convert minutes to hours:minutes)
   const avgTimeOutside = summary.avg_time_outside_minutes > 0 ?
@@ -8054,16 +9380,16 @@ function getDashboardContent(dashboardMetrics) {
             i
             <div class="tooltip">
               <strong>Peak Activity Hour</strong><br><br>
-              The hour when Sven is most active across the entire 21-day rolling window.<br><br>
-              <strong>Enhanced Calculation:</strong> Combined activity across all 21 days<br>
-              • Counts all exits for each hour across all 21 days<br>
-              • Finds the hour with highest total exit frequency<br>
-              • Provides true peak hour for recent behavioral patterns<br><br>
+              The hour when Sven is most active across the entire dataset (consistent with Patterns and Circadian pages).<br><br>
+              <strong>Consistent Calculation:</strong> Combined activity analysis<br>
+              • Counts both exits and entries for each hour<br>
+              • Finds the hour with highest total activity frequency<br>
+              • Uses the same calculation as other analytics pages<br><br>
               <strong>Trend Detection:</strong> 10-day vs 10-day comparison<br>
               • First 10 days vs last 10 days (day 11 as buffer)<br>
               • Shows if peak hour is shifting earlier or later<br><br>
-              <strong>21-Day Window:</strong> Rolling window that updates with new data<br>
-              Shows robust recent patterns rather than single-day snapshots.
+              <strong>All-Time Analysis:</strong> Comprehensive behavioral pattern<br>
+              Shows overall peak activity across entire dataset for consistency.
             </div>
           </div>
         </div>
@@ -8110,7 +9436,10 @@ function getDashboardContent(dashboardMetrics) {
         </div>
         <div class="widget-subtitle">${exitsTrend.text}</div>
       </div>
+      
     </div>
+    
+    ${generateWeatherWidget(weatherData, weatherCorrelation)}
     
     <div class="timeline-container">
       <div class="timeline-header">
