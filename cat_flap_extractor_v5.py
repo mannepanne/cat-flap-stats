@@ -21,11 +21,12 @@ class ProductionCatFlapExtractor:
     
     def __init__(self):
         self.extracted_data = []
-        self.config = settings  # Use centralized configuration
+        self.config = settings
         self.errors = []
         self.warnings = []
         self.state_issues = []
         self.confidence_issues = []
+        self._pdf_cache = {}
     
     def parse_report_date(self, report_date_str: str) -> Optional[datetime]:
         """Parse report date string into datetime object"""
@@ -132,52 +133,54 @@ class ProductionCatFlapExtractor:
         return None
     
     def extract_report_info(self, pdf_path: str) -> Dict:
-        """Extract basic report information from PDF"""
+        """Extract basic report information from PDF using cached data"""
         try:
-            with pdfplumber.open(pdf_path) as pdf:
-                first_page = pdf.pages[0]
-                text = first_page.extract_text()
-                
-                info = {
-                    'filename': os.path.basename(pdf_path),
-                    'report_date': None,
-                    'report_date_range': None,
-                    'report_year': None,
-                    'pet_name': None,
-                    'age': None,
-                    'weight': None
-                }
-                
-                # Extract report date
-                lines = text.strip().split('\n')
-                for line in lines[:10]:
-                    if re.match(r'\d{1,2}\s+\w+\s+\d{4}', line.strip()):
-                        info['report_date'] = line.strip()
-                        # Parse year from report date
-                        parsed_date = self.parse_report_date(line.strip())
-                        if parsed_date:
-                            info['report_year'] = parsed_date.year
-                        break
-                
-                # Extract pet info
-                for line in lines:
-                    if 'PET NAME' in line:
-                        match = re.search(r'PET NAME\s+([^C]+?)(?:\s+CONDITIONS|$)', line)
-                        if match:
-                            info['pet_name'] = match.group(1).strip()
-                    
-                    if 'AGE' in line:
-                        match = re.search(r'AGE\s+(\d+)\s*years?', line)
-                        if match:
-                            info['age'] = int(match.group(1))
-                    
-                    if 'WEIGHT' in line:
-                        match = re.search(r'WEIGHT\s+(\d+)\s*kg', line)
-                        if match:
-                            info['weight'] = int(match.group(1))
-                
+            cached_data = self._pdf_cache.get(pdf_path)
+            if not cached_data:
+                cached_data = self._extract_pdf_data_cached(pdf_path)
+            
+            text = cached_data['first_page_text']
+            
+            info = {
+                'filename': os.path.basename(pdf_path),
+                'report_date': None,
+                'report_date_range': None,
+                'report_year': None,
+                'pet_name': None,
+                'age': None,
+                'weight': None
+            }
+            
+            if not text:
                 return info
+            
+            lines = text.strip().split('\n')
+            for line in lines[:10]:
+                if re.match(r'\d{1,2}\s+\w+\s+\d{4}', line.strip()):
+                    info['report_date'] = line.strip()
+                    parsed_date = self.parse_report_date(line.strip())
+                    if parsed_date:
+                        info['report_year'] = parsed_date.year
+                    break
+            
+            for line in lines:
+                if 'PET NAME' in line:
+                    match = re.search(r'PET NAME\s+([^C]+?)(?:\s+CONDITIONS|$)', line)
+                    if match:
+                        info['pet_name'] = match.group(1).strip()
                 
+                if 'AGE' in line:
+                    match = re.search(r'AGE\s+(\d+)\s*years?', line)
+                    if match:
+                        info['age'] = int(match.group(1))
+                
+                if 'WEIGHT' in line:
+                    match = re.search(r'WEIGHT\s+(\d+)\s*kg', line)
+                    if match:
+                        info['weight'] = int(match.group(1))
+            
+            return info
+            
         except Exception as e:
             self.errors.append(f"Error extracting report info from {pdf_path}: {e}")
             return {'filename': os.path.basename(pdf_path)}
@@ -282,81 +285,73 @@ class ProductionCatFlapExtractor:
         }
     
     def detect_no_data_period(self, pdf_path: str) -> bool:
-        """Detect if this is a 'no data' period"""
+        """Detect if this is a 'no data' period using cached data"""
         try:
-            with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if text:
-                        text_lower = text.lower()
-                        if any(phrase in text_lower for phrase in [
-                            'no data available',
-                            'no activity',
-                            'average entries 0',
-                            'average time outside 00 s'
-                        ]):
-                            return True
+            cached_data = self._pdf_cache.get(pdf_path)
+            if not cached_data:
+                cached_data = self._extract_pdf_data_cached(pdf_path)
+            
+            for page_text in cached_data['all_pages_text']:
+                if page_text:
+                    text_lower = page_text.lower()
+                    if any(phrase in text_lower for phrase in [
+                        'no data available',
+                        'no activity',
+                        'average entries 0',
+                        'average time outside 00 s'
+                    ]):
+                        return True
         except:
             pass
         return False
     
     def reconstruct_complete_table(self, pdf_path: str) -> Optional[List[List]]:
-        """Reconstruct the complete activity table by merging fragments across pages"""
+        """Reconstruct the complete activity table by merging fragments across pages using cached data"""
         try:
-            with pdfplumber.open(pdf_path) as pdf:
-                complete_table = []
-                dates_header = None
+            cached_data = self._pdf_cache.get(pdf_path)
+            if not cached_data:
+                cached_data = self._extract_pdf_data_cached(pdf_path)
+            
+            complete_table = []
+            dates_header = None
+            
+            for page_num, page_tables in enumerate(cached_data['all_pages_tables']):
+                if not page_tables:
+                    continue
                 
-                for page_num in range(len(pdf.pages)):
-                    page = pdf.pages[page_num]
-                    text = page.extract_text()
-                    tables = page.extract_tables()
-                    
-                    if not tables:
+                for table in page_tables:
+                    if not table:
                         continue
                     
-                    for table in tables:
-                        if not table:
+                    has_activity_data = False
+                    for row in table:
+                        if row and any(cell for cell in row if cell and (':' in str(cell) or ' - ' in str(cell) or 'Date' in str(cell) or 'Left - Entered' in str(cell) or 'Total Entries' in str(cell) or 'Time Outside' in str(cell) or 'visits' in str(cell) or ' h' in str(cell) or 'mins' in str(cell))):
+                            has_activity_data = True
+                            break
+                    
+                    if not has_activity_data:
+                        continue
+                    
+                    for row in table:
+                        if not row or not any(cell for cell in row if cell and cell.strip()):
                             continue
                         
-                        # Check if this table contains activity data
-                        has_activity_data = False
-                        for row in table:
-                            if row and any(cell for cell in row if cell and (':' in str(cell) or ' - ' in str(cell) or 'Date' in str(cell) or 'Left - Entered' in str(cell) or 'Total Entries' in str(cell) or 'Time Outside' in str(cell) or 'visits' in str(cell) or ' h' in str(cell) or 'mins' in str(cell))):
-                                has_activity_data = True
-                                break
-                        
-                        if not has_activity_data:
+                        if row[0] and 'Date' in row[0]:
+                            if not dates_header:
+                                dates_header = row
+                                complete_table.append(row)
                             continue
                         
-                        # Process each row in this table fragment
-                        for row in table:
-                            if not row or not any(cell for cell in row if cell and cell.strip()):
-                                continue
-                            
-                            # Check if this is the dates header row
-                            if row[0] and 'Date' in row[0]:
-                                if not dates_header:
-                                    dates_header = row
-                                    complete_table.append(row)
-                                continue
-                            
-                            # Check if this is a continuation of the main table
-                            # (has data in the date columns but no row label)
-                            if not row[0] or row[0].strip() == '':
-                                # This is likely a continuation row
-                                complete_table.append(row)
-                                continue
-                            
-                            # Check if this is a labeled row (Left - Entered, Duration, etc.)
-                            if row[0] and any(keyword in row[0] for keyword in ['Left - Entered', 'Duration', 'Total Entries', 'Time Outside']):
-                                complete_table.append(row)
-                                continue
-                            
-                            # Skip other types of rows
-                
-                return complete_table if complete_table else None
-                
+                        if not row[0] or row[0].strip() == '':
+                            complete_table.append(row)
+                            continue
+                        
+                        if row[0] and any(keyword in row[0] for keyword in ['Left - Entered', 'Duration', 'Total Entries', 'Time Outside']):
+                            complete_table.append(row)
+                            continue
+            
+            return complete_table if complete_table else None
+            
         except Exception as e:
             self.errors.append(f"Error reconstructing table from {pdf_path}: {e}")
             return None
@@ -844,15 +839,61 @@ class ProductionCatFlapExtractor:
         
         return sessions
     
+    def _extract_pdf_data_cached(self, pdf_path: str) -> Dict:
+        """Extract all PDF data in one pass and cache it for reuse"""
+        if pdf_path in self._pdf_cache:
+            return self._pdf_cache[pdf_path]
+        
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                all_pages_text = []
+                first_page_text = None
+                
+                all_pages_tables = []
+                
+                for page_num, page in enumerate(pdf.pages):
+                    page_text = page.extract_text()
+                    page_tables = page.extract_tables()
+                    
+                    all_pages_text.append(page_text or "")
+                    all_pages_tables.append(page_tables or [])
+                    
+                    if page_num == 0:
+                        first_page_text = page_text
+                
+                cached_data = {
+                    'first_page_text': first_page_text or "",
+                    'all_pages_text': all_pages_text,
+                    'all_pages_tables': all_pages_tables,
+                    'total_pages': len(pdf.pages)
+                }
+                
+                self._pdf_cache[pdf_path] = cached_data
+                return cached_data
+                
+        except Exception as e:
+            self.errors.append(f"Error extracting PDF data from {pdf_path}: {e}")
+            empty_cache = {
+                'first_page_text': "",
+                'all_pages_text': [],
+                'all_pages_tables': [],
+                'total_pages': 0
+            }
+            self._pdf_cache[pdf_path] = empty_cache
+            return empty_cache
+    
     def process_pdf(self, pdf_path: Union[str, Path]) -> Optional[Dict]:
         """Process a single PDF file with comprehensive error handling"""
         pdf_path = str(pdf_path)  # Convert Path to str for consistency
         print(f"Processing: {os.path.basename(pdf_path)}")
         
-        # Extract report info
+        self._pdf_cache.pop(pdf_path, None)
+        self._extract_pdf_data_cached(pdf_path)
+        
+        # Extract report info using cached data
         report_info = self.extract_report_info(pdf_path)
         
-        # Extract daily time data with edge case handling
+        # Extract daily time data with edge case handling using cached data
         daily_data = self.extract_all_times_by_day(pdf_path)
         
         if not daily_data:
@@ -900,6 +941,8 @@ class ProductionCatFlapExtractor:
             'session_data': session_data,
             'extracted_at': datetime.now().isoformat()
         }
+        
+        self._pdf_cache.pop(pdf_path, None)
         
         print(f"  Found {len(session_data)} individual sessions")
         return result
