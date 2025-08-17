@@ -1,7 +1,7 @@
 # PDF Processing Report
 
-**Date:** Sun Aug 10 19:10:18 UTC 2025
-**File:** SvenVarysSootyHultbergWong_Activity_Report_10-08-2025.pdf
+**Date:** Sun Aug 17 19:48:20 UTC 2025
+**File:** SvenVarysSootyHultbergWong_Activity_Report_17-08-2025.pdf
 **Uploaded by:** magnus.hultberg@gmail.com
 
 ## Processing Results
@@ -14,15 +14,15 @@
 ## Duplicate Detection
 Duplicate Detection Report
 ========================
-New sessions processed: 26
+New sessions processed: 30
 Duplicate sessions found: 0
-Unique new sessions added: 26
-Total sessions in dataset: 1759
-Dataset date range: 2024-02-05 to 2025-08-10
+Unique new sessions added: 30
+Total sessions in dataset: 1789
+Dataset date range: 2024-02-05 to 2025-08-17
 
 ## File Statistics
-- New CSV size: 5756 bytes
-- New JSON size: 10600 bytes
-- Master CSV size: 373467 bytes
-- Master JSON size: 959251 bytes
+- New CSV size: 6662 bytes
+- New JSON size: 12226 bytes
+- Master CSV size: 379863 bytes
+- Master JSON size: 975220 bytes
 
