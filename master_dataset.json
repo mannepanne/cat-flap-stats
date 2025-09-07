@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "lastUpdated": "2025-09-02T08:08:21.932448Z",
-    "totalSessions": 1854,
-    "dateRange": "2024-02-05 to 2025-08-31",
+    "lastUpdated": "2025-09-07T20:22:19.408956Z",
+    "totalSessions": 1881,
+    "dateRange": "2024-02-05 to 2025-09-07",
     "dataQuality": {
-      "completeDays": 472,
+      "completeDays": 479,
       "partialDays": 51,
       "confidenceScore": 0.9
     }
@@ -4194,128 +4194,184 @@
         "lastEntry": "13:52",
         "totalOutdoorTime": "10:51",
         "isWeekend": true
+      },
+      {
+        "date": "2025-09-01",
+        "sessions": 3,
+        "firstExit": "04:19",
+        "lastEntry": "10:11",
+        "totalOutdoorTime": "16:50",
+        "isWeekend": false
+      },
+      {
+        "date": "2025-09-02",
+        "sessions": 4,
+        "firstExit": "",
+        "lastEntry": "13:20",
+        "totalOutdoorTime": "12:29",
+        "isWeekend": false
+      },
+      {
+        "date": "2025-09-03",
+        "sessions": 4,
+        "firstExit": "",
+        "lastEntry": "07:16",
+        "totalOutdoorTime": "06:06",
+        "isWeekend": false
+      },
+      {
+        "date": "2025-09-04",
+        "sessions": 4,
+        "firstExit": "",
+        "lastEntry": "10:54",
+        "totalOutdoorTime": "10:24",
+        "isWeekend": false
+      },
+      {
+        "date": "2025-09-05",
+        "sessions": 4,
+        "firstExit": "",
+        "lastEntry": "13:00",
+        "totalOutdoorTime": "10:09",
+        "isWeekend": false
+      },
+      {
+        "date": "2025-09-06",
+        "sessions": 4,
+        "firstExit": "",
+        "lastEntry": "20:12",
+        "totalOutdoorTime": "16:50",
+        "isWeekend": true
+      },
+      {
+        "date": "2025-09-07",
+        "sessions": 4,
+        "firstExit": "00:51",
+        "lastEntry": "17:54",
+        "totalOutdoorTime": "03:57",
+        "isWeekend": true
       }
     ],
     "peakHours": [
       {
         "hour": 0,
-        "exitFrequency": 0.08,
-        "entryFrequency": 0.149
+        "exitFrequency": 0.081,
+        "entryFrequency": 0.147
       },
       {
         "hour": 1,
-        "exitFrequency": 0.029,
-        "entryFrequency": 0.124
+        "exitFrequency": 0.028,
+        "entryFrequency": 0.126
       },
       {
         "hour": 2,
-        "exitFrequency": 0.048,
-        "entryFrequency": 0.076
+        "exitFrequency": 0.047,
+        "entryFrequency": 0.079
       },
       {
         "hour": 3,
         "exitFrequency": 0.113,
-        "entryFrequency": 0.073
+        "entryFrequency": 0.074
       },
       {
         "hour": 4,
-        "exitFrequency": 0.304,
-        "entryFrequency": 0.145
+        "exitFrequency": 0.311,
+        "entryFrequency": 0.147
       },
       {
         "hour": 5,
-        "exitFrequency": 0.317,
-        "entryFrequency": 0.235
+        "exitFrequency": 0.315,
+        "entryFrequency": 0.232
       },
       {
         "hour": 6,
         "exitFrequency": 0.168,
-        "entryFrequency": 0.235
+        "entryFrequency": 0.242
       },
       {
         "hour": 7,
-        "exitFrequency": 0.166,
-        "entryFrequency": 0.193
+        "exitFrequency": 0.168,
+        "entryFrequency": 0.194
       },
       {
         "hour": 8,
-        "exitFrequency": 0.252,
-        "entryFrequency": 0.176
+        "exitFrequency": 0.253,
+        "entryFrequency": 0.174
       },
       {
         "hour": 9,
-        "exitFrequency": 0.203,
-        "entryFrequency": 0.145
+        "exitFrequency": 0.2,
+        "entryFrequency": 0.143
       },
       {
         "hour": 10,
         "exitFrequency": 0.149,
-        "entryFrequency": 0.145
+        "entryFrequency": 0.149
       },
       {
         "hour": 11,
-        "exitFrequency": 0.159,
-        "entryFrequency": 0.163
+        "exitFrequency": 0.157,
+        "entryFrequency": 0.16
       },
       {
         "hour": 12,
-        "exitFrequency": 0.155,
+        "exitFrequency": 0.157,
         "entryFrequency": 0.149
       },
       {
         "hour": 13,
-        "exitFrequency": 0.076,
-        "entryFrequency": 0.126
+        "exitFrequency": 0.075,
+        "entryFrequency": 0.128
       },
       {
         "hour": 14,
-        "exitFrequency": 0.073,
-        "entryFrequency": 0.117
+        "exitFrequency": 0.072,
+        "entryFrequency": 0.115
       },
       {
         "hour": 15,
-        "exitFrequency": 0.048,
-        "entryFrequency": 0.101
+        "exitFrequency": 0.047,
+        "entryFrequency": 0.1
       },
       {
         "hour": 16,
         "exitFrequency": 0.038,
-        "entryFrequency": 0.073
+        "entryFrequency": 0.072
       },
       {
         "hour": 17,
-        "exitFrequency": 0.05,
-        "entryFrequency": 0.065
+        "exitFrequency": 0.051,
+        "entryFrequency": 0.066
       },
       {
         "hour": 18,
         "exitFrequency": 0.057,
-        "entryFrequency": 0.063
+        "entryFrequency": 0.062
       },
       {
         "hour": 19,
         "exitFrequency": 0.057,
-        "entryFrequency": 0.082
+        "entryFrequency": 0.081
       },
       {
         "hour": 20,
-        "exitFrequency": 0.113,
-        "entryFrequency": 0.08
+        "exitFrequency": 0.111,
+        "entryFrequency": 0.081
       },
       {
         "hour": 21,
         "exitFrequency": 0.172,
-        "entryFrequency": 0.128
+        "entryFrequency": 0.126
       },
       {
         "hour": 22,
-        "exitFrequency": 0.205,
-        "entryFrequency": 0.149
+        "exitFrequency": 0.208,
+        "entryFrequency": 0.147
       },
       {
         "hour": 23,
-        "exitFrequency": 0.113,
-        "entryFrequency": 0.132
+        "exitFrequency": 0.111,
+        "entryFrequency": 0.13
       }
     ],
     "seasonalStats": {
@@ -4436,31 +4492,32 @@
       "autumn": {
         "season": "autumn",
         "season_years": [
-          "autumn-2024"
+          "autumn-2024",
+          "autumn-2025"
         ],
         "data_quality": {
-          "completeness_percent": 98.9,
-          "confidence_level": "high",
-          "total_days": 90,
+          "completeness_percent": 53.3,
+          "confidence_level": "low",
+          "total_days": 97,
           "expected_days_range": "91-91"
         },
         "frequency_metrics": {
-          "avg_daily_sessions": 2.81,
+          "avg_daily_sessions": 2.89,
           "median_daily_sessions": 3.0,
-          "std_daily_sessions": 1.38,
-          "total_sessions": 253
+          "std_daily_sessions": 1.36,
+          "total_sessions": 280
         },
         "duration_metrics": {
-          "avg_daily_duration_minutes": 484.3,
-          "median_daily_duration_minutes": 419.0,
-          "avg_session_duration_minutes": 172.3,
-          "median_session_duration_minutes": 125.0,
-          "std_session_duration_minutes": 198.22
+          "avg_daily_duration_minutes": 496.8,
+          "median_daily_duration_minutes": 426.3,
+          "avg_session_duration_minutes": 172.1,
+          "median_session_duration_minutes": 125.5,
+          "std_session_duration_minutes": 194.88
         },
         "timing_metrics": {
-          "avg_first_exit": "06:18",
-          "avg_last_entry": "14:58",
-          "std_first_exit_minutes": 198.4
+          "avg_first_exit": "06:11",
+          "avg_last_entry": "14:50",
+          "std_first_exit_minutes": 199.9
         },
         "instances": [
           {
@@ -4474,6 +4531,18 @@
             "avg_daily_duration_minutes": 484.3,
             "avg_session_duration_minutes": 172.3,
             "total_sessions": 253
+          },
+          {
+            "season_year": "autumn-2025",
+            "start_date": "2025-09-01",
+            "end_date": "2025-09-07",
+            "days_with_data": 7,
+            "expected_days": 91,
+            "completeness_percent": 7.7,
+            "avg_daily_sessions": 3.86,
+            "avg_daily_duration_minutes": 658.0,
+            "avg_session_duration_minutes": 170.6,
+            "total_sessions": 27
           }
         ]
       },
@@ -4540,22 +4609,24 @@
           "seasons_compared": [
             "spring",
             "summer",
+            "autumn",
             "winter"
           ],
-          "f_statistic": 11.141,
-          "p_value": 0.040876,
-          "significant": true,
-          "interpretation": "Significant seasonal differences detected"
+          "f_statistic": 5.1815,
+          "p_value": 0.072955,
+          "significant": false,
+          "interpretation": "No significant seasonal differences"
         },
         "frequency_analysis": {
           "metric": "daily_sessions",
           "seasons_compared": [
             "spring",
             "summer",
+            "autumn",
             "winter"
           ],
-          "f_statistic": 0.1592,
-          "p_value": 0.85958,
+          "f_statistic": 0.2433,
+          "p_value": 0.862471,
           "significant": false,
           "interpretation": "No significant seasonal differences"
         },
@@ -4569,18 +4640,54 @@
     },
     "weekdayPatterns": {
       "weekdays": {
-        "avgFirstExit": "05:36",
-        "avgLastEntry": "17:09",
+        "avgFirstExit": "05:35",
+        "avgLastEntry": "17:04",
         "avgSessions": 3.6
       },
       "weekends": {
-        "avgFirstExit": "04:42",
-        "avgLastEntry": "14:40",
+        "avgFirstExit": "04:39",
+        "avgLastEntry": "14:43",
         "avgSessions": 3.3
       }
     },
     "durationAnomalies": {
       "anomalies": [
+        {
+          "date": "2025-09-06",
+          "exit_time": "10:21",
+          "entry_time": "20:12",
+          "duration_minutes": 591.0,
+          "expected_duration": 172.1,
+          "z_score": 2.15,
+          "anomaly_type": "moderate",
+          "severity": "medium",
+          "season": "autumn",
+          "description": "Session duration (9h 51m) was notably longer than typical (2h 52m)"
+        },
+        {
+          "date": "2025-09-02",
+          "exit_time": "06:20",
+          "entry_time": "13:20",
+          "duration_minutes": 419.0,
+          "expected_duration": 172.1,
+          "z_score": 1.27,
+          "anomaly_type": "mild",
+          "severity": "low",
+          "season": "autumn",
+          "description": "Session duration (6h 59m) was slightly longer than typical (2h 52m)"
+        },
+        {
+          "date": "2025-09-01",
+          "exit_time": "12:02",
+          "entry_time": "",
+          "duration_minutes": 717.0,
+          "expected_duration": 172.1,
+          "z_score": 2.8,
+          "anomaly_type": "moderate",
+          "severity": "medium",
+          "season": "autumn",
+          "description": "Session duration (11h 57m) was notably longer than typical (2h 52m)"
+        },
         {
           "date": "2025-08-31",
           "exit_time": "06:10",
@@ -5231,18 +5338,6 @@
         },
         {
           "date": "2025-05-01",
-          "exit_time": "12:29",
-          "entry_time": "22:37",
-          "duration_minutes": 607.0,
-          "expected_duration": 143.6,
-          "z_score": 2.48,
-          "anomaly_type": "moderate",
-          "severity": "medium",
-          "season": "spring",
-          "description": "Session duration (10h 7m) was notably longer than typical (2h 23m)"
-        },
-        {
-          "date": "2025-05-01",
           "exit_time": "03:53",
           "entry_time": "11:42",
           "duration_minutes": 469.0,
@@ -5252,6 +5347,18 @@
           "severity": "low",
           "season": "spring",
           "description": "Session duration (7h 49m) was slightly longer than typical (2h 23m)"
+        },
+        {
+          "date": "2025-05-01",
+          "exit_time": "12:29",
+          "entry_time": "22:37",
+          "duration_minutes": 607.0,
+          "expected_duration": 143.6,
+          "z_score": 2.48,
+          "anomaly_type": "moderate",
+          "severity": "medium",
+          "season": "spring",
+          "description": "Session duration (10h 7m) was notably longer than typical (2h 23m)"
         },
         {
           "date": "2025-04-30",
@@ -5363,18 +5470,6 @@
         },
         {
           "date": "2025-04-18",
-          "exit_time": "09:23",
-          "entry_time": "17:51",
-          "duration_minutes": 508.0,
-          "expected_duration": 143.6,
-          "z_score": 1.95,
-          "anomaly_type": "mild",
-          "severity": "low",
-          "season": "spring",
-          "description": "Session duration (8h 28m) was slightly longer than typical (2h 23m)"
-        },
-        {
-          "date": "2025-04-18",
           "exit_time": "",
           "entry_time": "09:16",
           "duration_minutes": 556.0,
@@ -5384,6 +5479,18 @@
           "severity": "medium",
           "season": "spring",
           "description": "Session duration (9h 16m) was notably longer than typical (2h 23m)"
+        },
+        {
+          "date": "2025-04-18",
+          "exit_time": "09:23",
+          "entry_time": "17:51",
+          "duration_minutes": 508.0,
+          "expected_duration": 143.6,
+          "z_score": 1.95,
+          "anomaly_type": "mild",
+          "severity": "low",
+          "season": "spring",
+          "description": "Session duration (8h 28m) was slightly longer than typical (2h 23m)"
         },
         {
           "date": "2025-04-17",
@@ -5639,18 +5746,6 @@
         },
         {
           "date": "2025-03-09",
-          "exit_time": "08:35",
-          "entry_time": "16:59",
-          "duration_minutes": 503.0,
-          "expected_duration": 143.6,
-          "z_score": 1.93,
-          "anomaly_type": "mild",
-          "severity": "low",
-          "season": "spring",
-          "description": "Session duration (8h 23m) was slightly longer than typical (2h 23m)"
-        },
-        {
-          "date": "2025-03-09",
           "exit_time": "",
           "entry_time": "06:28",
           "duration_minutes": 388.0,
@@ -5660,6 +5755,18 @@
           "severity": "low",
           "season": "spring",
           "description": "Session duration (6h 28m) was slightly longer than typical (2h 23m)"
+        },
+        {
+          "date": "2025-03-09",
+          "exit_time": "08:35",
+          "entry_time": "16:59",
+          "duration_minutes": 503.0,
+          "expected_duration": 143.6,
+          "z_score": 1.93,
+          "anomaly_type": "mild",
+          "severity": "low",
+          "season": "spring",
+          "description": "Session duration (8h 23m) was slightly longer than typical (2h 23m)"
         },
         {
           "date": "2025-03-08",
@@ -5879,18 +5986,6 @@
         },
         {
           "date": "2024-12-14",
-          "exit_time": "11:46",
-          "entry_time": "14:54",
-          "duration_minutes": 188.0,
-          "expected_duration": 84.7,
-          "z_score": 1.14,
-          "anomaly_type": "mild",
-          "severity": "low",
-          "season": "winter",
-          "description": "Session duration (3h 8m) was slightly longer than typical (1h 24m)"
-        },
-        {
-          "date": "2024-12-14",
           "exit_time": "02:46",
           "entry_time": "05:48",
           "duration_minutes": 181.0,
@@ -5900,6 +5995,18 @@
           "severity": "low",
           "season": "winter",
           "description": "Session duration (3h 1m) was slightly longer than typical (1h 24m)"
+        },
+        {
+          "date": "2024-12-14",
+          "exit_time": "11:46",
+          "entry_time": "14:54",
+          "duration_minutes": 188.0,
+          "expected_duration": 84.7,
+          "z_score": 1.14,
+          "anomaly_type": "mild",
+          "severity": "low",
+          "season": "winter",
+          "description": "Session duration (3h 8m) was slightly longer than typical (1h 24m)"
         },
         {
           "date": "2024-12-13",
@@ -5990,8 +6097,8 @@
           "exit_time": "",
           "entry_time": "06:29",
           "duration_minutes": 389.0,
-          "expected_duration": 172.3,
-          "z_score": 1.09,
+          "expected_duration": 172.1,
+          "z_score": 1.11,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6002,8 +6109,8 @@
           "exit_time": "15:38",
           "entry_time": "23:17",
           "duration_minutes": 458.0,
-          "expected_duration": 172.3,
-          "z_score": 1.44,
+          "expected_duration": 172.1,
+          "z_score": 1.47,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6014,8 +6121,8 @@
           "exit_time": "15:32",
           "entry_time": "",
           "duration_minutes": 507.0,
-          "expected_duration": 172.3,
-          "z_score": 1.69,
+          "expected_duration": 172.1,
+          "z_score": 1.72,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6026,20 +6133,20 @@
           "exit_time": "12:57",
           "entry_time": "22:19",
           "duration_minutes": 562.0,
-          "expected_duration": 172.3,
-          "z_score": 1.97,
-          "anomaly_type": "mild",
-          "severity": "low",
+          "expected_duration": 172.1,
+          "z_score": 2.0,
+          "anomaly_type": "moderate",
+          "severity": "medium",
           "season": "autumn",
-          "description": "Session duration (9h 22m) was slightly longer than typical (2h 52m)"
+          "description": "Session duration (9h 22m) was notably longer than typical (2h 52m)"
         },
         {
           "date": "2024-11-09",
           "exit_time": "",
           "entry_time": "15:25",
           "duration_minutes": 925.0,
-          "expected_duration": 172.3,
-          "z_score": 3.8,
+          "expected_duration": 172.1,
+          "z_score": 3.86,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6050,8 +6157,8 @@
           "exit_time": "11:32",
           "entry_time": "",
           "duration_minutes": 747.0,
-          "expected_duration": 172.3,
-          "z_score": 2.9,
+          "expected_duration": 172.1,
+          "z_score": 2.95,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6062,8 +6169,8 @@
           "exit_time": "",
           "entry_time": "09:54",
           "duration_minutes": 594.0,
-          "expected_duration": 172.3,
-          "z_score": 2.13,
+          "expected_duration": 172.1,
+          "z_score": 2.16,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6074,8 +6181,8 @@
           "exit_time": "04:44",
           "entry_time": "",
           "duration_minutes": 1155.0,
-          "expected_duration": 172.3,
-          "z_score": 4.96,
+          "expected_duration": 172.1,
+          "z_score": 5.04,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6086,8 +6193,8 @@
           "exit_time": "08:01",
           "entry_time": "14:36",
           "duration_minutes": 395.0,
-          "expected_duration": 172.3,
-          "z_score": 1.12,
+          "expected_duration": 172.1,
+          "z_score": 1.14,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6098,8 +6205,8 @@
           "exit_time": "",
           "entry_time": "07:05",
           "duration_minutes": 425.0,
-          "expected_duration": 172.3,
-          "z_score": 1.27,
+          "expected_duration": 172.1,
+          "z_score": 1.3,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6107,35 +6214,35 @@
         },
         {
           "date": "2024-11-02",
-          "exit_time": "13:27",
-          "entry_time": "",
-          "duration_minutes": 632.0,
-          "expected_duration": 172.3,
-          "z_score": 2.32,
-          "anomaly_type": "moderate",
-          "severity": "medium",
-          "season": "autumn",
-          "description": "Session duration (10h 32m) was notably longer than typical (2h 52m)"
-        },
-        {
-          "date": "2024-11-02",
           "exit_time": "",
           "entry_time": "07:08",
           "duration_minutes": 428.0,
-          "expected_duration": 172.3,
-          "z_score": 1.29,
+          "expected_duration": 172.1,
+          "z_score": 1.31,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
           "description": "Session duration (7h 8m) was slightly longer than typical (2h 52m)"
         },
         {
+          "date": "2024-11-02",
+          "exit_time": "13:27",
+          "entry_time": "",
+          "duration_minutes": 632.0,
+          "expected_duration": 172.1,
+          "z_score": 2.36,
+          "anomaly_type": "moderate",
+          "severity": "medium",
+          "season": "autumn",
+          "description": "Session duration (10h 32m) was notably longer than typical (2h 52m)"
+        },
+        {
           "date": "2024-10-24",
           "exit_time": "09:27",
           "entry_time": "16:00",
           "duration_minutes": 392.0,
-          "expected_duration": 172.3,
-          "z_score": 1.11,
+          "expected_duration": 172.1,
+          "z_score": 1.13,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6146,8 +6253,8 @@
           "exit_time": "",
           "entry_time": "06:46",
           "duration_minutes": 406.0,
-          "expected_duration": 172.3,
-          "z_score": 1.18,
+          "expected_duration": 172.1,
+          "z_score": 1.2,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6158,8 +6265,8 @@
           "exit_time": "",
           "entry_time": "14:11",
           "duration_minutes": 851.0,
-          "expected_duration": 172.3,
-          "z_score": 3.42,
+          "expected_duration": 172.1,
+          "z_score": 3.48,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6170,8 +6277,8 @@
           "exit_time": "",
           "entry_time": "11:40",
           "duration_minutes": 700.0,
-          "expected_duration": 172.3,
-          "z_score": 2.66,
+          "expected_duration": 172.1,
+          "z_score": 2.71,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6182,8 +6289,8 @@
           "exit_time": "",
           "entry_time": "06:33",
           "duration_minutes": 393.0,
-          "expected_duration": 172.3,
-          "z_score": 1.11,
+          "expected_duration": 172.1,
+          "z_score": 1.13,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6194,8 +6301,8 @@
           "exit_time": "10:13",
           "entry_time": "",
           "duration_minutes": 826.0,
-          "expected_duration": 172.3,
-          "z_score": 3.3,
+          "expected_duration": 172.1,
+          "z_score": 3.36,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6206,8 +6313,8 @@
           "exit_time": "08:29",
           "entry_time": "22:42",
           "duration_minutes": 853.0,
-          "expected_duration": 172.3,
-          "z_score": 3.43,
+          "expected_duration": 172.1,
+          "z_score": 3.49,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6218,8 +6325,8 @@
           "exit_time": "12:00",
           "entry_time": "",
           "duration_minutes": 719.0,
-          "expected_duration": 172.3,
-          "z_score": 2.76,
+          "expected_duration": 172.1,
+          "z_score": 2.81,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6230,8 +6337,8 @@
           "exit_time": "14:33",
           "entry_time": "23:18",
           "duration_minutes": 525.0,
-          "expected_duration": 172.3,
-          "z_score": 1.78,
+          "expected_duration": 172.1,
+          "z_score": 1.81,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6242,8 +6349,8 @@
           "exit_time": "10:15",
           "entry_time": "18:57",
           "duration_minutes": 521.0,
-          "expected_duration": 172.3,
-          "z_score": 1.76,
+          "expected_duration": 172.1,
+          "z_score": 1.79,
           "anomaly_type": "mild",
           "severity": "low",
           "season": "autumn",
@@ -6254,8 +6361,8 @@
           "exit_time": "08:34",
           "entry_time": "19:54",
           "duration_minutes": 680.0,
-          "expected_duration": 172.3,
-          "z_score": 2.56,
+          "expected_duration": 172.1,
+          "z_score": 2.61,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6266,8 +6373,8 @@
           "exit_time": "",
           "entry_time": "21:32",
           "duration_minutes": 1292.0,
-          "expected_duration": 172.3,
-          "z_score": 5.65,
+          "expected_duration": 172.1,
+          "z_score": 5.75,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
@@ -6278,8 +6385,8 @@
           "exit_time": "14:06",
           "entry_time": "",
           "duration_minutes": 593.0,
-          "expected_duration": 172.3,
-          "z_score": 2.12,
+          "expected_duration": 172.1,
+          "z_score": 2.16,
           "anomaly_type": "moderate",
           "severity": "medium",
           "season": "autumn",
@@ -6290,12 +6397,24 @@
           "exit_time": "07:59",
           "entry_time": "",
           "duration_minutes": 960.0,
-          "expected_duration": 172.3,
-          "z_score": 3.97,
+          "expected_duration": 172.1,
+          "z_score": 4.04,
           "anomaly_type": "significant",
           "severity": "high",
           "season": "autumn",
           "description": "Session duration (16h 0m) was significantly longer than typical (2h 52m)"
+        },
+        {
+          "date": "2024-09-02",
+          "exit_time": "06:19",
+          "entry_time": "12:26",
+          "duration_minutes": 367.0,
+          "expected_duration": 172.1,
+          "z_score": 1.0,
+          "anomaly_type": "mild",
+          "severity": "low",
+          "season": "autumn",
+          "description": "Session duration (6h 7m) was slightly longer than typical (2h 52m)"
         },
         {
           "date": "2024-08-31",
@@ -7116,8 +7235,8 @@
       ],
       "baselines": {
         "global": {
-          "mean": 155.7,
-          "std": 205.1
+          "mean": 155.9,
+          "std": 204.5
         },
         "seasonal": {
           "spring": {
@@ -7129,8 +7248,8 @@
             "std": 252.4
           },
           "autumn": {
-            "mean": 172.3,
-            "std": 198.2
+            "mean": 172.1,
+            "std": 194.9
           },
           "winter": {
             "mean": 84.7,
@@ -7139,21 +7258,14 @@
         }
       },
       "summary": {
-        "total_anomalies": 211,
-        "mild_anomalies": 107,
-        "moderate_anomalies": 47,
+        "total_anomalies": 215,
+        "mild_anomalies": 108,
+        "moderate_anomalies": 50,
         "significant_anomalies": 57
       }
     },
     "dashboardMetrics": {
       "peak_hours_21day": [
-        4.0,
-        21.0,
-        null,
-        4.0,
-        5.0,
-        0.0,
-        3.0,
         null,
         6.0,
         9.0,
@@ -7167,16 +7279,16 @@
         null,
         21.0,
         null,
-        4.0
+        4.0,
+        4.0,
+        null,
+        null,
+        22.0,
+        null,
+        null,
+        12.0
       ],
       "time_outside_21day": [
-        451.7,
-        306.2,
-        467.5,
-        1271.0,
-        921.3,
-        419.1,
-        1198.0,
         0,
         291.0,
         656.7,
@@ -7190,16 +7302,16 @@
         577.0,
         422.9,
         469.5,
-        651.0
+        651.0,
+        1010.0,
+        749.0,
+        366.8,
+        624.0,
+        609.0,
+        1010.0,
+        237.3
       ],
       "exits_21day": [
-        4,
-        5,
-        4,
-        2,
-        6,
-        6,
-        3,
         0,
         2,
         5,
@@ -7213,16 +7325,16 @@
         4,
         4,
         6,
-        3
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
       ],
       "date_labels": [
-        "2025-08-11",
-        "2025-08-12",
-        "2025-08-13",
-        "2025-08-14",
-        "2025-08-15",
-        "2025-08-16",
-        "2025-08-17",
         "2025-08-18",
         "2025-08-19",
         "2025-08-20",
@@ -7236,20 +7348,27 @@
         "2025-08-28",
         "2025-08-29",
         "2025-08-30",
-        "2025-08-31"
+        "2025-08-31",
+        "2025-09-01",
+        "2025-09-02",
+        "2025-09-03",
+        "2025-09-04",
+        "2025-09-05",
+        "2025-09-06",
+        "2025-09-07"
       ],
       "trends": {
         "peak_hour_trend": "later",
         "time_outside_trend": "stable",
-        "exits_trend": "up",
-        "peak_hour_change_minutes": 270,
+        "exits_trend": "down",
+        "peak_hour_change_minutes": 96,
         "time_outside_change_percent": 0,
-        "exits_change_percent": 48.6
+        "exits_change_percent": -16.7
       },
       "summary": {
         "current_peak_hour": 4.0,
-        "avg_time_outside_minutes": 651.1,
-        "avg_exits_per_day": 4.8,
+        "avg_time_outside_minutes": 629.6,
+        "avg_exits_per_day": 4.6,
         "data_days": 20
       }
     }
@@ -28722,6 +28841,344 @@
         }
       ],
       "extracted_at": "2025-06-23T19:21:23.488548"
+    },
+    {
+      "report_info": {
+        "filename": "SvenVarysSootyHultbergWong_Activity_Report_07-09-2025.pdf",
+        "report_date": "7 Sep 2025",
+        "report_date_range": "2025-09-01 to 2025-09-07",
+        "report_year": 2025,
+        "pet_name": "Sven Varys Sooty...",
+        "age": 2,
+        "weight": 4
+      },
+      "session_data": [
+        {
+          "date_str": "Mon 1 Sep",
+          "session_number": 1,
+          "exit_time": "04:19",
+          "entry_time": "07:13",
+          "duration": "02:54 h",
+          "daily_total_visits_PDF": 2,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-01"
+        },
+        {
+          "date_str": "Mon 1 Sep",
+          "session_number": 2,
+          "exit_time": "08:12",
+          "entry_time": "10:11",
+          "duration": "01:59 h",
+          "daily_total_visits_PDF": 2,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-01"
+        },
+        {
+          "date_str": "Mon 1 Sep",
+          "session_number": 3,
+          "exit_time": "12:02",
+          "entry_time": null,
+          "duration": "11:57 h",
+          "daily_total_visits_PDF": 2,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-01"
+        },
+        {
+          "date_str": "Tue 2 Sep",
+          "session_number": 1,
+          "exit_time": null,
+          "entry_time": "01:40",
+          "duration": "01:40 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "12:30 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "12:28",
+          "date_full": "2025-09-02"
+        },
+        {
+          "date_str": "Tue 2 Sep",
+          "session_number": 2,
+          "exit_time": "04:50",
+          "entry_time": "06:17",
+          "duration": "01:26 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "12:30 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "12:28",
+          "date_full": "2025-09-02"
+        },
+        {
+          "date_str": "Tue 2 Sep",
+          "session_number": 3,
+          "exit_time": "06:20",
+          "entry_time": "13:20",
+          "duration": "06:59 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "12:30 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "12:28",
+          "date_full": "2025-09-02"
+        },
+        {
+          "date_str": "Tue 2 Sep",
+          "session_number": 4,
+          "exit_time": "21:35",
+          "entry_time": null,
+          "duration": "02:24 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "12:30 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "12:28",
+          "date_full": "2025-09-02"
+        },
+        {
+          "date_str": "Wed 3 Sep",
+          "session_number": 1,
+          "exit_time": null,
+          "entry_time": "01:23",
+          "duration": "01:23 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "06:08 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "06:06",
+          "date_full": "2025-09-03"
+        },
+        {
+          "date_str": "Wed 3 Sep",
+          "session_number": 2,
+          "exit_time": "03:28",
+          "entry_time": "04:14",
+          "duration": "45:51 mins",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "06:08 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "06:06",
+          "date_full": "2025-09-03"
+        },
+        {
+          "date_str": "Wed 3 Sep",
+          "session_number": 3,
+          "exit_time": "04:43",
+          "entry_time": "07:16",
+          "duration": "02:32 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "06:08 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "06:06",
+          "date_full": "2025-09-03"
+        },
+        {
+          "date_str": "Wed 3 Sep",
+          "session_number": 4,
+          "exit_time": "22:33",
+          "entry_time": null,
+          "duration": "01:26 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "06:08 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "06:06",
+          "date_full": "2025-09-03"
+        },
+        {
+          "date_str": "Thu 4 Sep",
+          "session_number": 4,
+          "exit_time": "22:54",
+          "entry_time": null,
+          "duration": "01:05 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:25 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:24",
+          "date_full": "2025-09-04"
+        },
+        {
+          "date_str": "Thu 4 Sep",
+          "session_number": 3,
+          "exit_time": "07:28",
+          "entry_time": "10:54",
+          "duration": "03:26 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:25 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:24",
+          "date_full": "2025-09-04"
+        },
+        {
+          "date_str": "Thu 4 Sep",
+          "session_number": 1,
+          "exit_time": null,
+          "entry_time": "04:19",
+          "duration": "04:19 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:25 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:24",
+          "date_full": "2025-09-04"
+        },
+        {
+          "date_str": "Thu 4 Sep",
+          "session_number": 2,
+          "exit_time": "04:48",
+          "entry_time": "06:22",
+          "duration": "01:34 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:25 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:24",
+          "date_full": "2025-09-04"
+        },
+        {
+          "date_str": "Fri 5 Sep",
+          "session_number": 1,
+          "exit_time": null,
+          "entry_time": "02:35",
+          "duration": "02:35 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:11 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:09",
+          "date_full": "2025-09-05"
+        },
+        {
+          "date_str": "Fri 5 Sep",
+          "session_number": 2,
+          "exit_time": "04:32",
+          "entry_time": "06:11",
+          "duration": "01:39 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:11 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:09",
+          "date_full": "2025-09-05"
+        },
+        {
+          "date_str": "Fri 5 Sep",
+          "session_number": 3,
+          "exit_time": "08:36",
+          "entry_time": "13:00",
+          "duration": "04:23 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:11 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:09",
+          "date_full": "2025-09-05"
+        },
+        {
+          "date_str": "Fri 5 Sep",
+          "session_number": 4,
+          "exit_time": "22:27",
+          "entry_time": null,
+          "duration": "01:32 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "10:11 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "10:09",
+          "date_full": "2025-09-05"
+        },
+        {
+          "date_str": "Sat 6 Sep",
+          "session_number": 1,
+          "exit_time": null,
+          "entry_time": "02:18",
+          "duration": "02:18 h",
+          "daily_total_visits_PDF": 4,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-06"
+        },
+        {
+          "date_str": "Sat 6 Sep",
+          "session_number": 2,
+          "exit_time": "04:10",
+          "entry_time": "06:30",
+          "duration": "02:19 h",
+          "daily_total_visits_PDF": 4,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-06"
+        },
+        {
+          "date_str": "Sat 6 Sep",
+          "session_number": 3,
+          "exit_time": "07:46",
+          "entry_time": "10:09",
+          "duration": "02:22 h",
+          "daily_total_visits_PDF": 4,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-06"
+        },
+        {
+          "date_str": "Sat 6 Sep",
+          "session_number": 4,
+          "exit_time": "10:21",
+          "entry_time": "20:12",
+          "duration": "09:51 h",
+          "daily_total_visits_PDF": 4,
+          "daily_total_time_outside_PDF": "16:51 h",
+          "daily_total_visits_calculated": 3,
+          "daily_total_time_outside_calculated": "16:50",
+          "date_full": "2025-09-06"
+        },
+        {
+          "date_str": "Sun 7 Sep",
+          "session_number": 3,
+          "exit_time": "12:35",
+          "entry_time": "12:47",
+          "duration": "12:19 mins",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "03:58 h",
+          "daily_total_visits_calculated": 4,
+          "daily_total_time_outside_calculated": "03:57",
+          "date_full": "2025-09-07"
+        },
+        {
+          "date_str": "Sun 7 Sep",
+          "session_number": 1,
+          "exit_time": "00:51",
+          "entry_time": "03:08",
+          "duration": "02:16 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "03:58 h",
+          "daily_total_visits_calculated": 4,
+          "daily_total_time_outside_calculated": "03:57",
+          "date_full": "2025-09-07"
+        },
+        {
+          "date_str": "Sun 7 Sep",
+          "session_number": 2,
+          "exit_time": "05:02",
+          "entry_time": "06:31",
+          "duration": "01:29 h",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "03:58 h",
+          "daily_total_visits_calculated": 4,
+          "daily_total_time_outside_calculated": "03:57",
+          "date_full": "2025-09-07"
+        },
+        {
+          "date_str": "Sun 7 Sep",
+          "session_number": 4,
+          "exit_time": "17:54",
+          "entry_time": "17:54",
+          "duration": "14 s",
+          "daily_total_visits_PDF": 3,
+          "daily_total_time_outside_PDF": "03:58 h",
+          "daily_total_visits_calculated": 4,
+          "daily_total_time_outside_calculated": "03:57",
+          "date_full": "2025-09-07"
+        }
+      ],
+      "extracted_at": "2025-09-07T20:22:17.965298"
     },
     {
       "report_info": {
