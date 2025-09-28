@@ -405,13 +405,40 @@
         "total_days_covered": 588
       },
       "missing_weeks": []
+    },
+    {
+      "timestamp": "2025-09-28T19:30:09Z",
+      "filename": "SvenVarysSootyHultbergWong_Activity_Report_21-09-2025.pdf",
+      "uploader": "magnus.hultberg@gmail.com",
+      "processing_status": "success",
+      "new_sessions_processed": 30,
+      "duplicate_sessions_found": 0,
+      "unique_new_sessions_added": 30,
+      "total_sessions_in_dataset": 1938,
+      "duplicate_rate_percent": 0.0,
+      "dataset_date_range": {
+        "start": "2024-02-05",
+        "end": "2025-09-21"
+      },
+      "file_sizes": {
+        "new_csv_bytes": 6617,
+        "new_json_bytes": 12193,
+        "master_csv_bytes": 411382,
+        "master_json_bytes": 1051004
+      },
+      "dataset_growth": {
+        "csv_size_mb": 0.39,
+        "json_size_mb": 1.0,
+        "total_days_covered": 595
+      },
+      "missing_weeks": []
     }
   ],
   "trends": {
     "last_updated": "2025-09-28",
-    "total_processing_runs": 13,
-    "average_duplicate_rate": 8.13,
-    "average_new_sessions_per_upload": 25.85,
+    "total_processing_runs": 14,
+    "average_duplicate_rate": 7.55,
+    "average_new_sessions_per_upload": 26.14,
     "dataset_growth_trend": "stable",
     "processing_success_rate": 100.0
   }
